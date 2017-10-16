@@ -1,11 +1,14 @@
-﻿$params = @{  }
+﻿# change to english locale
+chcp 437
+
+$params = @{  }
 $body = @{ }
 
 function read_conf($filename)
 {
   $lines = get-content $filename
   foreach($line in $lines){
-    # コメントと空行を除外する
+    # Remove comments and blank lines.
     if($line -match "^$"){ continue }
     if($line -match "^\s*;"){ continue }
 
@@ -141,7 +144,7 @@ $destructive=1
 # Set lock file
 
 function GetCurrentSSID() {
-    return (netsh wlan show interfaces) -Match 'プロファイル' -NotMatch '接続モード' -Replace "^\s+プロファイル\s+:\s+", "" -Replace "\s+$", ""
+    return (netsh wlan show interfaces) -Match 'Profile' -NotMatch 'Connection mode' -Replace "^\s+Profile\s+:\s+", "" -Replace "\s+$", ""
 <#
     $WifiGUID = (Get-NetAdapter -Name $params["IFTYPE"]).interfaceGUID
 
@@ -262,7 +265,7 @@ if ($params["IFTYPE"] -eq 'Wi-Fi') {
     write_json $layer "Wi-Fi" ssid $params['INFO'] $ssid
 
     # Get Wi-Fi RSSI
-    $rssi = (netsh wlan show interfaces) -Match 'シグナル' -Replace "^\s+シグナル\s+:\s+", "" -Replace "\s+$", "" -Replace "%", ""
+    $rssi = (netsh wlan show interfaces) -Match 'Signal' -Replace "^\s+Signal\s+:\s+", "" -Replace "\s+$", "" -Replace "%", ""
     write_json $layer "Wi-Fi" rssi $params['INFO'] $rssi
 
     # Get Wi-Fi noise
@@ -272,7 +275,7 @@ if ($params["IFTYPE"] -eq 'Wi-Fi') {
     write_json $layer 'Wi-Fi' rate $params['INFO'] (($netadapter.speed)/1000000)
 
     # Get Wi-Fi channel
-    $channel = (netsh wlan show interfaces) -Match 'チャネル' -Replace "^\s+チャネル\s+:\s+", "" -Replace "\s+$", "" -Replace "%", ""
+    $channel = (netsh wlan show interfaces) -Match 'Channel' -Replace "^\s+Channel\s+:\s+", "" -Replace "\s+$", "" -Replace "%", ""
     write_json $layer "Wi-Fi" channel $params['INFO'] $channel
 
 } else {
