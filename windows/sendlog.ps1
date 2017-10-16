@@ -4,7 +4,7 @@ function read_conf($filename)
 {
   $lines = get-content $filename
   foreach($line in $lines){
-    # コメントと空行を除外する
+    # Remove comments and blank lines.
     if($line -match "^$"){ continue }
     if($line -match "^\s*;"){ continue }
 
