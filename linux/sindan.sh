@@ -1,6 +1,6 @@
 #!/bin/bash
 # sindan.sh
-# version 1.5.1
+# version 1.6
 
 # read configurationfile
 . ./sindan.conf
@@ -31,9 +31,9 @@ write_json_campaign() {
 
 #
 write_json() {
-  if [ $# -ne 6 ]; then
-    echo "$1, $2, $3, $4, $5, $6"
-    echo "ERROR: write_json <layer> <group> <type> <result> <detail> <count>. ($3)" 1>&2
+  if [ $# -ne 7 ]; then
+    echo "$1, $2, $3, $4, $5, $6, $7"
+    echo "ERROR: write_json <layer> <group> <type> <result> <target> <detail> <count>. ($3)" 1>&2
     return 1
   fi
   local json="{ \"layer\" : \"$1\",
@@ -41,9 +41,10 @@ write_json() {
                 \"log_type\" : \"$3\",
                 \"log_campaign_uuid\" : \"${uuid}\",
                 \"result\" : \"$4\",
-                \"detail\" : \"$5\",
+                \"target\" : \"$5\",
+                \"detail\" : \"$6\",
                 \"occurred_at\" : \"`date -u '+%Y-%m-%d %T'`\" }"
-  echo ${json} > log/sindan_$1_$3_$6_`date -u '+%s'`.json
+  echo ${json} > log/sindan_$1_$3_$7_`date -u '+%s'`.json
 }
 
 ## for datalink layer
@@ -709,16 +710,16 @@ if [ $? -eq 0 ]; then
   result=${SUCCESS}
 fi
 if [ "X${ifstatus}" != "X" ]; then
-  write_json ${layer} "common" ifstatus ${result} ${ifstatus} 0
+  write_json ${layer} "common" ifstatus ${result} self ${ifstatus} 0
 fi
 
 # Get iftype
-write_json ${layer} "common" iftype ${INFO} ${IFTYPE} 0
+write_json ${layer} "common" iftype ${INFO} self ${IFTYPE} 0
 
 # Get ifmtu
 ifmtu=$(get_ifmtu ${devicename})
 if [ "X${ifmtu}" != "X" ]; then
-  write_json ${layer} "common" ifmtu ${INFO} ${ifmtu} 0
+  write_json ${layer} "common" ifmtu ${INFO} self ${ifmtu} 0
 fi
 
 #
@@ -726,38 +727,38 @@ if [ ${IFTYPE} != "Wi-Fi" ]; then
   # Get media type
   media=$(get_mediatype ${devicename})
   if [ "X${media}" != "X" ]; then
-    write_json ${layer} "${IFTYPE}" media ${INFO} ${media} 0
+    write_json ${layer} "${IFTYPE}" media ${INFO} self ${media} 0
   fi
 else
   # Get Wi-Fi SSID
   ssid=$(get_wifi_ssid ${devicename})
   if [ "X${ssid}" != "X" ]; then
-    write_json ${layer} "${IFTYPE}" ssid ${INFO} ${ssid} 0
+    write_json ${layer} "${IFTYPE}" ssid ${INFO} self ${ssid} 0
   fi
   # Get Wi-Fi BSSID
   bssid=$(get_wifi_bssid ${devicename})
   if [ "X${bssid}" != "X" ]; then
-    write_json ${layer} "${IFTYPE}" bssid ${INFO} ${bssid} 0
+    write_json ${layer} "${IFTYPE}" bssid ${INFO} self ${bssid} 0
   fi
   # Get Wi-Fi channel
   channel=$(get_wifi_channel ${devicename})
   if [ "X${channel}" != "X" ]; then
-    write_json ${layer} "${IFTYPE}" channel ${INFO} ${channel} 0
+    write_json ${layer} "${IFTYPE}" channel ${INFO} self ${channel} 0
   fi
   # Get Wi-Fi RSSI
   rssi=$(get_wifi_rssi ${devicename})
   if [ "X${rssi}" != "X" ]; then
-    write_json ${layer} "${IFTYPE}" rssi ${INFO} ${rssi} 0
+    write_json ${layer} "${IFTYPE}" rssi ${INFO} self ${rssi} 0
   fi
   # Get Wi-Fi noise
   noise=$(get_wifi_noise ${devicename})
   if [ "X${noise}" != "X" ]; then
-    write_json ${layer} "${IFTYPE}" noise ${INFO} ${noise} 0
+    write_json ${layer} "${IFTYPE}" noise ${INFO} self ${noise} 0
   fi
   # Get Wi-Fi rate
   rate=$(get_wifi_rate ${devicename})
   if [ "X${rate}" != "X" ]; then
-    write_json ${layer} "${IFTYPE}" rate ${INFO} ${rate} 0
+    write_json ${layer} "${IFTYPE}" rate ${INFO} self ${rate} 0
   fi
 fi
 
@@ -788,7 +789,7 @@ layer="interface"
 # Get IPv4 I/F configurations
 v4ifconf=$(get_v4ifconf "${devicename}")
 if [ "X${v4ifconf}" != "X" ]; then
-  write_json ${layer} IPv4 v4ifconf ${INFO} ${v4ifconf} 0
+  write_json ${layer} IPv4 v4ifconf ${INFO} self ${v4ifconf} 0
 fi
 
 # Check IPv4 autoconf
@@ -797,30 +798,30 @@ v4autoconf=$(check_v4autoconf ${devicename} ${v4ifconf})
 if [ $? -eq 0 -a "X${v4autoconf}" != "X" ]; then
   result=${SUCCESS}
 fi
-write_json ${layer} IPv4 v4autoconf ${result} "${v4autoconf}" 0
+write_json ${layer} IPv4 v4autoconf ${result} self "${v4autoconf}" 0
 
 # Get IPv4 address
 v4addr=$(get_v4addr ${devicename} ${v4ifconf})
 if [ "X${v4addr}" != "X" ]; then
-  write_json ${layer} IPv4 v4addr ${INFO} ${v4addr} 0
+  write_json ${layer} IPv4 v4addr ${INFO} self ${v4addr} 0
 fi
 
 # Get IPv4 netmask
 netmask=$(get_netmask ${devicename} ${v4ifconf})
 if [ "X${netmask}" != "X" ]; then
-  write_json ${layer} IPv4 netmask ${INFO} ${netmask} 0
+  write_json ${layer} IPv4 netmask ${INFO} self ${netmask} 0
 fi
 
 # Get IPv4 routers
 v4routers=$(get_v4routers ${devicename} ${v4ifconf})
 if [ "X${v4routers}" != "X" ]; then
-  write_json ${layer} IPv4 v4routers ${INFO} "${v4routers}" 0
+  write_json ${layer} IPv4 v4routers ${INFO} self "${v4routers}" 0
 fi
 
 # Get IPv4 name servers
 v4nameservers=$(get_v4nameservers ${devicename} ${v4ifconf})
 if [ "X${v4nameservers}" != "X" ]; then
-  write_json ${layer} IPv4 v4nameservers ${INFO} "${v4nameservers}" 0
+  write_json ${layer} IPv4 v4nameservers ${INFO} self "${v4nameservers}" 0
 fi
 
 # Get IPv4 NTP servers
@@ -839,25 +840,25 @@ fi
 # Get IPv6 I/F configurations
 v6ifconf=$(get_v6ifconf "${devicename}")
 if [ "X${v6ifconf}" != "X" ]; then
-  write_json ${layer} IPv6 v6ifconf ${INFO} ${v6ifconf} 0
+  write_json ${layer} IPv6 v6ifconf ${INFO} self ${v6ifconf} 0
 fi
 
 # Get IPv6 linklocal address
 v6lladdr=$(get_v6lladdr ${devicename})
 if [ "X${v6lladdr}" != "X" ]; then
-  write_json ${layer} IPv6 v6lladdr ${INFO} ${v6lladdr} 0
+  write_json ${layer} IPv6 v6lladdr ${INFO} self ${v6lladdr} 0
 fi
 
 # Get IPv6 RA flags
 ra_flags=$(get_ra_flags ${devicename})
 if [ "X${ra_flags}" != "X" ]; then
-  write_json ${layer} RA ra_flags ${INFO} ${ra_flags} 0
+  write_json ${layer} RA ra_flags ${INFO} self ${ra_flags} 0
 fi
 
 # Get IPv6 RA prefix
 ra_prefixes=$(get_ra_prefixes ${devicename})
 if [ "X${ra_prefixes}" != "X" ]; then
-  write_json ${layer} RA ra_prefixes ${INFO} ${ra_prefixes} 0
+  write_json ${layer} RA ra_prefixes ${INFO} self ${ra_prefixes} 0
 fi
 
 # Report phase 2 results (IPv6)
@@ -874,18 +875,18 @@ if [ "X${ra_flags}" != "X" -o "X${ra_prefixes}" != "X" ]; then
   for pref in `echo ${ra_prefixes} | sed 's/,/ /g'`; do
     # Get IPv6 RA prefix flags
     ra_prefix_flags=$(get_ra_prefix_flags ${devicename} ${pref})
-    write_json ${layer} RA ra_prefix_flags ${INFO} "(${pref}) ${ra_prefix_flags}" ${count}
+    write_json ${layer} RA ra_prefix_flags ${INFO} ${pref} ${ra_prefix_flags} ${count}
     if [ "${VERBOSE}" = "yes" ]; then
       echo "  IPv6 RA prefix(flags): ${pref}(${ra_prefix_flags})"
     fi
 
     # Get IPv6 prefix length
     prefixlen=$(get_prefixlen ${pref})
-    write_json ${layer} RA prefixlen ${INFO} "(${pref}) ${prefixlen}" ${count}
+    write_json ${layer} RA prefixlen ${INFO} ${pref} ${prefixlen} ${count}
 
     # Get IPv6 address
     v6addrs=$(get_v6addrs ${devicename} ${v6ifconf} ${pref} ${ra_prefix_flags})
-    write_json ${layer} IPv6 v6addrs ${INFO} "(${pref}) ${v6addrs}" ${count}
+    write_json ${layer} IPv6 v6addrs ${INFO} ${pref} "${v6addrs}" ${count}
     if [ "${VERBOSE}" = "yes" ]; then
       for addr in `echo ${v6addrs} | sed 's/,/ /g'`; do
         echo "   IPv6 addr: ${addr}"
@@ -899,12 +900,12 @@ if [ "X${ra_flags}" != "X" -o "X${ra_prefixes}" != "X" ]; then
   if [ ${v6ifconf} = "automatic" -a "X${v6addrs}" != "X" ]; then
     result=${SUCCESS}
   fi
-  write_json ${layer} IPv6 v6autoconf ${result} "${v6addrs}" 0
+  write_json ${layer} IPv6 v6autoconf ${result} self "${v6addrs}" 0
 
   # Get IPv6 routers
   v6routers=$(get_v6routers ${devicename})
   if [ "X${v6routers}" != "X" ]; then
-    write_json ${layer} IPv6 v6routers ${INFO} "${v6routers}" 0
+    write_json ${layer} IPv6 v6routers ${INFO} self "${v6routers}" 0
   fi
   if [ "${VERBOSE}" = "yes" ]; then
     echo "  IPv6 routers: ${v6routers}"
@@ -913,7 +914,7 @@ if [ "X${ra_flags}" != "X" -o "X${ra_prefixes}" != "X" ]; then
   # Get IPv6 name servers
   v6nameservers=$(get_v6nameservers ${devicename} ${v6ifconf} ${ra_flags})
   if [ "X${v6nameservers}" != "X" ]; then
-    write_json ${layer} IPv6 v6nameservers ${INFO} "${v6nameservers}" 0
+    write_json ${layer} IPv6 v6nameservers ${INFO} self "${v6nameservers}" 0
   fi
   if [ "${VERBOSE}" = "yes" ]; then
     echo "  IPv6 nameservers: ${v6nameservers}"
@@ -957,9 +958,9 @@ cmdset_ping() {
     if [ $? -eq 0 ]; then
       result=${SUCCESS}
     fi
-    write_json ${layer} ${ipv} ${logtype1} ${result} "(${target}) ${ping_result}" ${count}
+    write_json ${layer} ${ipv} ${logtype1} ${result} ${target} "${ping_result}" ${count}
     local rtt_target=$(get_rtt "${ping_result}")
-    write_json ${layer} ${ipv} ${logtype2} ${INFO} "(${target}) ${rtt_target}" ${count}
+    write_json ${layer} ${ipv} ${logtype2} ${INFO} ${target} ${rtt_target} ${count}
     if [ "${VERBOSE}" = "yes" ]; then
       if [ ${result} = ${SUCCESS} ]; then
         echo "  status: ok, rtt: ${rtt_target} msec"
@@ -1008,7 +1009,7 @@ cmdset_trace () {
       echo " traceroute to ${ipv} server: ${target}"
     fi
     local path_result=$(do_traceroute ${version} ${target})
-    write_json ${layer} ${ipv} ${logtype} ${INFO} "(${target}) ${path_result}" ${count}
+    write_json ${layer} ${ipv} ${logtype} ${INFO} ${target} "${path_result}" ${count}
     if [ "${VERBOSE}" = "yes" ]; then
       echo "  path: ${path_result}"
     fi
@@ -1034,13 +1035,13 @@ cmdset_pmtud () {
     fi
     local pmtu_result=$(do_pmtud ${version} ${target} 1470 1500)
     if [ ${pmtu_result} -eq 0 ]; then
-      write_json ${layer} ${ipv} ${logtype} ${INFO} "(${target}) unmeasurable" ${count}
+      write_json ${layer} ${ipv} ${logtype} ${INFO} ${target} unmeasurable ${count}
       if [ "${VERBOSE}" = "yes" ]; then
         echo "  pmtud: unmeasurable"
       fi
     else
       local pmtu_data=`expr ${pmtu_result} + 28`
-      write_json ${layer} ${ipv} ${logtype} ${INFO} "(${target}) ${pmtu_data}" ${count}
+      write_json ${layer} ${ipv} ${logtype} ${INFO} ${target} ${pmtu_data} ${count}
       if [ "${VERBOSE}" = "yes" ]; then
         echo "  pmtu: ${pmtu_data} MB"
       fi
@@ -1119,7 +1120,7 @@ cmdset_dnslookup () {
       else
         local stat=$?
       fi
-      write_json ${layer} ${ipv} ${logtype} ${result} "(${target}) ${dns_ans}" ${count}
+      write_json ${layer} ${ipv} ${logtype} ${result} ${target} "${dns_ans}" ${count}
       if [ "${VERBOSE}" = "yes" ]; then
         if [ ${result} = ${SUCCESS} ]; then
           echo "   status: ok, result: ${dns_ans}"
@@ -1129,6 +1130,13 @@ cmdset_dnslookup () {
       fi
       count=`expr $count + 1`
     done
+    # Check DNS64
+    if [ ${version} = "6" -a ${type} = "AAAA" ]; then
+      local check_dns64=$(do_dnslookup ${target} ${type} "ipv4only.arpa")
+      if [ "X${check_dns64}" != "X" ]; then
+        exist_dns64="yes"
+      fi
+    fi
   done
 }
 
@@ -1192,6 +1200,40 @@ sleep 2
 echo "Phase 6: Web Layer checking..."
 layer="web"
 
+cmdset_http () {
+  if [ $# -lt 2 ]; then
+    echo "ERROR: cmdset_http <version> <target_type> <target_addrs>." 1>&2
+    return 1
+  fi
+  local count=0
+  local version=$1
+  local ipv="IPv${version}"
+  local type=$2
+  local logtype="v${version}http_${type}"
+  local targets=$3
+  for target in `echo ${targets} | sed 's/,/ /g'`; do
+    local result=${FAIL}
+    if [ "${VERBOSE}" = "yes" ]; then
+      echo " curl to extarnal server: ${target} by ${ipv}"
+    fi
+    http_ans=$(do_curl ${version} ${target})
+    if [ $? -eq 0 ]; then
+      result=${SUCCESS}
+    else
+      stat=$?
+    fi
+    write_json ${layer} ${ipv} ${logtype} ${result} ${target} "${http_ans}" ${count}
+    if [ "${VERBOSE}" = "yes" ]; then
+      if [ ${result} = ${SUCCESS} ]; then
+        echo "  status: ok, http status code: ${http_ans}"
+      else
+        echo "  status: ng ($stat)"
+      fi
+    fi
+    count=`expr $count + 1`
+  done
+}
+
 # Check V4WEB_SRVS parameter
 if [ "X${V4WEB_SRVS}" = "X" ]; then
   echo "ERROR: V4WEB_SRVS is null at configration file." 1>&2
@@ -1199,29 +1241,8 @@ if [ "X${V4WEB_SRVS}" = "X" ]; then
 fi
 
 if [ "${v4addr_type}" != "loopback" -a "${v4addr_type}" != "linklocal" ]; then
-  # Do curl to extarnal web servers by IPv4
-  count=0
-  for var in `echo ${V4WEB_SRVS} | sed 's/,/ /g'`; do
-    result=${FAIL}
-    if [ "${VERBOSE}" = "yes" ]; then
-      echo " curl to extarnal server: ${var} by IPv4"
-    fi
-    v4http_srv=$(do_curl 4 ${var})
-    if [ $? -eq 0 ]; then
-      result=${SUCCESS}
-    else
-      stat=$?
-    fi
-    write_json ${layer} IPv4 v4http_srv ${result} "(${var}) ${v4http_srv}" ${count}
-    if [ "${VERBOSE}" = "yes" ]; then
-      if [ ${result} = ${SUCCESS} ]; then
-        echo "  status: ok, http status code: ${v4http_srv}"
-      else
-        echo "  status: ng ($stat)"
-      fi
-    fi
-    count=`expr $count + 1`
-  done
+  # Do curl to IPv4 web servers by IPv4
+  cmdset_http 4 srv "${V4WEB_SRVS}"
 
   # Do measure http throuput by IPv4
   #TBD
@@ -1235,29 +1256,8 @@ if [ "X${V6WEB_SRVS}" = "X" ]; then
 fi
 
 if [ "X${v6addrs}" != "X" ]; then
-  # Do curl to extarnal web servers by IPv6
-  count=0
-  for var in `echo ${V6WEB_SRVS} | sed 's/,/ /g'`; do
-    result=${FAIL}
-    if [ "${VERBOSE}" = "yes" ]; then
-      echo " curl to extarnal server: ${var} by IPv6"
-    fi
-    v6http_srv=$(do_curl 6 ${var})
-    if [ $? -eq 0 ]; then
-      result=${SUCCESS}
-    else
-      stat=$?
-    fi
-    write_json ${layer} IPv6 v6http_srv ${result} "(${var}) ${v6http_srv}" ${count}
-    if [ "${VERBOSE}" = "yes" ]; then
-      if [ ${result} = ${SUCCESS} ]; then
-        echo "  status: ok, http status code: ${v6http_srv}"
-      else
-        echo "  status: ng ($stat)"
-      fi
-    fi
-    count=`expr $count + 1`
-  done
+  # Do curl to IPv6 web servers by IPv6
+  cmdset_http 6 srv "${V6WEB_SRVS}"
 
   # Do measure http throuput by IPv6
   #TBD
@@ -1267,29 +1267,8 @@ fi
 # DNS64
 if [ ${exist_dns64} = "yes" ]; then
   echo " exist dns64 server"
-  # Do curl to extarnal web servers by IPv6
-  count=0
-  for var in `echo ${V4WEB_SRVS} | sed 's/,/ /g'`; do
-    result=${FAIL}
-    if [ "${VERBOSE}" = "yes" ]; then
-      echo " curl to extarnal server: ${var} by IPv6"
-    fi
-    v6http_srv=$(do_curl 6 ${var})
-    if [ $? -eq 0 ]; then
-      result=${SUCCESS}
-    else
-      stat=$?
-    fi
-    write_json ${layer} IPv6 v4http_srv ${result} "(${var}) ${v6http_srv}" ${count}
-    if [ "${VERBOSE}" = "yes" ]; then
-      if [ ${result} = ${SUCCESS} ]; then
-        echo "  status: ok, http status code: ${v6http_srv}"
-      else
-        echo "  status: ng ($stat)"
-      fi
-    fi
-    count=`expr $count + 1`
-  done
+  # Do curl to IPv4 web servers by IPv6
+  cmdset_http 6 srv "${V4WEB_SRVS}"
 
   # Do measure http throuput by IPv6
   #TBD
