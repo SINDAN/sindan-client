@@ -1,6 +1,6 @@
 #!/bin/bash
 # sindan.sh
-# version 1.6
+# version 1.6.1
 
 # read configurationfile
 . ./sindan.conf
@@ -523,7 +523,7 @@ do_ping() {
     "6" ) command=ping6 ;;
     * ) echo "ERROR: <version> must be 4 or 6." 1>&2; return 9 ;;
   esac
-  ${command} -c 5 $2
+  ${command} -i 0.2 -c 10 $2
   return $?
 }
 
@@ -533,7 +533,16 @@ get_rtt() {
     echo "ERROR: get_rtt <ping_result>." 1>&2
     return 1
   fi
-  echo "$1" | grep rtt | awk '{print $4}' | awk -F"/" '{print $2}'
+  echo "$1" | grep rtt | awk '{print $4}' | sed 's/\// /g'
+}
+
+#
+get_loss() {
+  if [ $# -ne 1 ]; then
+    echo "ERROR: get_loss <ping_result>." 1>&2
+    return 1
+  fi
+  echo "$1" | sed -n 's/^.*received, \([0-9.]*\)\%.*$/\1/p'
 }
 
 ## for globalnet layer
@@ -598,8 +607,33 @@ do_dnslookup() {
     echo "ERROR: do_dnslookup <nameserver> <query_type> <target_fqdn>." 1>&2
     return 1
   fi
-  dig @$1 $3 $2 +short +time=1
+  dig @$1 $3 $2 +time=1
   return $?
+  # Dig return codes are:
+  # 0: Everything went well, including things like NXDOMAIN
+  # 1: Usage error
+  # 8: Couldn't open batch file
+  # 9: No reply from server
+  # 10: Internal error
+}
+
+#
+get_dnsans() {
+  if [ $# -lt 2 ]; then
+    echo "ERROR: get_dnsans <query_type> <dig_result>." 1>&2
+    return 1
+  fi
+  echo "$2" | grep -v '^$' | grep -v '^;' | grep "	$1" -m 1 | awk '{print $5}'
+}
+
+#
+get_dnsrtt() {
+  if [ $# -lt 1 ]; then
+    echo "ERROR: get_dnsrtt <dig_result>." 1>&2
+    return 1
+  fi
+#  echo "$1" | grep "Query time" | sed -n 's/^.*time: \([0-9]*\) .*$/\1/p'
+  echo "$1" | grep "Query time" | awk '{print $4}'
 }
 
 ## for web layer
@@ -948,7 +982,9 @@ cmdset_ping() {
   local type=$2
   local logtype1="v${version}alive_${type}"
   local logtype2="v${version}rtt_${type}"
+  local logtype3="v${version}loss_${type}"
   local targets=$3
+  local rtt_type=(min ave max dev)
   for target in `echo ${targets} | sed 's/,/ /g'`; do
     local result=${FAIL}
     if [ "${VERBOSE}" = "yes" ]; then
@@ -959,12 +995,18 @@ cmdset_ping() {
       result=${SUCCESS}
     fi
     write_json ${layer} ${ipv} ${logtype1} ${result} ${target} "${ping_result}" ${count}
-    local rtt_target=$(get_rtt "${ping_result}")
-    write_json ${layer} ${ipv} ${logtype2} ${INFO} ${target} ${rtt_target} ${count}
-    if [ "${VERBOSE}" = "yes" ]; then
-      if [ ${result} = ${SUCCESS} ]; then
-        echo "  status: ok, rtt: ${rtt_target} msec"
-      else
+    if [ ${result} = ${SUCCESS} ]; then
+      local rtt_data=($(get_rtt "${ping_result}"))
+      for i in 0 1 2 3; do
+        write_json ${layer} ${ipv} "${logtype2}_${rtt_type[$i]}" ${INFO} ${target} ${rtt_data[$i]} ${count}
+      done
+      local rtt_loss=$(get_loss "${ping_result}")
+      write_json ${layer} ${ipv} ${logtype3} ${INFO} ${target} ${rtt_loss} ${count}
+      if [ "${VERBOSE}" = "yes" ]; then
+        echo "  status: ok, rtt: ${rtt_data[1]} msec, loss: ${rtt_loss} %"
+      fi
+    else
+      if [ "${VERBOSE}" = "yes" ]; then
         echo "  status: ng"
       fi
     fi
@@ -1113,18 +1155,26 @@ cmdset_dnslookup () {
       if [ "${VERBOSE}" = "yes" ]; then
         echo "  resolve server: ${fqdn}"
       fi
-      local logtype="v${version}query_${type}_${fqdn}"
-      local dns_ans=$(do_dnslookup ${target} ${type} ${fqdn})
+      local logtype1="v${version}dnsqry_${type}_${fqdn}"
+      local logtype2="v${version}dnsans_${type}_${fqdn}"
+      local logtype3="v${version}dnsrtt_${type}_${fqdn}"
+      local dns_result=$(do_dnslookup ${target} ${type} ${fqdn})
       if [ $? -eq 0 ]; then
         result=${SUCCESS}
       else
         local stat=$?
       fi
-      write_json ${layer} ${ipv} ${logtype} ${result} ${target} "${dns_ans}" ${count}
-      if [ "${VERBOSE}" = "yes" ]; then
-        if [ ${result} = ${SUCCESS} ]; then
-          echo "   status: ok, result: ${dns_ans}"
-        else
+      write_json ${layer} ${ipv} ${logtype1} ${result} ${target} "${dns_result}" ${count}
+      if [ ${result} = ${SUCCESS} ]; then
+        local dns_ans=$(get_dnsans ${type} "${dns_result}")
+        write_json ${layer} ${ipv} ${logtype2} ${result} ${target} "${dns_ans}" ${count}
+        local dns_rtt=$(get_dnsrtt "${dns_result}")
+        write_json ${layer} ${ipv} ${logtype3} ${result} ${target} ${dns_rtt} ${count}
+        if [ "${VERBOSE}" = "yes" ]; then
+          echo "   status: ok, result: ${dns_ans}, ${dns_rtt} ms"
+        fi
+      else
+        if [ "${VERBOSE}" = "yes" ]; then
           echo "   status: ng ($stat)"
         fi
       fi
