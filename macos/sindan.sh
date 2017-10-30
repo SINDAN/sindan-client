@@ -1143,11 +1143,11 @@ cmdset_dnslookup () {
       write_json ${layer} ${ipv} v${ver}dnsqry_${type}_${fqdn} ${result} ${target} "${dns_result}" ${count}
       if [ ${result} = ${SUCCESS} ]; then
         local dns_ans=$(get_dnsans ${type} "${dns_result}")
-        write_json ${layer} ${ipv} v${ver}dnsans_${type}_${fqdn} ${result} ${target} "${dns_ans}" ${count}
+        write_json ${layer} ${ipv} v${ver}dnsans_${type}_${fqdn} ${INFO} ${target} "${dns_ans}" ${count}
         local dns_ttl=$(get_dnsttl ${type} "${dns_result}")
-        write_json ${layer} ${ipv} v${ver}dnsttl_${type}_${fqdn} ${result} ${target} "${dns_ttl}" ${count}
+        write_json ${layer} ${ipv} v${ver}dnsttl_${type}_${fqdn} ${INFO} ${target} "${dns_ttl}" ${count}
         local dns_rtt=$(get_dnsrtt "${dns_result}")
-        write_json ${layer} ${ipv} v${ver}dnsrtt_${type}_${fqdn} ${result} ${target} "${dns_rtt}" ${count}
+        write_json ${layer} ${ipv} v${ver}dnsrtt_${type}_${fqdn} ${INFO} ${target} "${dns_rtt}" ${count}
         if [ "${VERBOSE}" = "yes" ]; then
           echo "   status: ok, result(ttl): ${dns_ans}(${dns_ttl} s), query time: ${dns_rtt} ms"
         fi
