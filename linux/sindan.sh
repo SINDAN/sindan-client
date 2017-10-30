@@ -1,6 +1,6 @@
 #!/bin/bash
 # sindan.sh
-# version 1.6.1
+# version 1.6.2
 
 # read configurationfile
 . ./sindan.conf
@@ -112,7 +112,7 @@ get_macaddr() {
     echo "ERROR: get_macaddr <devicename>." 1>&2
     return 1
   fi
-  cat /sys/class/net/$1/address
+  cat /sys/class/net/$1/address | tr "[:upper:]" "[:lower:]"
 }
 
 #
@@ -143,7 +143,7 @@ get_wifi_bssid() {
     return 1
   fi
 #  wpa_cli -i $1 status | grep bssid | awk -F: '{print $2}
-  iwgetid $1 --raw --ap
+  iwgetid $1 --raw --ap | tr "[:upper:]" "[:lower:]"
 }
 
 #
@@ -558,8 +558,18 @@ do_traceroute() {
     "6" ) command=traceroute6 ;;
     * ) echo "ERROR: <version> must be 4 or 6." 1>&2; return 9 ;;
   esac
-  ${command} -n -w 2 -q 1 -m 50 $2 2>/dev/null | grep -v traceroute |
-   awk '{print $2}' | awk -F\n -v ORS=',' '{print}' | sed 's/,$//'
+  ${command} -n -w 2 -q 1 -m 50 $2
+  return $?
+}
+
+#
+get_tracepath () {
+  if [ $# -ne 1 ]; then
+    echo "ERROR: get_tracepath <trace_result>." 1>&2
+    return 1
+  fi
+  echo "$1" | grep -v traceroute | awk '{print $2}' |
+   awk -F\n -v ORS=',' '{print}' | sed 's/,$//'
 }
 
 #
@@ -624,6 +634,15 @@ get_dnsans() {
     return 1
   fi
   echo "$2" | grep -v '^$' | grep -v '^;' | grep "	$1" -m 1 | awk '{print $5}'
+}
+
+#
+get_dnsttl() {
+  if [ $# -lt 2 ]; then
+    echo "ERROR: get_dnsttl <query_type> <dig_result>." 1>&2
+    return 1
+  fi
+  echo "$2" | grep -v '^$' | grep -v '^;' | grep "	$1" -m 1 | awk '{print $2}'
 }
 
 #
@@ -977,12 +996,9 @@ cmdset_ping() {
     return 1
   fi
   local count=0
-  local version=$1
-  local ipv="IPv${version}"
+  local ver=$1
+  local ipv="IPv${ver}"
   local type=$2
-  local logtype1="v${version}alive_${type}"
-  local logtype2="v${version}rtt_${type}"
-  local logtype3="v${version}loss_${type}"
   local targets=$3
   local rtt_type=(min ave max dev)
   for target in `echo ${targets} | sed 's/,/ /g'`; do
@@ -990,18 +1006,18 @@ cmdset_ping() {
     if [ "${VERBOSE}" = "yes" ]; then
       echo " ping to ${ipv} ${type}: ${target}"
     fi
-    local ping_result=$(do_ping ${version} ${target})
+    local ping_result=$(do_ping ${ver} ${target})
     if [ $? -eq 0 ]; then
       result=${SUCCESS}
     fi
-    write_json ${layer} ${ipv} ${logtype1} ${result} ${target} "${ping_result}" ${count}
+    write_json ${layer} ${ipv} v${ver}alive_${type} ${result} ${target} "${ping_result}" ${count}
     if [ ${result} = ${SUCCESS} ]; then
       local rtt_data=($(get_rtt "${ping_result}"))
       for i in 0 1 2 3; do
-        write_json ${layer} ${ipv} "${logtype2}_${rtt_type[$i]}" ${INFO} ${target} ${rtt_data[$i]} ${count}
+        write_json ${layer} ${ipv} "v${ver}rtt_${type}_${rtt_type[$i]}" ${INFO} ${target} ${rtt_data[$i]} ${count}
       done
       local rtt_loss=$(get_loss "${ping_result}")
-      write_json ${layer} ${ipv} ${logtype3} ${INFO} ${target} ${rtt_loss} ${count}
+      write_json ${layer} ${ipv} v${ver}loss_${type} ${INFO} ${target} ${rtt_loss} ${count}
       if [ "${VERBOSE}" = "yes" ]; then
         echo "  status: ok, rtt: ${rtt_data[1]} msec, loss: ${rtt_loss} %"
       fi
@@ -1041,19 +1057,30 @@ cmdset_trace () {
     return 1
   fi
   local count=0
-  local version=$1
-  local ipv="IPv${version}"
+  local ver=$1
+  local ipv="IPv${ver}"
   local type=$2
-  local logtype="v${version}path_${type}"
   local targets=$3
   for target in `echo ${targets} | sed 's/,/ /g'`; do
+    local result=${FAIL}
     if [ "${VERBOSE}" = "yes" ]; then
       echo " traceroute to ${ipv} server: ${target}"
     fi
-    local path_result=$(do_traceroute ${version} ${target})
-    write_json ${layer} ${ipv} ${logtype} ${INFO} ${target} "${path_result}" ${count}
-    if [ "${VERBOSE}" = "yes" ]; then
-      echo "  path: ${path_result}"
+    local path_result=$(do_traceroute ${ver} ${target})
+    if [ $? -eq 0 ]; then
+      result=${SUCCESS}
+    fi
+    write_json ${layer} ${ipv} v${ver}path_detail_${type} ${INFO} ${target} "${path_result}" ${count}
+    if [ ${result} = ${SUCCESS} ]; then
+      local path_data=$(get_tracepath "${path_result}")
+      write_json ${layer} ${ipv} v${ver}path_${type} ${INFO} ${target} ${path_data} ${count}
+      if [ "${VERBOSE}" = "yes" ]; then
+        echo "  path: ${path_data}"
+      fi
+    else
+      if [ "${VERBOSE}" = "yes" ]; then
+        echo "  status: ng"
+      fi
     fi
     count=`expr $count + 1`
   done
@@ -1066,24 +1093,23 @@ cmdset_pmtud () {
     return 1
   fi
   local count=0
-  local version=$1
-  local ipv="IPv${version}"
+  local ver=$1
+  local ipv="IPv${ver}"
   local type=$2
-  local logtype="v${version}pmtu_${type}"
   local targets=$3
   for target in `echo ${targets} | sed 's/,/ /g'`; do
     if [ "${VERBOSE}" = "yes" ]; then
       echo " pmtud to IPv4 server: ${target}"
     fi
-    local pmtu_result=$(do_pmtud ${version} ${target} 1470 1500)
+    local pmtu_result=$(do_pmtud ${ver} ${target} 1470 1500)
     if [ ${pmtu_result} -eq 0 ]; then
-      write_json ${layer} ${ipv} ${logtype} ${INFO} ${target} unmeasurable ${count}
+      write_json ${layer} ${ipv} v${ver}pmtu_${type} ${INFO} ${target} unmeasurable ${count}
       if [ "${VERBOSE}" = "yes" ]; then
         echo "  pmtud: unmeasurable"
       fi
     else
       local pmtu_data=`expr ${pmtu_result} + 28`
-      write_json ${layer} ${ipv} ${logtype} ${INFO} ${target} ${pmtu_data} ${count}
+      write_json ${layer} ${ipv} v${ver}pmtu_${type} ${INFO} ${target} ${pmtu_data} ${count}
       if [ "${VERBOSE}" = "yes" ]; then
         echo "  pmtu: ${pmtu_data} MB"
       fi
@@ -1142,8 +1168,8 @@ cmdset_dnslookup () {
     return 1
   fi
   local count=0
-  local version=$1
-  local ipv="IPv${version}"
+  local ver=$1
+  local ipv="IPv${ver}"
   local type=$2
   local targets=$3
   for target in `echo ${targets} | sed 's/,/ /g'`; do
@@ -1155,23 +1181,22 @@ cmdset_dnslookup () {
       if [ "${VERBOSE}" = "yes" ]; then
         echo "  resolve server: ${fqdn}"
       fi
-      local logtype1="v${version}dnsqry_${type}_${fqdn}"
-      local logtype2="v${version}dnsans_${type}_${fqdn}"
-      local logtype3="v${version}dnsrtt_${type}_${fqdn}"
       local dns_result=$(do_dnslookup ${target} ${type} ${fqdn})
       if [ $? -eq 0 ]; then
         result=${SUCCESS}
       else
         local stat=$?
       fi
-      write_json ${layer} ${ipv} ${logtype1} ${result} ${target} "${dns_result}" ${count}
+      write_json ${layer} ${ipv} v${ver}dnsqry_${type}_${fqdn} ${result} ${target} "${dns_result}" ${count}
       if [ ${result} = ${SUCCESS} ]; then
         local dns_ans=$(get_dnsans ${type} "${dns_result}")
-        write_json ${layer} ${ipv} ${logtype2} ${result} ${target} "${dns_ans}" ${count}
+        write_json ${layer} ${ipv} v${ver}dnsans_${type}_${fqdn} ${result} ${target} "${dns_ans}" ${count}
+        local dns_ttl=$(get_dnsttl ${type} "${dns_result}")
+        write_json ${layer} ${ipv} v${ver}dnsttl_${type}_${fqdn} ${result} ${target} "${dns_ttl}" ${count}
         local dns_rtt=$(get_dnsrtt "${dns_result}")
-        write_json ${layer} ${ipv} ${logtype3} ${result} ${target} ${dns_rtt} ${count}
+        write_json ${layer} ${ipv} v${ver}dnsrtt_${type}_${fqdn} ${result} ${target} ${dns_rtt} ${count}
         if [ "${VERBOSE}" = "yes" ]; then
-          echo "   status: ok, result: ${dns_ans}, ${dns_rtt} ms"
+          echo "   status: ok, result: ${dns_ans} (ttl: ${dns_ttl} s), query time: ${dns_rtt} ms"
         fi
       else
         if [ "${VERBOSE}" = "yes" ]; then
@@ -1181,7 +1206,7 @@ cmdset_dnslookup () {
       count=`expr $count + 1`
     done
     # Check DNS64
-    if [ ${version} = "6" -a ${type} = "AAAA" ]; then
+    if [ ${ver} = "6" -a ${type} = "AAAA" ]; then
       local check_dns64=$(do_dnslookup ${target} ${type} "ipv4only.arpa")
       if [ "X${check_dns64}" != "X" ]; then
         exist_dns64="yes"
@@ -1256,23 +1281,22 @@ cmdset_http () {
     return 1
   fi
   local count=0
-  local version=$1
-  local ipv="IPv${version}"
+  local ver=$1
+  local ipv="IPv${ver}"
   local type=$2
-  local logtype="v${version}http_${type}"
   local targets=$3
   for target in `echo ${targets} | sed 's/,/ /g'`; do
     local result=${FAIL}
     if [ "${VERBOSE}" = "yes" ]; then
       echo " curl to extarnal server: ${target} by ${ipv}"
     fi
-    http_ans=$(do_curl ${version} ${target})
+    http_ans=$(do_curl ${ver} ${target})
     if [ $? -eq 0 ]; then
       result=${SUCCESS}
     else
       stat=$?
     fi
-    write_json ${layer} ${ipv} ${logtype} ${result} ${target} "${http_ans}" ${count}
+    write_json ${layer} ${ipv} v${ver}http_${type} ${result} ${target} "${http_ans}" ${count}
     if [ "${VERBOSE}" = "yes" ]; then
       if [ ${result} = ${SUCCESS} ]; then
         echo "  status: ok, http status code: ${http_ans}"
