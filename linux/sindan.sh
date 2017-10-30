@@ -1,6 +1,6 @@
 #!/bin/bash
 # sindan.sh
-# version 1.6.2
+# version 1.6.4
 
 # read configurationfile
 . ./sindan.conf
@@ -356,7 +356,7 @@ get_ra_prefixes() {
    awk -F\n -v ORS=',' '{print}' | sed 's/,$//'
 }
 
-# require ndisc6 ver 1.0.3
+#
 get_ra_prefix_flags() {
   if [ $# -ne 2 ]; then
     echo "ERROR: get_ra_prefix_flags <devicename> <ra_prefix>." 1>&2
@@ -517,14 +517,11 @@ do_ping() {
     echo "ERROR: do_ping <version> <target_addr>." 1>&2
     return 1
   fi
-  local command=""
   case $1 in
-    "4" ) command=ping ;;
-    "6" ) command=ping6 ;;
+    "4" ) ping -i 0.2 -c 10 $2; return $? ;;
+    "6" ) ping6 -i 0.2 -c 10 $2; return $? ;;
     * ) echo "ERROR: <version> must be 4 or 6." 1>&2; return 9 ;;
   esac
-  ${command} -i 0.2 -c 10 $2
-  return $?
 }
 
 #
@@ -552,14 +549,11 @@ do_traceroute() {
     echo "ERROR: do_traceroute <version> <target_addr>." 1>&2
     return 1
   fi
-  local command=""
   case $1 in
-    "4" ) command=traceroute ;;
-    "6" ) command=traceroute6 ;;
+    "4" ) traceroute -n -w 2 -q 1 -m 50 $2; return $? ;;
+    "6" ) traceroute6 -n -w 2 -q 1 -m 50 $2; return $? ;;
     * ) echo "ERROR: <version> must be 4 or 6." 1>&2; return 9 ;;
   esac
-  ${command} -n -w 2 -q 1 -m 50 $2
-  return $?
 }
 
 #
@@ -599,7 +593,7 @@ do_pmtud() {
   local result=0
   if [ ${min} -eq ${mid} ] || [ ${max} -eq ${mid} ]; then
     echo ${min}
-    return
+    return 0
   fi
   ${command} -c 3 -s ${mid} ${dfopt} ${target} >/dev/null 2>/dev/null
   if [ $? -eq 0 ]; then
@@ -617,8 +611,7 @@ do_dnslookup() {
     echo "ERROR: do_dnslookup <nameserver> <query_type> <target_fqdn>." 1>&2
     return 1
   fi
-  dig @$1 $3 $2 +time=1
-  return $?
+  dig @$1 $3 $2 +time=1; return $?
   # Dig return codes are:
   # 0: Everything went well, including things like NXDOMAIN
   # 1: Usage error
@@ -629,7 +622,7 @@ do_dnslookup() {
 
 #
 get_dnsans() {
-  if [ $# -lt 2 ]; then
+  if [ $# -ne 2 ]; then
     echo "ERROR: get_dnsans <query_type> <dig_result>." 1>&2
     return 1
   fi
@@ -638,7 +631,7 @@ get_dnsans() {
 
 #
 get_dnsttl() {
-  if [ $# -lt 2 ]; then
+  if [ $# -ne 2 ]; then
     echo "ERROR: get_dnsttl <query_type> <dig_result>." 1>&2
     return 1
   fi
@@ -647,7 +640,7 @@ get_dnsttl() {
 
 #
 get_dnsrtt() {
-  if [ $# -lt 1 ]; then
+  if [ $# -ne 1 ]; then
     echo "ERROR: get_dnsrtt <dig_result>." 1>&2
     return 1
   fi
@@ -753,7 +746,7 @@ if [ ${RECONNECT} = "yes" ]; then
     echo " interface:${devicename} up"
   fi
   do_ifup ${devicename}
-  sleep 20 
+  sleep 10 
 fi
 
 # Check I/F status
@@ -830,8 +823,7 @@ if [ "${VERBOSE}" = "yes" ]; then
 fi
 
 echo " done."
-#sleep 5
-sleep 20
+sleep 10
 
 ####################
 ## Phase 2
@@ -928,7 +920,7 @@ if [ "X${ra_flags}" != "X" -o "X${ra_prefixes}" != "X" ]; then
   for pref in `echo ${ra_prefixes} | sed 's/,/ /g'`; do
     # Get IPv6 RA prefix flags
     ra_prefix_flags=$(get_ra_prefix_flags ${devicename} ${pref})
-    write_json ${layer} RA ra_prefix_flags ${INFO} ${pref} ${ra_prefix_flags} ${count}
+    write_json ${layer} RA ra_prefix_flags ${INFO} ${pref} "${ra_prefix_flags}" ${count}
     if [ "${VERBOSE}" = "yes" ]; then
       echo "  IPv6 RA prefix(flags): ${pref}(${ra_prefix_flags})"
     fi
@@ -948,7 +940,7 @@ if [ "X${ra_flags}" != "X" -o "X${ra_prefixes}" != "X" ]; then
     count=`expr $count + 1`
   done
 
-  # Check IPv6 autoconf #TBD
+  # Check IPv6 autoconf
   result=${FAIL}
   if [ ${v6ifconf} = "automatic" -a "X${v6addrs}" != "X" ]; then
     result=${SUCCESS}
@@ -991,7 +983,7 @@ layer="localnet"
 
 #
 cmdset_ping() {
-  if [ $# -lt 2 ]; then
+  if [ $# -ne 3 ]; then
     echo "ERROR: cmdset_ping <version> <target_type> <target_addrs>." 1>&2
     return 1
   fi
@@ -1001,12 +993,13 @@ cmdset_ping() {
   local type=$2
   local targets=$3
   local rtt_type=(min ave max dev)
+  local ping_result=""
   for target in `echo ${targets} | sed 's/,/ /g'`; do
     local result=${FAIL}
     if [ "${VERBOSE}" = "yes" ]; then
       echo " ping to ${ipv} ${type}: ${target}"
     fi
-    local ping_result=$(do_ping ${ver} ${target})
+    ping_result=$(do_ping ${ver} ${target})
     if [ $? -eq 0 ]; then
       result=${SUCCESS}
     fi
@@ -1014,7 +1007,7 @@ cmdset_ping() {
     if [ ${result} = ${SUCCESS} ]; then
       local rtt_data=($(get_rtt "${ping_result}"))
       for i in 0 1 2 3; do
-        write_json ${layer} ${ipv} "v${ver}rtt_${type}_${rtt_type[$i]}" ${INFO} ${target} ${rtt_data[$i]} ${count}
+        write_json ${layer} ${ipv} "v${ver}rtt_${type}_${rtt_type[$i]}" ${INFO} ${target} "${rtt_data[$i]}" ${count}
       done
       local rtt_loss=$(get_loss "${ping_result}")
       write_json ${layer} ${ipv} v${ver}loss_${type} ${INFO} ${target} ${rtt_loss} ${count}
@@ -1052,7 +1045,7 @@ layer="globalnet"
 
 #
 cmdset_trace () {
-  if [ $# -lt 2 ]; then
+  if [ $# -ne 3 ]; then
     echo "ERROR: cmdset_trace <version> <target_type> <target_addrs>." 1>&2
     return 1
   fi
@@ -1061,12 +1054,13 @@ cmdset_trace () {
   local ipv="IPv${ver}"
   local type=$2
   local targets=$3
+  local path_result
   for target in `echo ${targets} | sed 's/,/ /g'`; do
     local result=${FAIL}
     if [ "${VERBOSE}" = "yes" ]; then
       echo " traceroute to ${ipv} server: ${target}"
     fi
-    local path_result=$(do_traceroute ${ver} ${target})
+    path_result=$(do_traceroute ${ver} ${target})
     if [ $? -eq 0 ]; then
       result=${SUCCESS}
     fi
@@ -1088,7 +1082,7 @@ cmdset_trace () {
 
 #
 cmdset_pmtud () {
-  if [ $# -lt 2 ]; then
+  if [ $# -ne 3 ]; then
     echo "ERROR: cmdset_pmtud <version> <target_type> <target_addrs>." 1>&2
     return 1
   fi
@@ -1097,11 +1091,12 @@ cmdset_pmtud () {
   local ipv="IPv${ver}"
   local type=$2
   local targets=$3
+  local pmtu_result=""
   for target in `echo ${targets} | sed 's/,/ /g'`; do
     if [ "${VERBOSE}" = "yes" ]; then
       echo " pmtud to IPv4 server: ${target}"
     fi
-    local pmtu_result=$(do_pmtud ${ver} ${target} 1470 1500)
+    pmtu_result=$(do_pmtud ${ver} ${target} 1470 1500)
     if [ ${pmtu_result} -eq 0 ]; then
       write_json ${layer} ${ipv} v${ver}pmtu_${type} ${INFO} ${target} unmeasurable ${count}
       if [ "${VERBOSE}" = "yes" ]; then
@@ -1163,7 +1158,7 @@ layer="dns"
 
 #
 cmdset_dnslookup () {
-  if [ $# -lt 2 ]; then
+  if [ $# -ne 3 ]; then
     echo "ERROR: cmdset_dnslookup <version> <target_type> <target_addrs>." 1>&2
     return 1
   fi
@@ -1172,6 +1167,7 @@ cmdset_dnslookup () {
   local ipv="IPv${ver}"
   local type=$2
   local targets=$3
+  local dns_result=""
   for target in `echo ${targets} | sed 's/,/ /g'`; do
     if [ "${VERBOSE}" = "yes" ]; then
       echo " dns lookup for ${type} record by ${ipv} nameserver: ${target}"
@@ -1181,7 +1177,7 @@ cmdset_dnslookup () {
       if [ "${VERBOSE}" = "yes" ]; then
         echo "  resolve server: ${fqdn}"
       fi
-      local dns_result=$(do_dnslookup ${target} ${type} ${fqdn})
+      dns_result=$(do_dnslookup ${target} ${type} ${fqdn})
       if [ $? -eq 0 ]; then
         result=${SUCCESS}
       else
@@ -1194,9 +1190,9 @@ cmdset_dnslookup () {
         local dns_ttl=$(get_dnsttl ${type} "${dns_result}")
         write_json ${layer} ${ipv} v${ver}dnsttl_${type}_${fqdn} ${result} ${target} "${dns_ttl}" ${count}
         local dns_rtt=$(get_dnsrtt "${dns_result}")
-        write_json ${layer} ${ipv} v${ver}dnsrtt_${type}_${fqdn} ${result} ${target} ${dns_rtt} ${count}
+        write_json ${layer} ${ipv} v${ver}dnsrtt_${type}_${fqdn} ${result} ${target} "${dns_rtt}" ${count}
         if [ "${VERBOSE}" = "yes" ]; then
-          echo "   status: ok, result: ${dns_ans} (ttl: ${dns_ttl} s), query time: ${dns_rtt} ms"
+          echo "   status: ok, result(ttl): ${dns_ans}(${dns_ttl} s), query time: ${dns_rtt} ms"
         fi
       else
         if [ "${VERBOSE}" = "yes" ]; then
@@ -1207,7 +1203,8 @@ cmdset_dnslookup () {
     done
     # Check DNS64
     if [ ${ver} = "6" -a ${type} = "AAAA" ]; then
-      local check_dns64=$(do_dnslookup ${target} ${type} "ipv4only.arpa")
+      local dns64_result=$(do_dnslookup ${target} ${type} "ipv4only.arpa")
+      local check_dns64=$(get_dnsans ${type} "${dns64_result}")
       if [ "X${check_dns64}" != "X" ]; then
         exist_dns64="yes"
       fi
@@ -1276,7 +1273,7 @@ echo "Phase 6: Web Layer checking..."
 layer="web"
 
 cmdset_http () {
-  if [ $# -lt 2 ]; then
+  if [ $# -ne 3 ]; then
     echo "ERROR: cmdset_http <version> <target_type> <target_addrs>." 1>&2
     return 1
   fi
@@ -1285,6 +1282,7 @@ cmdset_http () {
   local ipv="IPv${ver}"
   local type=$2
   local targets=$3
+  local http_ans=""
   for target in `echo ${targets} | sed 's/,/ /g'`; do
     local result=${FAIL}
     if [ "${VERBOSE}" = "yes" ]; then
