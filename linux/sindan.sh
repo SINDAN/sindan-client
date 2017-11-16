@@ -1,6 +1,6 @@
 #!/bin/bash
 # sindan.sh
-# version 1.6.4
+# version 1.6.5
 
 # read configurationfile
 . ./sindan.conf
@@ -123,7 +123,7 @@ get_mediatype() {
   fi
   local speed=`cat /sys/class/net/$1/speed`
   local duplex=`cat /sys/class/net/$1/duplex`
-  echo ${speed} ${duplex}
+  echo ${speed}_${duplex}
 }
 
 #
