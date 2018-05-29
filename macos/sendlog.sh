@@ -1,6 +1,6 @@
 #!/bin/bash
 # sendlog.sh
-# version 1.0
+# version 1.1
 
 # read configurationfile
 source sindan.conf
