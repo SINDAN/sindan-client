@@ -1,3 +1,7 @@
+#
+# README
+#
+
 # necessary packages
  uuid-runtime (for uuidgen)
  wireless-tools (for iwgetid, iwconfig)
