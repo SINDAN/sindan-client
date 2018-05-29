@@ -7,4 +7,5 @@
 
 # crontab
 */5 * * * * root cd <sindan_linux directory> && ./sindan.sh 1>/dev/null 2>/dev/null
-*/1 * * * * root cd <sindan_linux directory> && ./sendlog.sh 1>/dev/null 2>/dev/null
+*/3 * * * * root cd <sindan_linux directory> && ./sendlog.sh 1>/dev/null 2>/dev/null
+
