@@ -1,6 +1,6 @@
 #!/bin/bash
 # sindan.sh
-# version 1.9.2
+# version 1.9.3
 VERSION="1.9"
 
 # read configurationfile
@@ -218,6 +218,46 @@ get_wifi_rate() {
   fi
   iwconfig $1								|
   sed -n 's/^.*Bit Rate=\([0-9.]*\) Mb\/s.*$/\1/p'
+  return $?
+}
+
+#
+get_wifi_environment() {
+  if [ $# -ne 1 ]; then
+    echo "ERROR: get_wifi_environment <devicename>." 1>&2
+    return 1
+  fi
+  echo "BSSID,Protocol,SSID,Quality,RSSI,Noise,BitRates"
+  iwlist $1 scanning							|
+  awk 'BEGIN{								#
+    find=0;								#
+    while (getline line) {						#
+      if (find==1) {							#
+        if (match(line,/Protocol:.*/)) {				#
+          split(line,a,":");						#
+          printf ",%s", a[2];						#
+        } else if (match(line,/ESSID:.*/)) {				#
+          split(line,a,"\"");						#
+          printf ",%s", a[2];						#
+        } else if (match(line,/Channel [0-9]*/)) {			#
+          split(substr(line,RSTART,RLENGTH),a," ");			#
+          printf ",%s", a[2];						#
+        } else if (match(line,/Quality=.*/)) {				#
+          gsub(/=/," ",line);						#
+          split(line,a," ");						#
+          printf ",%s,%s,%s", a[2], a[5], a[9];				#
+        } else if (match(line,/Rates:[0-9.]* /)) {			#
+          split(substr(line,RSTART,RLENGTH),a,":");			#
+          printf ",%s\n", a[2];						#
+          find=0;							#
+        }								#
+      } else if (match(line,/Address:.*/)) {				#
+        split(substr(line,RSTART,RLENGTH),a," ");			#
+        printf "%s", tolower(a[2]);					#
+        find=1;								#
+      }									#
+    }									#
+  }'
   return $?
 }
 
@@ -1103,6 +1143,11 @@ else
   if [ -n "${rate}" ]; then
     write_json ${layer} "${IFTYPE}" rate ${INFO} self ${rate} 0
   fi
+  # Get Wi-Fi environment
+  environment=$(get_wifi_environment ${devicename})
+  if [ -n "${environment}" ]; then
+    write_json ${layer} "${IFTYPE}" environment ${INFO} self "${environment}" 0
+  fi
 fi
 
 ## Write campaign log file (pre)
@@ -1125,6 +1170,8 @@ if [ "${VERBOSE}" = "yes" ]; then
     echo "  bssid: ${bssid}"
     echo "  rssi: ${rssi} dB, noise: ${noise} dB"
     echo "  quarity: ${quarity}"
+    echo "  environment:"
+    echo "${environment}"
   fi
 fi
 
