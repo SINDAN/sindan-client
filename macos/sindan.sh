@@ -1,6 +1,6 @@
 #!/bin/bash
 # sindan.sh
-# version 1.9.2
+# version 1.9.3
 VERSION="1.9"
 
 # read configurationfile
@@ -186,6 +186,12 @@ get_wifi_noise() {
 get_wifi_rate() {
   ${CMD_AIRPORT} -I							|
   sed -n 's/^.*lastTxRate: \([0-9]*\).*$/\1/p'
+  return $?
+}
+
+get_wifi_environment() {
+  ${CMD_AIRPORT} -s							|
+  awk '{printf "%s,%s,%s,%s\n", $1, $2, $3, $4}'
   return $?
 }
 
@@ -526,7 +532,7 @@ do_ping() {
   fi
   case $1 in
     "4" ) ping -i 0.5 -c 10 $2; return $? ;;
-    "6" ) ping6 -i 0.5 -c 10 $2; return $? ;;
+    "6" ) ping6 -c 10 $2; return $? ;;
     * ) echo "ERROR: <version> must be 4 or 6." 1>&2; return 9 ;;
   esac
 }
@@ -1032,6 +1038,11 @@ else
   if [ -n "${rate}" ]; then
     write_json ${layer} "${IFTYPE}" rate ${INFO} self ${rate} 0
   fi
+  # Get Wi-Fi environment
+  environment=$(get_wifi_environment)
+  if [ -n "${environment}" ]; then
+    write_json ${layer} "${IFTYPE}" environment ${INFO} self "${environment}" 0
+  fi
 fi
 
 ## Write campaign log file (pre)
@@ -1053,6 +1064,8 @@ if [ "${VERBOSE}" = "yes" ]; then
     echo "  ssid: ${ssid}, ch: ${channel}, rate: ${rate} Mbps"
     echo "  bssid: ${bssid}"
     echo "  rssi: ${rssi} dB, noise: ${noise} dB"
+    echo "  environment:"
+    echo "${environment}"
   fi
 fi
 
