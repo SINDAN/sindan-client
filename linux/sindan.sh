@@ -1,6 +1,6 @@
 #!/bin/bash
 # sindan.sh
-# version 1.9.3
+# version 1.9.4
 VERSION="1.9"
 
 # read configurationfile
@@ -1111,7 +1111,7 @@ else
   # Get Wi-Fi SSID
   ssid=$(get_wifi_ssid ${devicename})
   if [ -n "${ssid}" ]; then
-    write_json ${layer} "${IFTYPE}" ssid ${INFO} self ${ssid} 0
+    write_json ${layer} "${IFTYPE}" ssid ${INFO} self "${ssid}" 0
   fi
   # Get Wi-Fi BSSID
   bssid=$(get_wifi_bssid ${devicename})
@@ -1155,7 +1155,7 @@ fi
 #if [ "${IFTYPE}" = "Wi-Fi" ]; then
 #  ssid=$(get_wifi_ssid ${devicename})
 #fi
-#write_json_campaign ${uuid} ${mac_addr} "${os}" ${ssid}
+#write_json_campaign ${uuid} ${mac_addr} "${os}" "${ssid}"
 
 # Report phase 1 results
 if [ "${VERBOSE}" = "yes" ]; then
@@ -1529,7 +1529,7 @@ ssid=WIRED
 if [ "${IFTYPE}" = "Wi-Fi" ]; then
   ssid=$(get_wifi_ssid ${devicename})
 fi
-write_json_campaign ${uuid} ${mac_addr} "${os}" ${ssid}
+write_json_campaign ${uuid} ${mac_addr} "${os}" "${ssid}"
 
 # remove lock file
 rm -f ${LOCKFILE}

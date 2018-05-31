@@ -1,6 +1,6 @@
 #!/bin/bash
 # sindan.sh
-# version 1.9.3
+# version 1.9.4
 VERSION="1.9"
 
 # read configurationfile
@@ -971,7 +971,7 @@ if [ -n "${SSID}" -a -n "${SSID_KEY}" ]; then
   networksetup -setairportnetwork ${devicename} ${SSID} ${SSID_KEY}
   sleep 5
 #elif [ -n "${pre_ssid}" ]; then
-#  networksetup -setairportnetwork ${devicename} ${pre_ssid}
+#  networksetup -setairportnetwork ${devicename} "${pre_ssid}"
 #  sleep 5
 fi
 
@@ -1011,7 +1011,7 @@ else
   # Get Wi-Fi SSID
   ssid=$(get_wifi_ssid)
   if [ -n "${ssid}" ]; then
-    write_json ${layer} "${IFTYPE}" ssid ${INFO} self ${ssid} 0
+    write_json ${layer} "${IFTYPE}" ssid ${INFO} self "${ssid}" 0
   fi
   # Get Wi-Fi BSSID
   bssid=$(get_wifi_bssid)
@@ -1050,7 +1050,7 @@ fi
 #if [ "${IFTYPE}" = "Wi-Fi" ]; then
 #  ssid=$(get_wifi_ssid ${devicename})
 #fi
-#write_json_campaign ${uuid} ${mac_addr} "${os}" ${ssid}
+#write_json_campaign ${uuid} ${mac_addr} "${os}" "${ssid}"
 
 # Report phase 1 results
 if [ "${VERBOSE}" = "yes" ]; then
@@ -1427,7 +1427,7 @@ ssid=WIRED
 if [ "${IFTYPE}" = "Wi-Fi" ]; then
   ssid=$(get_wifi_ssid ${devicename})
 fi
-write_json_campaign ${uuid} ${mac_addr} "${os}" ${ssid}
+write_json_campaign ${uuid} ${mac_addr} "${os}" "${ssid}"
 
 # remove lock file
 rm -f ${LOCKFILE}
