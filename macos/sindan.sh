@@ -1,7 +1,7 @@
 #!/bin/bash
 # sindan.sh
-# version 1.9.4
-VERSION="1.9"
+# version 1.9.5
+VERSION="1.9.5"
 
 # read configurationfile
 source sindan.conf
@@ -258,12 +258,17 @@ check_v4autoconf() {
   fi
   if [ $2 = "dhcp" -o $2 = "bootp" ]; then
     v4addr=$(get_v4addr $1)
-    dhcp_data=`ipconfig getpacket $1 | awk -F\n -v ORS=',' '{print}'`
+    dhcp_data=`ipconfig getpacket $1`
     echo "${dhcp_data}"
     # simple comparision (TBD)
-    echo "${dhcp_data}"							|
-    grep "yiaddr = ${v4addr}" > /dev/null 2>&1
-    return $?
+    dhcpv4addr=`echo "${dhcp_data}"                                     |
+                sed -n 's/^yiaddr = \([0-9.]*\)/\1/p'`
+    cmp=$(compare_v4addr ${dhcpv4addr} ${v4addr})
+    if [ ${cmp} == "same" ]; then
+      return 0
+    else
+      return 1
+    fi
   fi
   echo "v4conf is $2"
   return 9
@@ -289,6 +294,43 @@ get_v4nameservers() {
   sed -n 's/^nameserver \([0-9.]*\)$/\1/p'				|
   awk -v ORS=' ' '1; END{printf "\n"}'
   return $?
+}
+
+#
+ip2decimal() {
+  if [ $# -ne 1 ]; then
+    echo "ERROR: ip2decimal <v4addr>." 1>&2
+    return 1
+  fi
+  echo $1                                                               |
+  tr . '\n'                                                             |
+  awk '{s = s*256 + $1} END{print s}'
+}
+
+#
+decimal2ip() {
+  if [ $# -ne 1 ]; then
+    echo "ERROR: decimal2ip <32bit_num>." 1>&2
+    return 1
+  fi
+  printf "%d.%d.%d.%d\n" $(($n >> 24)) $(( ($n >> 16) & 0xFF)) $(( ($n >> 8) & 0xFF)) $(($n & 0xFF))
+}
+
+#
+compare_v4addr() {
+  (
+  if [ $# -ne 2 ]; then
+    echo "ERROR: compare_v4addr <v4addr1> <v4addr2>." 1>&2
+    return 1
+  fi
+  addr1=$(ip2decimal $1)
+  addr2=$(ip2decimal $2)
+  if [ ${addr1} -eq ${addr2} ]; then
+    echo "same"
+  else
+    echo "diff"
+  fi
+  )
 }
 
 #
