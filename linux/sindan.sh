@@ -1297,6 +1297,9 @@ fi
 
 # Get IPv6 RA flags
 ra_flags=$(get_ra_flags ${devicename})
+if [ -z "${ra_flags}" ]; then
+  ra_flags="none"
+fi
 if [ -n "${ra_flags}" ]; then
   write_json ${layer} RA ra_flags ${INFO} self ${ra_flags} 0
 fi
