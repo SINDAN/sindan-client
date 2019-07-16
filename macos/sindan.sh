@@ -1,7 +1,7 @@
 #!/bin/bash
 # sindan.sh
-# version 1.9.6
-VERSION="1.9.5"
+# version 1.9.7
+VERSION="1.9.7"
 
 # read configurationfile
 source sindan.conf
@@ -597,7 +597,7 @@ get_loss() {
     return 1
   fi
   echo "$1"								|
-  sed -n 's/^.*received, \([0-9.]*\)\%.*$/\1/p'
+  sed -n 's/^.* \([0-9.]*\)\% packet loss.*$/\1/p'
   return $?
 }
 
