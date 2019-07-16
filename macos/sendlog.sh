@@ -1,14 +1,14 @@
 #!/bin/bash
 # sendlog.sh
-# version 1.1
+# version 1.2
 
 # read configurationfile
 source sindan.conf
 
 # Check LOCKFILE_SENDLOG parameter
-if [ -n "${LOCKFILE_SENDLOG}" ]; then
+if [ -z "${LOCKFILE_SENDLOG}" ]; then
   echo "ERROR: LOCKFILE_SENDLOG is null at configration file." 1>&2
-  return 1
+  exit 1
 fi
 trap 'rm -f ${LOCKFILE_SENDLOG}; exit 0' INT
 
