@@ -1,6 +1,6 @@
 #!/bin/bash
 # sindan.sh
-# version 1.9.5
+# version 1.9.6
 VERSION="1.9"
 
 # read configurationfile
@@ -303,7 +303,7 @@ check_v4autoconf() {
     dhcpv4addr=`echo "${dhcp_data}"                                     |
                 sed -n 's/^ip_address=\([0-9.]*\)/\1/p'`
     cmp=$(compare_v4addr ${dhcpv4addr} ${v4addr})
-    if [ ${cmp} == "same" ]; then
+    if [ ${cmp} = "same" ]; then
       return 0
     else
       return 1
@@ -404,7 +404,7 @@ compare_v4addr() {
   fi
   addr1=$(ip2decimal $1)
   addr2=$(ip2decimal $2)
-  if [ ${addr1} -eq ${addr2} ]; then
+  if [ ${addr1} = ${addr2} ]; then
     echo "same"
   else
     echo "diff"
