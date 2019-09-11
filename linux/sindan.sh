@@ -1,7 +1,7 @@
 #!/bin/bash
 # sindan.sh
-# version 1.9.7
-VERSION="1.9.7"
+# version 2.0.0
+VERSION="2.0.0"
 
 # read configurationfile
 . ./sindan.conf
@@ -299,9 +299,13 @@ check_v4autoconf() {
       dhcp_data=`cat /var/lib/dhcp/dhclient.$1.leases | sed 's/"//g'`
     fi
     echo "${dhcp_data}"
-    # simple comparision (TBD)
+
+    # simple comparision
     dhcpv4addr=`echo "${dhcp_data}"                                     |
                 sed -n 's/^ip_address=\([0-9.]*\)/\1/p'`
+    if [ -n "${dhcpv4addr}" -o -n "${v4addr}" ]; then
+      return 1
+    fi
     cmp=$(compare_v4addr ${dhcpv4addr} ${v4addr})
     if [ ${cmp} = "same" ]; then
       return 0
@@ -565,7 +569,7 @@ check_v6autoconf() {
     if [ -n "${m_flag}" ]; then
       result=$(( result + 2 ))
       for addr in `echo ${v6addrs} | sed 's/,/ /g'`; do
-        # simple comparision (TBD)
+        # simple comparision
         echo "${dhcp_data}"						|
         grep "dhcp6_ia_na1_ia_addr1=${addr}" > /dev/null 2>&1
         if [ $? -eq 0 ]; then
@@ -699,15 +703,16 @@ get_loss() {
 #
 cmdset_ping() {
   (
-  if [ $# -ne 4 ]; then
-    echo "ERROR: cmdset_ping <version> <target_type> <target_addr> <count>." 1>&2
+  if [ $# -ne 5 ]; then
+    echo "ERROR: cmdset_ping <layer> <version> <target_type> <target_addr> <count>." 1>&2
     return 1
   fi
-  ver=$1
+  layer=$1
+  ver=$2
   ipv="IPv${ver}"
-  type=$2
-  target=$3
-  count=$4
+  type=$3
+  target=$4
+  count=$5
   rtt_type=(min ave max dev)
   result=${FAIL}
   string=`echo " ping to ${ipv} ${type}: ${target}"`
@@ -804,15 +809,16 @@ do_pmtud() {
 #
 cmdset_trace () {
   (
-  if [ $# -ne 4 ]; then
-    echo "ERROR: cmdset_trace <version> <target_type> <target_addr> <count>." 1>&2
+  if [ $# -ne 5 ]; then
+    echo "ERROR: cmdset_trace <layer> <version> <target_type> <target_addr> <count>." 1>&2
     return 1
   fi
-  ver=$1
+  layer=$1
+  ver=$2
   ipv="IPv${ver}"
-  type=$2
-  target=$3
-  count=$4
+  type=$3
+  target=$4
+  count=$5
   result=${FAIL}
   string=`echo " traceroute to ${ipv} server: ${target}"`
   path_result=$(do_traceroute ${ver} ${target})
@@ -838,17 +844,18 @@ cmdset_trace () {
 #
 cmdset_pmtud () {
   (
-  if [ $# -ne 5 ]; then
-    echo "ERROR: cmdset_pmtud <version> <target_type> <target_addr> <ifmtu> <count>." 1>&2
+  if [ $# -ne 6 ]; then
+    echo "ERROR: cmdset_pmtud <layer> <version> <target_type> <target_addr> <ifmtu> <count>." 1>&2
     return 1
   fi
-  ver=$1
+  layer=$1
+  ver=$2
   ipv="IPv${ver}"
-  type=$2
-  target=$3
+  type=$3
+  target=$4
   min_mtu=1200
-  max_mtu=$4
-  count=$5
+  max_mtu=$5
+  count=$6
   string=`echo " pmtud to ${ipv} server: ${target}"`
   pmtu_result=$(do_pmtud ${ver} ${target} ${min_mtu} ${max_mtu})
   if [ "${pmtu_result}" -eq 0 ]; then
@@ -940,14 +947,15 @@ check_dns64 () {
 #
 cmdset_dnslookup () {
   (
-  if [ $# -ne 4 ]; then
-    echo "ERROR: cmdset_dnslookup <version> <target_type> <target_addr> <count>." 1>&2
+  if [ $# -ne 5 ]; then
+    echo "ERROR: cmdset_dnslookup <layer> <version> <target_type> <target_addr> <count>." 1>&2
     return 1
   fi
-  ver=$1
+  layer=$1
+  ver=$2
   ipv="IPv${ver}"
-  type=$2
-  target=$3
+  type=$3
+  target=$4
   dns_result=""
   string=`echo " dns lookup for ${type} record by ${ipv} nameserver: ${target}"`
   for fqdn in `echo ${FQDNS} | sed 's/,/ /g'`; do
@@ -1001,15 +1009,16 @@ do_curl() {
 #
 cmdset_http () {
   (
-  if [ $# -ne 4 ]; then
-    echo "ERROR: cmdset_http <version> <target_type> <target_addr> <count>." 1>&2
+  if [ $# -ne 5 ]; then
+    echo "ERROR: cmdset_http <layer> <version> <target_type> <target_addr> <count>." 1>&2
     return 1
   fi
-  ver=$1
+  layer=$1
+  ver=$2
   ipv="IPv${ver}"
-  type=$2
-  target=$3
-  count=$4
+  type=$3
+  target=$4
+  count=$5
   result=${FAIL}
   string=`echo " curl to extarnal server: ${target} by ${ipv}"`
   http_ans=$(do_curl ${ver} ${target})
@@ -1316,7 +1325,7 @@ if [ "${VERBOSE}" = "yes" ]; then
   echo "  IPv6 lladdr: ${v6lladdr}"
 fi
 
-if [ -n "${ra_flags}" -o -n "${ra_prefixes}" ]; then
+if [ "${ra_flags}" = "not_exist" ]; then
   if [ "${VERBOSE}" = "yes" ]; then
     echo "  IPv6 RA flags: ${ra_flags}"
   fi
@@ -1394,164 +1403,364 @@ layer="localnet"
 # Do ping to IPv4 routers
 count=0
 for target in `echo ${v4routers} | sed 's/,/ /g'`; do
-  cmdset_ping 4 router ${target} ${count} &
+  cmdset_ping ${layer} 4 router ${target} ${count} &
   count=$(( count + 1 ))
 done
 
 # Do ping to IPv4 nameservers
 count=0
 for target in `echo ${v4nameservers} | sed 's/,/ /g'`; do
-  cmdset_ping 4 namesrv ${target} ${count} &
+  cmdset_ping ${layer} 4 namesrv ${target} ${count} &
   count=$(( count + 1 ))
 done
 
 # Do ping to IPv6 routers
 count=0
 for target in `echo ${v6routers} | sed 's/,/ /g'`; do
-  cmdset_ping 6 router ${target} ${count} &
+  cmdset_ping ${layer} 6 router ${target} ${count} &
   count=$(( count + 1 ))
 done
 
 # Do ping to IPv6 nameservers
 count=0
 for target in `echo ${v6nameservers} | sed 's/,/ /g'`; do
-  cmdset_ping 6 namesrv ${target} ${count} &
+  cmdset_ping ${layer} 6 namesrv ${target} ${count} &
   count=$(( count + 1 ))
 done
 
 wait
 echo " done."
 
-####################
-## Phase 4
-echo "Phase 4: Globalnet Layer checking..."
-layer="globalnet"
+if [ "${MODE}" = "client" ]; then
+  ####################
+  ## Phase 4
+  echo "Phase 4: Globalnet Layer checking..."
+  layer="globalnet"
 
-v4addr_type=$(check_v4addr ${v4addr})
-if [ "${v4addr_type}" = "private" -o "${v4addr_type}" = "grobal" ]; then
-  count=0
-  for target in `echo ${PING_SRVS} | sed 's/,/ /g'`; do
+  v4addr_type=$(check_v4addr ${v4addr})
+  if [ "${v4addr_type}" = "private" -o "${v4addr_type}" = "grobal" ]; then
+    count=0
+    for target in `echo ${PING_SRVS} | sed 's/,/ /g'`; do
 
-    # Do ping to extarnal IPv4 servers
-    cmdset_ping 4 srv ${target} ${count} &
+      # Do ping to extarnal IPv4 servers
+      cmdset_ping ${layer} 4 srv ${target} ${count} &
 
-    # Do traceroute to extarnal IPv4 servers
-    cmdset_trace 4 srv ${target} ${count} &
+      # Do traceroute to extarnal IPv4 servers
+      cmdset_trace ${layer} 4 srv ${target} ${count} &
 
-    # Check path MTU to extarnal IPv4 servers
-    cmdset_pmtud 4 srv ${target} ${ifmtu} ${count} &
+      # Check path MTU to extarnal IPv4 servers
+      cmdset_pmtud ${layer} 4 srv ${target} ${ifmtu} ${count} &
 
-    count=$(( count + 1 ))
-  done
-fi
+      count=$(( count + 1 ))
+    done
+  fi
 
-if [ -n "${v6addrs}" ]; then
-  count=0
-  for target in `echo ${PING6_SRVS} | sed 's/,/ /g'`; do
+  if [ -n "${v6addrs}" ]; then
+    count=0
+    for target in `echo ${PING6_SRVS} | sed 's/,/ /g'`; do
 
-    # Do ping to extarnal IPv6 servers
-    cmdset_ping 6 srv ${target} ${count} &
+      # Do ping to extarnal IPv6 servers
+      cmdset_ping ${layer} 6 srv ${target} ${count} &
   
-    # Do traceroute to extarnal IPv6 servers
-    cmdset_trace 6 srv ${target} ${count} &
+      # Do traceroute to extarnal IPv6 servers
+      cmdset_trace ${layer} 6 srv ${target} ${count} &
   
-    # Check path MTU to extarnal IPv6 servers
-    cmdset_pmtud 6 srv ${target} ${ifmtu} ${count} &
+      # Check path MTU to extarnal IPv6 servers
+      cmdset_pmtud ${layer} 6 srv ${target} ${ifmtu} ${count} &
+
+      count=$(( count + 1 ))
+    done
+  fi
+
+  wait
+  echo " done."
+
+  ####################
+  ## Phase 5
+  echo "Phase 5: DNS Layer checking..."
+  layer="dns"
+
+  # Clear dns local cache
+  #TBD
+
+  if [ "${v4addr_type}" = "private" -o "${v4addr_type}" = "grobal" ]; then
+    count=0
+    for target in `echo "${v4nameservers} ${GPDNS4}" | sed 's/,/ /g'`; do
+
+      # Do dns lookup for A record by IPv4
+      cmdset_dnslookup ${layer} 4 A ${target} ${count} &
+
+      # Do dns lookup for AAAA record by IPv4
+      cmdset_dnslookup ${layer} 4 AAAA ${target} ${count} &
+
+      count=$(( count + 1 ))
+    done
+  fi
+
+  exist_dns64="no"
+  if [ -n "${v6addrs}" ]; then
+    count=0
+    for target in `echo "${v6nameservers} ${GPDNS6}" | sed 's/,/ /g'`; do
+
+      # Do dns lookup for A record by IPv6
+      cmdset_dnslookup ${layer} 6 A ${target} ${count} &
+
+      # Do dns lookup for AAAA record by IPv6
+      cmdset_dnslookup ${layer} 6 AAAA ${target} ${count} &
+
+      count=$(( count + 1 ))
+    done
+
+    # check DNS64
+    for target in `echo ${v6nameservers} | sed 's/,/ /g'`; do
+      exist_dns64=$(check_dns64 ${target})
+    done
+  fi
+
+  wait
+  echo " done."
+
+  ####################
+  ## Phase 6
+  echo "Phase 6: Web Layer checking..."
+  layer="web"
+
+  if [ "${v4addr_type}" = "private" -o "${v4addr_type}" = "grobal" ]; then
+    count=0
+    for target in `echo ${V4WEB_SRVS} | sed 's/,/ /g'`; do
+
+      # Do curl to IPv4 web servers by IPv4
+      cmdset_http ${layer} 4 srv ${target} ${count} &
+
+      # Do measure http throuput by IPv4
+      #TBD
+      # v4http_throughput_srv
+
+      count=$(( count + 1 ))
+    done
+  fi
+
+  if [ -n "${v6addrs}" ]; then
+    count=0
+    for target in `echo ${V6WEB_SRVS} | sed 's/,/ /g'`; do
+
+      # Do curl to IPv6 web servers by IPv6
+      cmdset_http ${layer} 6 srv ${target} ${count} &
+
+      # Do measure http throuput by IPv6
+      #TBD
+      # v6http_throughput_srv
+
+      count=$(( count + 1 ))
+    done
+
+    # DNS64
+    if [ "${exist_dns64}" = "yes" ]; then
+      echo " exist dns64 server"
+      count=0
+      for target in `echo ${V4WEB_SRVS} | sed 's/,/ /g'`; do
+
+        # Do curl to IPv4 web servers by IPv6
+        cmdset_http ${layer} 6 srv ${target} ${count} &
+
+        # Do measure http throuput by IPv6
+        #TBD
+        # v6http_throughput_srv
+
+        count=$(( count + 1 ))
+      done
+    fi
+  fi
+
+  wait
+  echo " done."
+elif [ "${MODE}" = "probe" ]; then
+  ####################
+  ## Phase 4
+  echo "Phase 4: Local name server checking..."
+  layer="dns"
+
+  v4addr_type=$(check_v4addr ${v4addr})
+  if [ "${v4addr_type}" = "private" -o "${v4addr_type}" = "grobal" ]; then
+    count=0
+    for target in `echo ${v4nameservers} | sed 's/,/ /g'`; do
+
+      # Do ping to IPv4 nameservers
+      cmdset_ping ${layer} 4 namesrv ${target} ${count} &
+
+      # Do dns lookup for A record by IPv4
+      cmdset_dnslookup ${layer} 4 A ${target} ${count} &
+
+      # Do dns lookup for AAAA record by IPv4
+      cmdset_dnslookup ${layer} 4 AAAA ${target} ${count} &
+
+      count=$(( count + 1 ))
+    done
+  fi
+
+  if [ -n "${v6addrs}" ]; then
+    count=0
+    for target in `echo ${v6nameservers} | sed 's/,/ /g'`; do
+
+      # Do ping to IPv6 nameservers
+      cmdset_ping ${layer} 6 namesrv ${target} ${count} &
+  
+      # Do dns lookup for A record by IPv6
+      cmdset_dnslookup ${layer} 6 A ${target} ${count} &
+
+      # Do dns lookup for AAAA record by IPv6
+      cmdset_dnslookup ${layer} 6 AAAA ${target} ${count} &
+
+      count=$(( count + 1 ))
+    done
+  fi
+
+  wait
+  echo " done."
+
+  ####################
+  ## Phase 5
+  echo "Phase 5: Extarnal name server checking..."
+  layer="dns"
+
+  if [ "${v4addr_type}" = "private" -o "${v4addr_type}" = "grobal" ]; then
+    count=0
+    for target in `echo ${GPDNS4} | sed 's/,/ /g'`; do
+
+      # Do ping to IPv4 routers
+      count_r=0
+      for target_r in `echo ${v4routers} | sed 's/,/ /g'`; do
+        cmdset_ping ${layer} 4 router ${target_r} ${count_r} &
+        count_r=$(( count_r + 1 ))
+      done
+
+      # Do ping to extarnal IPv4 nameservers
+      cmdset_ping globalnet 4 namesrv ${target} ${count} &
+
+      # Do traceroute to IPv4 nameservers
+      cmdset_trace globalnet 4 srv ${target} ${count} &
+
+      # Do dns lookup for A record by IPv4
+      cmdset_dnslookup ${layer} 4 A ${target} ${count} &
+
+      # Do dns lookup for AAAA record by IPv4
+      cmdset_dnslookup ${layer} 4 AAAA ${target} ${count} &
+
+      count=$(( count + 1 ))
+    done
+  fi
+
+  if [ -n "${v6addrs}" ]; then
+    count=0
+    for target in `echo ${GPDNS6} | sed 's/,/ /g'`; do
+
+      # Do ping to IPv6 routers
+      count_r=0
+      for target_r in `echo ${v6routers} | sed 's/,/ /g'`; do
+        cmdset_ping ${layer} 6 router ${target_r} ${count_r} &
+        count_r=$(( count_r + 1 ))
+      done
+
+      # Do ping to IPv6 nameservers
+      cmdset_ping globalnet 6 namesrv ${target} ${count} &
+
+      # Do traceroute to IPv6 nameservers
+      cmdset_trace globalnet 6 srv ${target} ${count} &
+  
+      # Do dns lookup for A record by IPv6
+      cmdset_dnslookup ${layer} 6 A ${target} ${count} &
+
+      # Do dns lookup for AAAA record by IPv6
+      cmdset_dnslookup ${layer} 6 AAAA ${target} ${count} &
+
+      count=$(( count + 1 ))
+    done
+  fi
+
+  wait
+  echo " done."
+
+  ####################
+  ## Phase 6
+  echo "Phase 6: Web Layer checking..."
+  layer="web"
+
+  if [ "${v4addr_type}" = "private" -o "${v4addr_type}" = "grobal" ]; then
+    count=0
+    for target in `echo ${V4WEB_SRVS} | sed 's/,/ /g'`; do
+
+      # Do ping to IPv4 routers
+      count_r=0
+      for target_r in `echo ${v4routers} | sed 's/,/ /g'`; do
+        cmdset_ping ${layer} 4 router ${target_r} ${count_r} &
+        count_r=$(( count_r + 1 ))
+      done
+
+      # Do ping to IPv4 web servers
+      cmdset_ping globalnet 4 srv ${target} ${count} &
+
+      # Do traceroute to IPv4 web servers
+      cmdset_trace globalnet 4 srv ${target} ${count} &
+
+      # Do curl to IPv4 web servers by IPv4
+      cmdset_http ${layer} 4 srv ${target} ${count} &
+
+      # Do measure http throuput by IPv4
+      #TBD
+      # v4http_throughput_srv
 
     count=$(( count + 1 ))
-  done
-fi
+    done
+  fi
 
-wait
-echo " done."
+  if [ -n "${v6addrs}" ]; then
+    count=0
+    for target in `echo ${V6WEB_SRVS} | sed 's/,/ /g'`; do
 
-####################
-## Phase 5
-echo "Phase 5: DNS Layer checking..."
-layer="dns"
+      # Do ping to IPv6 routers
+      count_r=0
+      for target_r in `echo ${v6routers} | sed 's/,/ /g'`; do
+        cmdset_ping ${layer} 6 router ${target_r} ${count_r} &
+        count_r=$(( count_r + 1 ))
+      done
 
-# Clear dns local cache
-#TBD
+      # Do ping to IPv6 web servers
+      cmdset_ping globalnet 6 srv ${target} ${count} &
 
-if [ "${v4addr_type}" = "private" -o "${v4addr_type}" = "grobal" ]; then
-  count=0
-  for target in `echo "${v4nameservers} ${GPDNS4}" | sed 's/,/ /g'`; do
+      # Do traceroute to IPv6 web servers
+      cmdset_trace globalnet 6 srv ${target} ${count} &
 
-    # Do dns lookup for A record by IPv4
-    cmdset_dnslookup 4 A ${target} ${count} &
+      # Do curl to IPv6 web servers by IPv6
+      cmdset_http ${layer} 6 srv ${target} ${count} &
 
-    # Do dns lookup for AAAA record by IPv4
-    cmdset_dnslookup 4 AAAA ${target} ${count} &
-
-    count=$(( count + 1 ))
-  done
-fi
-
-exist_dns64="no"
-if [ -n "${v6addrs}" ]; then
-  count=0
-  for target in `echo "${v6nameservers} ${GPDNS6}" | sed 's/,/ /g'`; do
-
-    # Do dns lookup for A record by IPv6
-    cmdset_dnslookup 6 A ${target} ${count} &
-
-    # Do dns lookup for AAAA record by IPv6
-    cmdset_dnslookup 6 AAAA ${target} ${count} &
+      # Do measure http throuput by IPv6
+      #TBD
+      # v6http_throughput_srv
 
     count=$(( count + 1 ))
-  done
-
-  # check DNS64
-  for target in `echo ${v6nameservers} | sed 's/,/ /g'`; do
-    exist_dns64=$(check_dns64 ${target})
-  done
-fi
-
-wait
-echo " done."
-
-####################
-## Phase 6
-echo "Phase 6: Web Layer checking..."
-layer="web"
-
-if [ "${v4addr_type}" = "private" -o "${v4addr_type}" = "grobal" ]; then
-  count=0
-  for target in `echo ${V4WEB_SRVS} | sed 's/,/ /g'`; do
-
-    # Do curl to IPv4 web servers by IPv4
-    cmdset_http 4 srv ${target} ${count} &
-
-    # Do measure http throuput by IPv4
-    #TBD
-    # v4http_throughput_srv
-
-    count=$(( count + 1 ))
-  done
-fi
-
-if [ -n "${v6addrs}" ]; then
-  count=0
-  for target in `echo ${V6WEB_SRVS} | sed 's/,/ /g'`; do
-
-    # Do curl to IPv6 web servers by IPv6
-    cmdset_http 6 srv ${target} ${count} &
-
-    # Do measure http throuput by IPv6
-    #TBD
-    # v6http_throughput_srv
-
-    count=$(( count + 1 ))
-  done
+    done
+  fi
 
   # DNS64
   if [ "${exist_dns64}" = "yes" ]; then
     echo " exist dns64 server"
-    count=0
     for target in `echo ${V4WEB_SRVS} | sed 's/,/ /g'`; do
 
+      # Do ping to IPv6 routers
+      count_r=0
+      for target_r in `echo ${v6routers} | sed 's/,/ /g'`; do
+        cmdset_ping ${layer} 6 router ${target_r} ${count_r} &
+        count_r=$(( count_r + 1 ))
+      done
+
+      # Do ping to IPv4 web servers by IPv6
+      cmdset_ping globalnet 6 srv ${target} ${count} &
+
+      # Do traceroute to IPv4 web servers by IPv6
+      cmdset_trace globalnet 6 srv ${target} ${count} &
+
       # Do curl to IPv4 web servers by IPv6
-      cmdset_http 6 srv ${target} ${count} &
+      cmdset_http ${layer} 6 srv ${target} ${count} &
 
       # Do measure http throuput by IPv6
       #TBD
@@ -1560,10 +1769,12 @@ if [ -n "${v6addrs}" ]; then
       count=$(( count + 1 ))
     done
   fi
-fi
 
-wait
-echo " done."
+  wait
+  echo " done."
+else
+  echo "ERROR: MODE supports only client and probe." 1>&2
+fi
 
 ####################
 ## Phase 7

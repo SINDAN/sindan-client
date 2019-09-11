@@ -1,6 +1,6 @@
 #!/bin/bash
 # sendlog.sh
-# version 1.2
+# version 1.3
 
 # read configurationfile
 source sindan.conf
@@ -36,6 +36,9 @@ for file in `find log/ -name "campaign_*.json"`; do
     echo " send campaign log to ${URL_CAMPAIGN}"
   fi
   status=`curl --max-time 5 -s -w %{http_code} -F json=@${file} ${URL_CAMPAIGN}`
+  if [ "${VERBOSE}" = "yes" ]; then
+    echo " status:${status}"
+  fi
   if [ "${status}" = "200" ]; then
     rm -f ${file}
   fi
