@@ -1327,6 +1327,10 @@ fi
 
 if [ "${ra_flags}" = "not_exist" ]; then
   if [ "${VERBOSE}" = "yes" ]; then
+    echo "   RA does not exist."
+  fi
+else
+  if [ "${VERBOSE}" = "yes" ]; then
     echo "  IPv6 RA flags: ${ra_flags}"
   fi
   count=0
@@ -1387,10 +1391,6 @@ if [ "${ra_flags}" = "not_exist" ]; then
 
   # Get IPv6 NTP servers
   #TBD
-else
-  if [ "${VERBOSE}" = "yes" ]; then
-    echo "   RA does not exist."
-  fi
 fi
 
 echo " done."
