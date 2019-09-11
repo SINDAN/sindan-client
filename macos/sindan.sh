@@ -1,7 +1,7 @@
 #!/bin/bash
 # sindan.sh
-# version 2.0.0
-VERSION="2.0.0"
+# version 2.0.1
+VERSION="2.0.1"
 
 # read configurationfile
 source sindan.conf
@@ -261,10 +261,10 @@ check_v4autoconf() {
     dhcp_data=`ipconfig getpacket $1`
     echo "${dhcp_data}"
 
-    # simple comparision (TBD)
+    # simple comparision
     dhcpv4addr=`echo "${dhcp_data}"                                     |
                 sed -n 's/^yiaddr = \([0-9.]*\)/\1/p'`
-    if [ -n "${dhcpv4addr}" -o -n "${v4addr}" ]; then
+    if [ -z "${dhcpv4addr}" -o -z "${v4addr}" ]; then
       return 1
     fi
     cmp=$(compare_v4addr ${dhcpv4addr} ${v4addr})
@@ -480,7 +480,7 @@ check_v6autoconf() {
     if [ -n "${m_flag}" ]; then
       result=$(( result + 2 ))
       for addr in `echo ${v6addrs} | sed 's/,/ /g'`; do
-        # simple comparision (TBD)
+        # simple comparision
         echo "${dhcp_data}"						|
         grep "IAADDR ${addr}" > /dev/null 2>&1
         if [ $? -eq 0 ]; then
