@@ -749,8 +749,8 @@ do_traceroute() {
     return 1
   fi
   case $1 in
-    "4" ) traceroute -n -w 2 -q 1 -m 50 $2; return $? ;;
-    "6" ) traceroute6 -n -w 2 -q 1 -m 50 $2; return $? ;;
+    "4" ) traceroute -n -w 2 -q 1 -m 20 $2; return $? ;;
+    "6" ) traceroute6 -n -w 2 -q 1 -m 20 $2; return $? ;;
     * ) echo "ERROR: <version> must be 4 or 6." 1>&2; return 9 ;;
   esac
 }
