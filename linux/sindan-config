@@ -1,0 +1,427 @@
+#!/bin/sh
+# version 1.0.0
+
+INTERACTIVE=True
+CONFIG=./sindan.conf
+
+# use function from raspi-config
+get_config_var() {
+  lua - "$1" "$2" <<EOF
+local key=assert(arg[1])
+local fn=assert(arg[2])
+local file=assert(io.open(fn))
+local found=false
+for line in file:lines() do
+  local val = line:match("^%s*"..key.."=(.*)$")
+  if (val ~= nil) then
+    print(val)
+    found=true
+    break
+  end
+end
+if not found then
+   print(0)
+end
+EOF
+}
+
+# use function from raspi-config
+set_config_var() {
+  lua - "$1" "$2" "$3" <<EOF > "$3.bak"
+local key=assert(arg[1])
+local value=assert(arg[2])
+local fn=assert(arg[3])
+local file=assert(io.open(fn))
+local made_change=false
+for line in file:lines() do
+  if line:match("^#?%s*"..key.."=.*$") then
+    line=key.."="..value
+    made_change=true
+  end
+  print(line)
+end
+
+if not made_change then
+  print(key.."="..value)
+end
+EOF
+mv "$3.bak" "$3"
+}
+
+# use function from raspi-config
+calc_wt_size() {
+  # NOTE: it's tempting to redirect stderr to /dev/null, so supress error 
+  # output from tput. However in this case, tput detects neither stdout or 
+  # stderr is a tty and so only gives default 80, 24 values
+  WT_HEIGHT=17
+  WT_WIDTH=$(tput cols)
+
+  if [ -z "$WT_WIDTH" ] || [ "$WT_WIDTH" -lt 60 ]; then
+    WT_WIDTH=80
+  fi
+  if [ "$WT_WIDTH" -gt 178 ]; then
+    WT_WIDTH=120
+  fi
+  WT_MENU_HEIGHT=$(($WT_HEIGHT-7))
+}
+
+do_select_mode() {
+  if [ "${INTERACTIVE}" = True ]; then
+    MODE=$(whiptail --menu "Choose the measurement mode" 20 60 10 \
+      "1" "probe: This mode is ...." \
+      "2" "client: This mode is ...." \
+      3>&1 1>&2 2>&3)
+    RET=$?
+  else
+    MODE=$1
+  fi
+  if [ ${RET} -eq 1 ]; then
+    return 0
+  elif [ ${RET} -eq 0 ]; then
+    if [ ${MODE} -eq 1 ]; then
+      set_config_var MODE probe ${CONFIG}
+      STATUS=probe
+    elif [ ${MODE} -eq 2 ]; then
+      set_config_var MODE client ${CONFIG}
+      STATUS=client
+    fi
+  fi
+  if [ "${INTERACTIVE}" = True ]; then
+    whiptail --msgbox "The setting of measurement mode is ${STATUS}" 20 60 1
+  fi
+}
+
+do_reconnect() {
+  DEFAULT=--defaultno
+  if [ "${INTERACTIVE}" = True ]; then
+    whiptail --yesno "Would you like to reconnect the interface for each measurement?" ${DEFAULT} 20 60 2
+    RET=$?
+  else
+    RET=$1
+  fi
+  if [ ${RET} -eq 0 ]; then
+    set_config_var RECONNECT yes ${CONFIG}
+    STATUS=yes
+  elif [ ${RET} -eq 1 ]; then
+    set_config_var RECONNECT no ${CONFIG}
+    STATUS=no
+  else
+    return ${RET}
+  fi
+  if [ "${INTERACTIVE}" = True ]; then
+    whiptail --msgbox "The reconnect setting is ${STATUS}" 20 60 1
+  fi
+}
+
+do_verbose() {
+  DEFAULT=--defaultno
+  if [ "${INTERACTIVE}" = True ]; then
+    whiptail --yesno "Would you like to use verbose mode?" ${DEFAULT} 20 60 2
+    RET=$?
+  else
+    RET=$1
+  fi
+  if [ ${RET} -eq 0 ]; then
+    set_config_var VERBOSE yes ${CONFIG}
+    STATUS=yes
+  elif [ ${RET} -eq 1 ]; then
+    set_config_var VERBOSE no ${CONFIG}
+    STATUS=no
+  else
+    return ${RET}
+  fi
+  if [ "${INTERACTIVE}" = True ]; then
+    whiptail --msgbox "The verbose setting is ${STATUS}" 20 60 1
+  fi
+}
+
+do_set_retry() {
+  CURRENT=$(get_config_var MAX_RETRY ${CONFIG})
+  if [ "${INTERACTIVE}" = True ]; then
+    NEW=$(whiptail --inputbox "Please enter a maximum retry count" 20 60 "${CURRENT}" 3>&1 1>&2 2>&3)
+  else
+    NEW="$1"
+    true
+  fi
+  if [ $? -eq 0 ]; then
+    set_config_var MAX_RETRY ${NEW} ${CONFIG}
+    if [ -n "${NEW}" ] && [ "${INTERACTIVE}" = True ]; then
+      whiptail --msgbox "The maximum retry count is ${NEW}" 20 60 1
+    fi
+  fi
+}
+
+do_select_iftype() {
+  if [ "${INTERACTIVE}" = True ]; then
+    TYPE=$(whiptail --menu "Choose the interface type for measurement" 20 60 10 \
+      "1" "Wi-Fi: This mode is ...." \
+      "2" "Ethernet: This mode is ...." \
+      3>&1 1>&2 2>&3)
+    RET=$?
+  else
+    TYPE=$1
+  fi
+  if [ ${RET} -eq 1 ]; then
+    return 0
+  elif [ ${RET} -eq 0 ]; then
+    if [ ${TYPE} -eq 1 ]; then
+      set_config_var IFTYPE Wi-Fi ${CONFIG}
+      STATUS=Wi-Fi
+    elif [ ${TYPE} -eq 2 ]; then
+      set_config_var IFTYPE Ethernet ${CONFIG}
+      STATUS=Ethernet
+    fi
+  fi
+  if [ "${INTERACTIVE}" = True ]; then
+    whiptail --msgbox "The setting of interface type for measurement is ${STATUS}" 20 60 1
+  fi
+}
+
+do_set_devname() {
+  CURRENT=$(get_config_var DEVNAME ${CONFIG})
+  if [ "${INTERACTIVE}" = True ]; then
+    NEW=$(whiptail --inputbox "Please enter a device name for measurement (e.g. wlan0/ra0/eth0)" 20 60 "${CURRENT}" 3>&1 1>&2 2>&3)
+  else
+    NEW="$1"
+    true
+  fi
+  if [ $? -eq 0 ]; then
+    set_config_var DEVNAME ${NEW} ${CONFIG}
+    if [ -n "${NEW}" ] && [ "${INTERACTIVE}" = True ]; then
+      whiptail --msgbox "The device name of interface is ${NEW}" 20 60 1
+    fi
+  fi
+}
+
+do_iface_menu() {
+  FUN=$(whiptail --title "SINDAN Configuration Tool" \
+    --menu "Interface Settings" $WT_HEIGHT $WT_WIDTH $WT_MENU_HEIGHT \
+    --cancel-button Back --ok-button Select \
+    "I1 Interface type: " "Choose interface type: Wi-Fi or Ethernet" \
+    "I2 Device name: " "Set up a device name of interface" \
+    3>&1 1>&2 2>&3)
+  RET=$?
+  if [ ${RET} -eq 1 ]; then
+    return 0
+  elif [ ${RET} -eq 0 ]; then
+    case "$FUN" in
+      I1\ *) do_select_iftype ;;
+      I2\ *) do_set_devname ;;
+      *) whiptail --msgbox "Programmer error: unrecognized option" 20 60 1 ;;
+    esac || whiptail --msgbox "There was an error running option $FUN" 20 60 1
+  fi
+}
+
+do_set_pingv4() {
+  CURRENT_STR=$(get_config_var PING_SRVS ${CONFIG})
+  CURRENT="$(echo ${CURRENT_STR} | sed s/\"//g)"
+  if [ "${INTERACTIVE}" = True ]; then
+    NEW=$(whiptail --inputbox "Please enter target server's IP addresses (e.g. <target1>,<target2>)" 20 60 "${CURRENT}" 3>&1 1>&2 2>&3)
+  else
+    NEW="$1"
+    true
+  fi
+  if [ $? -eq 0 ]; then
+    STRING="\"${NEW}\""
+    set_config_var PING_SRVS ${STRING} ${CONFIG}
+    if [ -n "${NEW}" ] && [ "${INTERACTIVE}" = True ]; then
+      whiptail --msgbox "The target server's IP addresses are ${NEW}" 20 60 1
+    fi
+  fi
+}
+
+do_set_pingv6() {
+  CURRENT_STR=$(get_config_var PING6_SRVS ${CONFIG})
+  CURRENT="$(echo ${CURRENT_STR} | sed s/\"//g)"
+  if [ "${INTERACTIVE}" = True ]; then
+    NEW=$(whiptail --inputbox "Please enter target server's IPv6 addresses (e.g. <target1>,<target2>)" 20 60 "${CURRENT}" 3>&1 1>&2 2>&3)
+  else
+    NEW="$1"
+    true
+  fi
+  if [ $? -eq 0 ]; then
+    STRING="\"${NEW}\""
+    set_config_var PING6_SRVS ${STRING} ${CONFIG}
+    if [ -n "${NEW}" ] && [ "${INTERACTIVE}" = True ]; then
+      whiptail --msgbox "The target server's IPv6 addresses are ${NEW}" 20 60 1
+    fi
+  fi
+}
+
+do_set_digv4() {
+  CURRENT_STR=$(get_config_var GPDNS4 ${CONFIG})
+  CURRENT="$(echo ${CURRENT_STR} | sed s/\"//g)"
+  if [ "${INTERACTIVE}" = True ]; then
+    NEW=$(whiptail --inputbox "Please enter target global public DNS server's IP addresses (e.g. <target1>,<target2>)" 20 60 "${CURRENT}" 3>&1 1>&2 2>&3)
+  else
+    NEW="$1"
+    true
+  fi
+  if [ $? -eq 0 ]; then
+    STRING="\"${NEW}\""
+    set_config_var GPDNS4 ${STRING} ${CONFIG}
+    if [ -n "${NEW}" ] && [ "${INTERACTIVE}" = True ]; then
+      whiptail --msgbox "The target global DNS server's IP addresses are ${NEW}" 20 60 1
+    fi
+  fi
+}
+
+do_set_digv6() {
+  CURRENT_STR=$(get_config_var GPDNS6 ${CONFIG})
+  CURRENT="$(echo ${CURRENT_STR} | sed s/\"//g)"
+  if [ "${INTERACTIVE}" = True ]; then
+    NEW=$(whiptail --inputbox "Please enter target global public DNS server's IPv6 addresses (e.g. <target1>,<target2>)" 20 60 "${CURRENT}" 3>&1 1>&2 2>&3)
+  else
+    NEW="$1"
+    true
+  fi
+  if [ $? -eq 0 ]; then
+    STRING="\"${NEW}\""
+    set_config_var GPDNS6 ${STRING} ${CONFIG}
+    if [ -n "${NEW}" ] && [ "${INTERACTIVE}" = True ]; then
+      whiptail --msgbox "The target global DNS server's IPv6 addresses are ${NEW}" 20 60 1
+    fi
+  fi
+}
+
+do_set_httpv4() {
+  CURRENT_STR=$(get_config_var V4WEB_SRVS ${CONFIG})
+  CURRENT="$(echo ${CURRENT_STR} | sed s/\"//g)"
+  if [ "${INTERACTIVE}" = True ]; then
+    NEW=$(whiptail --inputbox "Please enter target server's FQDNs for HTTP communication by IPv4 (e.g. <target1>,<target2>)" 20 60 "${CURRENT}" 3>&1 1>&2 2>&3)
+  else
+    NEW="$1"
+    true
+  fi
+  if [ $? -eq 0 ]; then
+    STRING="\"${NEW}\""
+    set_config_var V4WEB_SRVS ${STRING} ${CONFIG}
+    if [ -n "${NEW}" ] && [ "${INTERACTIVE}" = True ]; then
+      whiptail --msgbox "The target server's FQDNs for HTTP communication by IPv4 are ${NEW}" 20 60 1
+    fi
+  fi
+}
+
+do_set_httpv6() {
+  CURRENT_STR=$(get_config_var V6WEB_SRVS ${CONFIG})
+  CURRENT="$(echo ${CURRENT_STR} | sed s/\"//g)"
+  if [ "${INTERACTIVE}" = True ]; then
+    NEW=$(whiptail --inputbox "Please enter target server's FQDNs for HTTP communication by IPv6 (e.g. <target1>,<target2>)" 20 60 "${CURRENT}" 3>&1 1>&2 2>&3)
+  else
+    NEW="$1"
+    true
+  fi
+  if [ $? -eq 0 ]; then
+    STRING="\"${NEW}\""
+    set_config_var V6WEB_SRVS ${STRING} ${CONFIG}
+    if [ -n "${NEW}" ] && [ "${INTERACTIVE}" = True ]; then
+      whiptail --msgbox "The target server's FQDNs for HTTP communication by IPv6 are ${NEW}" 20 60 1
+    fi
+  fi
+}
+
+do_target_menu() {
+  FUN=$(whiptail --title "SINDAN Configuration Tool" \
+    --menu "Target Settings" $WT_HEIGHT $WT_WIDTH $WT_MENU_HEIGHT \
+    --cancel-button Back --ok-button Select \
+    "T1 Ping targets (IPv4): " "Set up target servers for ping measurement by IPv4" \
+    "T2 Ping targets (IPv6): " "Set up target servers for ping measurement by IPv6" \
+    "T3 DNS targets (IPv4): " "Set up target servers for name resolurion test by IPv4" \
+    "T4 DNS targets (IPv6): " "Set up target servers for name resolurion test by IPv6" \
+    "T5 HTTP targets (IPv4): " "Set up target servers for HTTP communication test by IPv4" \
+    "T6 HTTP targets (IPv6): " "Set up target servers for HTTP communication test by IPv6" \
+    3>&1 1>&2 2>&3)
+  RET=$?
+  if [ ${RET} -eq 1 ]; then
+    return 0
+  elif [ ${RET} -eq 0 ]; then
+    case "$FUN" in
+      T1\ *) do_set_pingv4 ;;
+      T2\ *) do_set_pingv6 ;;
+      T3\ *) do_set_digv4 ;;
+      T4\ *) do_set_digv6 ;;
+      T5\ *) do_set_httpv4 ;;
+      T6\ *) do_set_httpv6 ;;
+      *) whiptail --msgbox "Programmer error: unrecognized option" 20 60 1 ;;
+    esac || whiptail --msgbox "There was an error running option $FUN" 20 60 1
+  fi
+}
+
+do_set_server() {
+  CURRENT_STR=$(get_config_var URL_SINDAN ${CONFIG})
+  CURRENT="$(echo ${CURRENT_STR} | sed s/\"//g | cut -d/ -f1-3)"
+  if [ "${INTERACTIVE}" = True ]; then
+    NEW=$(whiptail --inputbox "Please enter a server's URL for uploding data" 20 60 "${CURRENT}" 3>&1 1>&2 2>&3)
+  else
+    NEW="$1"
+    true
+  fi
+  if [ $? -eq 0 ]; then
+    if [ -n "${NEW}" ]; then
+      CAMPAIGN="\"${NEW}/sindan.log_campaign\""
+      DATA="\"${NEW}/sindan.log\""
+      set_config_var URL_CAMPAIGN ${CAMPAIGN} ${CONFIG}
+      set_config_var URL_SINDAN ${DATA} ${CONFIG}
+      if [ "${INTERACTIVE}" = True ]; then
+        whiptail --msgbox "The server's URL is ${NEW}" 20 60 1
+      fi
+    fi
+  fi
+}
+
+do_server_menu() {
+  FUN=$(whiptail --title "SINDAN Configuration Tool" \
+    --menu "Server Setting" $WT_HEIGHT $WT_WIDTH $WT_MENU_HEIGHT \
+    --cancel-button Back --ok-button Select \
+    "S1 Uploding Server: " "Set up a server's URL for uploading json data" \
+    3>&1 1>&2 2>&3)
+  RET=$?
+  if [ ${RET} -eq 1 ]; then
+    return 0
+  elif [ ${RET} -eq 0 ]; then
+    case "$FUN" in
+      S1\ *) do_set_server ;;
+      *) whiptail --msgbox "Programmer error: unrecognized option" 20 60 1 ;;
+    esac || whiptail --msgbox "There was an error running option $FUN" 20 60 1
+  fi
+}
+
+#
+# MAIN
+#
+if [ "${INTERACTIVE}" = True ]; then
+  [ -e $CONFIG ] || touch $CONFIG
+  calc_wt_size
+  while true; do
+    FUN=$(whiptail --title "SINDAN Configuration Tool" \
+      --menu "Setup Options" $WT_HEIGHT $WT_WIDTH $WT_MENU_HEIGHT \
+      --cancel-button Finish --ok-button Select \
+      "1 Mode: " "Choose measurement mode: client or probe" \
+      "2 Reconnect: " "Enable/Disable reconnect mode" \
+      "3 Verbose: " "Enable/Disable verbose mode" \
+      "4 Retry: " "Set up retry count for cheking IP status (default: 10)" \
+      "5 Interface: " "Set up using interface" \
+      "6 Target: " "Set up terget servers" \
+      "7 Server: " "Set up uploading server" \
+      3>&1 1>&2 2>&3)
+    RET=$?
+    if [ ${RET} -eq 1 ]; then
+      exit 0
+    elif [ ${RET} -eq 0 ]; then
+      case "$FUN" in
+        1\ *) do_select_mode ;;
+        2\ *) do_reconnect ;;
+        3\ *) do_verbose ;;
+        4\ *) do_set_retry ;;
+        5\ *) do_iface_menu ;;
+        6\ *) do_target_menu ;;
+        7\ *) do_server_menu ;;
+        *) whiptail --msgbox "Programmer error: unrecognized option" 20 60 1 ;;
+      esac || whiptail --msgbox "There was an error running option $FUN" 20 60 1
+    else
+      exit 1
+    fi
+  done
+fi
+
+exit 0
