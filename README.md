@@ -1,3 +1,4 @@
+ ![SINDAN Project](https://raw.githubusercontent.com/SINDAN/sindan-docker/screenshot/logo.png)
 
 # sindan-client
 
@@ -7,47 +8,45 @@ Please visit website [sindan-net.com](https://www.sindan-net.com) for more detai
 > In order to detect network failure, SINDAN project evaluates the network status based on user-side observations, and aims to establish a method that enables network operators to troubleshoot quickly.
 
 ## Installation
-このスクリプトはLinux版、macOS版およびWindows版があります。
-macOS版はmacOS標準のコマンド等を利用するため、別途アプリケーションの導入を必要としません。
-Linux版は以下のパケージを必要とします。
-- dnsutils, uuid-runtime, ndisc6
-
-This script 
+This script is available for Linux, macOS, and Windows. The macOS version uses the standard commands of macOS, so no additional application is required. The Linux version requires the following packages.
+-dnsutils, uuid-runtime, ndisc6
 
 ## Usage
 
+- `sindan.sh` - 
+- `sendlog.sh` - 
+- `sindan.conf` - 
+- `sindan-config` - 
+
 ## Configuration
+The sindan.conf file is assumed to be located in the same directory as sindan.sh.
 
-sindan.shと同じディレクトリに配置することを想定している
-設定パラメータ：
-LOCKFILE sindan.shの動作チェックファイルの指定
-	　LOCKFILE_SENDLOG	sendlog.shの動作チェックファイルの指定
-	　FAIL	, SUCCESS, INFO	判定パラメータ値の設定
-MODE
-	　RECONNECT		yesの場合、L2の切断/接続を実施
-	　VERBOSE			yesの場合、sindan.sh実施時に詳細情報を出力
-	　MAX_RETRY		datalink, interfaceでのチェックを繰り返す最大値
-					デフォルトは10
-	　IFTYPE			計測インタフェースのタイプを指定
-					Wi-Fiとそれ以外で区別
-	　DEVNAME			計測インタフェースの名前を指定（例：ra0）
-	　SSID, SSID_KEY		（現バージョンでは利用しない）
-	　PING_SRVS		IPv4到達性確認用の外部サーバ（,区切り）
-	　PING6_SRVS		IPv6到達性確認用の外部サーバ（,区切り）
-	　FQDNS			名前解決に用いるFQDNの指定（,区切り）
-	　GPDNS4			名前解決に用いるIPv4外部DNSサーバ（,区切り）
-	　GPDNS6			名前解決に用いるIPv6外部DNSサーバ（,区切り）
-	　V4WEB_SRVS		HTTP通信確認に用いるIPv4ウェブサーバ（,区切り）
-	　V6WEB_SRVS		HTTP通信確認に用いるIPv6ウェブサーバ（,区切り）
-	　URL_CAMPAIGN		計測メタデータ送信先URLの指定
-					http://<server_name>:<port>/sindan.log_campaign
-	　URL_SINDAN		計測データ送信先URLの指定
-					http://<server_name>:<port>/sindan.log
-	＜NFDF計測用パラメータ＞
-	　COMMUNICATION_DEVICE	SINDANでの計測対象インタフェースの指定
-	　MONITOR_DEVIDE		NFDF計測を実施するインタフェースの指定
-	　MONITOR_REFRESH_TIME	NFDF計測での計測ファイル更新頻度（秒）
+Parameters:
+- `LOCKFILE` <file> - Specifies a file name for checking the operation of sindan.sh script.
+- `LOCKFILE_SENDLOG` <file> - Specifies a file name for checking the operation of sendlog.sh script.
+- `FAIL`/`SUCCESS`/`INFO` <number> - Specifies a value of result parameters.
+- `MODE` <client or probe> - Specifies the operation mode.
+- `RECONNECT` <yes or no> - If yes, do reconnect at L2 measurement.
+- `VERBOSE` <yes or no> - If yes, output detailed information from sindan.sh script.
+- `MAX_RETRY` <number> - Specifies the maximum number to retry check at the datalink and the interface layer. Default is 10.
+- `IFTYPE` <Wi-Fi or others> - Specifies the type of measurement interface.
+- `DEVNAME` <device> - Specifies the name of measurement interface (e.g. ra0).
+- `SSID` <ssid> - Specifies a SSID to be measured (not used in the current version).
+- `SSID_KEY` <passphrase> - Specifies a passphrase for SSID to be measured (not used in the current version).
+- `PING_SRVS` <IPv4 address,[...]> - Specifies external the server's IPv4 addresses for IPv4 reachability confirmation (separated by commas).
+- `PING6_SRVS` <IPv6 address,[...]> - Specifies external the server's IPv6 addresses for IPv6 reachability confirmation (separated by commas).
+- `FQDNS` <fqdn,[...]> - Specifies the FQDNs used for name resolution (separated by commas).
+- `GPDNS4` <server,[...]> - Specifies the external IPv4 DNS servers used for name resolution (separated by commas).
+- `GPDNS6` <server,[...]> - Specifies the external IPv6 DNS servers used for name resolution (separated by commas).
+- `V4WEB_SRVS` <server,[...]> - Specifies the IPv4 web servers used for HTTP communication confirmation (separated by commas).
+- `V6WEB_SRVS` <server,[...]> - Specifies the IPv6 web servers used for HTTP communication confirmation (separated by commas).
+- `URL_CAMPAIGN` <url> - Specifies the URL for sending the metadata (format is http://<server_name>:<port>/sindan.log_campaign).
+- `URL_SINDAN` <url> - Specifies the URL for sending the measurement data (format is http://<server_name>:<port>/sindan.log).
 
+Parameters for NFDF monitering (not include in the current version):
+- `COMMUNICATION_DEVICE` <device> - Specifies the interface name for SINDAN measurement. Default is DEVNAME.
+- `MONITOR_DEVIDE` <device> - Specifies the the interface name for NFDF monitering.
+- `MONITOR_REFRESH_TIME` <number> - Specifies the update frequency of NFDF monitering file (unit: seconds). Default is 300.
 
 ## Authors
 - **Yoshiaki KITAGUCHI** - *Maintein macOS/Linux version* [@kitaguch](https://github.com/kitaguch)
