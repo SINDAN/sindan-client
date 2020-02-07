@@ -22,31 +22,31 @@ This script is available for Linux, macOS, and Windows. The macOS version uses t
 The sindan.conf file is assumed to be located in the same directory as sindan.sh.
 
 Parameters:
-- `LOCKFILE` \<file\> - Specifies a file name for checking the operation of sindan.sh script.
-- `LOCKFILE_SENDLOG` \<file\> - Specifies a file name for checking the operation of sendlog.sh script.
-- `FAIL`/`SUCCESS`/`INFO` \<number\> - Specifies a value of result parameters.
-- `MODE` \<client or probe\> - Specifies the operation mode.
-- `RECONNECT` \<yes or no\> - If yes, do reconnect at L2 measurement.
-- `VERBOSE` \<yes or no\> - If yes, output detailed information from sindan.sh script.
-- `MAX_RETRY` \<number\> - Specifies the maximum number to retry check at the datalink and the interface layer. Default is 10.
-- `IFTYPE` \<Wi-Fi or others\> - Specifies the type of measurement interface.
-- `DEVNAME` \<device\> - Specifies the name of measurement interface (e.g. ra0).
-- `SSID` \<ssid\> - Specifies a SSID to be measured (not used in the current version).
-- `SSID_KEY` \<passphrase\> - Specifies a passphrase for SSID to be measured (not used in the current version).
-- `PING_SRVS` \<IPv4 address,\[...\]\> - Specifies external the server's IPv4 addresses for IPv4 reachability confirmation (separated by commas).
-- `PING6_SRVS` \<IPv6 address,\[...\]\> - Specifies external the server's IPv6 addresses for IPv6 reachability confirmation (separated by commas).
-- `FQDNS` \<fqdn,\[...\]\> - Specifies the FQDNs used for name resolution (separated by commas).
-- `GPDNS4` \<server,\[...\]\> - Specifies the external IPv4 DNS servers used for name resolution (separated by commas).
-- `GPDNS6` \<server,\[...\]\> - Specifies the external IPv6 DNS servers used for name resolution (separated by commas).
-- `V4WEB_SRVS` \<server,\[...\]\> - Specifies the IPv4 web servers used for HTTP communication confirmation (separated by commas).
-- `V6WEB_SRVS` \<server,\[...\]\> - Specifies the IPv6 web servers used for HTTP communication confirmation (separated by commas).
-- `URL_CAMPAIGN` \<url\> - Specifies the URL for sending the metadata (format is http://<server_name>:<port>/sindan.log_campaign).
-- `URL_SINDAN` \<url\> - Specifies the URL for sending the measurement data (format is http://<server_name>:<port>/sindan.log).
+- `LOCKFILE`=\<file\> - Specifies a file name for checking the operation of sindan.sh script.
+- `LOCKFILE_SENDLOG`=\<file\> - Specifies a file name for checking the operation of sendlog.sh script.
+- `FAIL`/`SUCCESS`/`INFO`=\<number\> - Specifies a value of result parameters.
+- `MODE`=\<client or probe\> - Specifies the operation mode.
+- `RECONNECT`=\<yes or no\> - If yes, do reconnect at L2 measurement.
+- `VERBOSE`=\<yes or no\> - If yes, output detailed information from sindan.sh script.
+- `MAX_RETRY`=\<number\> - Specifies the maximum number to retry check at the datalink and the interface layer. Default is 10.
+- `IFTYPE`=\<Wi-Fi or others\> - Specifies the type of measurement interface.
+- `DEVNAME`=\<device\> - Specifies the name of measurement interface (e.g. ra0).
+- `SSID`=\<ssid\> - Specifies a SSID to be measured (not used in the current version).
+- `SSID_KEY`=\<passphrase\> - Specifies a passphrase for SSID to be measured (not used in the current version).
+- `PING_SRVS`=\<IPv4 address,\[...\]\> - Specifies external the server's IPv4 addresses for IPv4 reachability confirmation (separated by commas).
+- `PING6_SRVS`=\<IPv6 address,\[...\]\> - Specifies external the server's IPv6 addresses for IPv6 reachability confirmation (separated by commas).
+- `FQDNS`=\<fqdn,\[...\]\> - Specifies the FQDNs used for name resolution (separated by commas).
+- `GPDNS4`=\<server,\[...\]\> - Specifies the external IPv4 DNS servers used for name resolution (separated by commas).
+- `GPDNS6`=\<server,\[...\]\> - Specifies the external IPv6 DNS servers used for name resolution (separated by commas).
+- `V4WEB_SRVS`=\<server,\[...\]\> - Specifies the IPv4 web servers used for HTTP communication confirmation (separated by commas).
+- `V6WEB_SRVS`=\<server,\[...\]\> - Specifies the IPv6 web servers used for HTTP communication confirmation (separated by commas).
+- `URL_CAMPAIGN`=\<url\> - Specifies the URL for sending the metadata (format is http://<server_name>:<port>/sindan.log_campaign).
+- `URL_SINDAN`=\<url\> - Specifies the URL for sending the measurement data (format is http://<server_name>:<port>/sindan.log).
 
 Parameters for NFDF monitering (not include in the current version):
-- `COMMUNICATION_DEVICE` <device> - Specifies the interface name for SINDAN measurement. Default is DEVNAME.
-- `MONITOR_DEVIDE` <device> - Specifies the the interface name for NFDF monitering.
-- `MONITOR_REFRESH_TIME` <number> - Specifies the update frequency of NFDF monitering file (unit: seconds). Default is 300.
+- `COMMUNICATION_DEVICE`=\<device\> - Specifies the interface name for SINDAN measurement. Default is DEVNAME.
+- `MONITOR_DEVIDE`=\<device\> - Specifies the the interface name for NFDF monitering.
+- `MONITOR_REFRESH_TIME`=\<number\> - Specifies the update frequency of NFDF monitering file (unit: seconds). Default is 300.
 
 ## Authors
 - **Yoshiaki KITAGUCHI** - *Maintein macOS/Linux version* [@kitaguch](https://github.com/kitaguch)
