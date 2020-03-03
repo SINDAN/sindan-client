@@ -22,7 +22,7 @@ hash_result() {
   case "${type}" in
     "ssid"|"bssid")
       if [ "${LOCAL_NETWORK_PRIVACY}" = "yes" ] ; then
-        echo "${src}" | ${CMD_HASH} | cut -d' ' -f1
+        echo "`echo "${src}" | ${CMD_HASH} | cut -d' ' -f1`:SHA1"
       else
         echo "${src}"
       fi
@@ -37,7 +37,7 @@ hash_result() {
       ;;
     "mac_addr")
       if [ "${CLIENT_PRIVACY}" = "yes" ] ; then
-        echo "${src}" | ${CMD_HASH} | cut -d' ' -f1
+        echo "`echo "${src}" | ${CMD_HASH} | cut -d' ' -f1`:SHA1"
       else
         echo "${src}"
       fi
