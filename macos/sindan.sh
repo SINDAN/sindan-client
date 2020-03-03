@@ -16,6 +16,44 @@ cleate_uuid() {
   uuidgen
 }
 
+hash_result() {
+  type=$1
+  src=$2
+  case "${type}" in
+    "ssid"|"bssid")
+      if [ "${LOCAL_NETWORK_PRIVACY}" = "yes" ] ; then
+        echo "${src}" | ${CMD_HASH} | cut -d' ' -f1
+      else
+        echo "${src}"
+      fi
+      ;;
+    "environment")
+      # XXX do something if "${LOCAL_NETWORK_PRIVACY}" = "yes".
+      if [ "${LOCAL_NETWORK_PRIVACY}" = "yes" ] ; then
+        echo "XXX"
+      else
+        echo "${src}"
+      fi
+      ;;
+    "mac_addr")
+      if [ "${CLIENT_PRIVACY}" = "yes" ] ; then
+        echo "${src}" | ${CMD_HASH} | cut -d' ' -f1
+      else
+        echo "${src}"
+      fi
+      ;;
+    "v4autoconf"|"v6autoconf")
+      # XXX do something if "${CLIENT_PRIVACY}" = "yes".
+      if [ "${CLIENT_PRIVACY}" = "yes" ] ; then
+        echo "XXX"
+      else
+        echo "${src}"
+      fi
+      ;;
+    *) echo "${src}" ;;
+  esac
+}
+
 #
 write_json_campaign() {
   (
@@ -24,10 +62,12 @@ write_json_campaign() {
     echo "DEBUG(input data): $1, $2, $3, $4" 1>&2
     return 1
   fi
+  mac_addr=$(hash_result mac_addr $2)
+  ssid=$(hash_result ssid $4)
   json="{ \"log_campaign_uuid\" : \"$1\",
-          \"mac_addr\" : \"$2\",
+          \"mac_addr\" : \"$mac_addr\",
           \"os\" : \"$3\",
-          \"ssid\" : \"$4\",
+          \"ssid\" : \"$ssid\",
           \"version\" : \"${VERSION}\",
           \"occurred_at\" : \"`date -u '+%Y-%m-%d %T'`\" }"
   echo ${json} > log/campaign_`date -u '+%s'`.json
@@ -43,13 +83,14 @@ write_json() {
     echo "DEBUG(input data): $1, $2, $3, $4, $5, $6, $7" 1>&2
     return 1
   fi
+  detail=$(hash_result $3 $6)
   json="{ \"layer\" : \"$1\",
           \"log_group\" : \"$2\",
           \"log_type\" : \"$3\",
           \"log_campaign_uuid\" : \"${uuid}\",
           \"result\" : \"$4\",
           \"target\" : \"$5\",
-          \"detail\" : \"$6\",
+          \"detail\" : \"$detail\",
           \"occurred_at\" : \"`date -u '+%Y-%m-%d %T'`\" }"
   echo ${json} > log/sindan_$1_$3_$7_`date -u '+%s'`.json
   return $?
@@ -157,6 +198,15 @@ get_wifi_ssid() {
 get_wifi_bssid() {
   ${CMD_AIRPORT} -I							|
   sed -n 's/^.*BSSID: \([0-9a-fA-F:]*\).*$/\1/p'			|
+  tr "[:upper:]" "[:lower:]" 
+  return $?
+}
+
+#
+get_wifi_apoui() {
+  ${CMD_AIRPORT} -I |
+  sed -n 's/^.*BSSID: \([0-9a-fA-F:]*\).*$/\1/p' |
+  cut -d: -f1-3 |
   tr "[:upper:]" "[:lower:]" 
   return $?
 }
@@ -1073,6 +1123,11 @@ else
   if [ -n "${bssid}" ]; then
     write_json ${layer} "${IFTYPE}" bssid ${INFO} self ${bssid} 0
   fi
+  # Get Wi-Fi AP's OUI
+  wifiapoui=$(get_wifi_apoui)
+  if [ -n "${wifiapoui}" ]; then
+    write_json ${layer} "${IFTYPE}" wifiapoui ${INFO} self ${wifiapoui} 0
+  fi
   # Get Wi-Fi channel
   channel=$(get_wifi_channel)
   if [ -n "${channel}" ]; then
@@ -1095,6 +1150,9 @@ else
   fi
   # Get Wi-Fi environment
   environment=$(get_wifi_environment)
+  if [ "${TINY_PRIVACY:+X}" -a "${TINY_PRIVACY}" = "yes" ] ; then
+    environment=$(hash_result $environment)
+  fi
   if [ -n "${environment}" ]; then
     write_json ${layer} "${IFTYPE}" environment ${INFO} self "${environment}" 0
   fi
