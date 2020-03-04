@@ -993,6 +993,38 @@ cmdset_http () {
   )
 }
 
+cmdset_ssh () {
+  (
+  # cmdset_ssh <layer> <ver> <count> <target> <key_type> <host_key>
+  layer=$1
+  ver=$2
+  count=$3
+  target=$4
+  key_type=$5
+  host_key=$6
+  ipv="IPv${ver}"
+  cmd="${CMD_SSHKEYSCAN} -${ver} -t ${key_type} ${target}"
+  string=" ssh to external server: ${target} by ${ipv}"
+  ssh_ans=$(${cmd} 2>/dev/null)
+  if [ "${ssh_ans}" = "${target} ${key_type} ${host_key}" ] ; then
+    result=${SUCCESS}
+    ssh_ans="ok"
+  else
+    result=${FAIL}
+    if [ -z "${ssh_ans}" ] ; then
+      ssh_ans="ng"
+    fi
+    detail="ng"
+  fi
+  string="${string}\n  status: ${result}"
+  write_json ${layer} ${ipv} v${ver}ssh ${result} ${target}    \
+                       ${ssh_ans} ${count}
+  if [ "${VERBOSE}" = "yes" ]; then
+    echo -e "${string}"
+  fi
+  )
+}
+
 
 #
 # main
@@ -1002,6 +1034,7 @@ cmdset_http () {
 ## Preparation
 
 # Check parameters
+# XXX need to check SSH_SRVS
 for param in LOCKFILE MAX_RETRY IFTYPE PING_SRVS PING6_SRVS FQDNS GPDNS4 GPDNS6 V4WEB_SRVS V6WEB_SRVS CMD_AIRPORT; do
   if [ -z `eval echo '$'${param}` ]; then
     echo "ERROR: ${param} is null in configration file." 1>&2
@@ -1530,6 +1563,33 @@ if [ "${MODE}" = "client" ]; then
 
   wait
   echo " done."
+
+  ####################
+  ## Phase 6.2
+  echo "Phase 6.2: SSH Layer checking..."
+  layer="ssh"
+
+  if [ "${v4addr_type}" = "private" -o "${v4addr_type}" = "grobal" ]; then
+    count=0
+    for ((i = 0; i < ${#SSH_SRVS[@]}; i++))
+    do
+      cmdset_ssh ${layer} 4 ${count} ${SSH_SRVS[$i]} &
+      count=$(( count + 1 ))
+    done
+  fi
+
+  if [ -n "${v6addrs}" ]; then
+    count=0
+    for ((i = 0; i < ${#SSH_SRVS[@]}; i++))
+    do
+      cmdset_ssh ${layer} 6 ${count} ${SSH_SRVS[$i]} &
+      count=$(( count + 1 ))
+    done
+  fi
+
+  wait
+  echo " done."
+
 elif [ "${MODE}" = "probe" ]; then
   ####################
   ## Phase 4
@@ -1728,6 +1788,33 @@ elif [ "${MODE}" = "probe" ]; then
 
   wait
   echo " done."
+
+  ####################
+  ## Phase 6.2
+  echo "Phase 6.2: SSH Layer checking..."
+  layer="ssh"
+
+  if [ "${v4addr_type}" = "private" -o "${v4addr_type}" = "grobal" ]; then
+    count=0
+    for ((i = 0; i < ${#SSH_SRVS[@]}; i++))
+    do
+      cmdset_ssh ${layer} 4 ${count} ${SSH_SRVS[$i]} &
+      count=$(( count + 1 ))
+    done
+  fi
+
+  if [ -n "${v6addrs}" ]; then
+    count=0
+    for ((i = 0; i < ${#SSH_SRVS[@]}; i++))
+    do
+      cmdset_ssh ${layer} 6 ${count} ${SSH_SRVS[$i]} &
+      count=$(( count + 1 ))
+    done
+  fi
+
+  wait
+  echo " done."
+
 else
   echo "ERROR: MODE supports only client and probe." 1>&2
 fi
