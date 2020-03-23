@@ -1,7 +1,7 @@
 #!/bin/bash
 # sindan.sh
-# version 2.0.1
-VERSION="2.0.1"
+# version 2.1.0
+VERSION="2.1.0"
 
 # read configurationfile
 . ./sindan.conf
@@ -473,68 +473,464 @@ get_v6lladdr() {
 }
 
 #
-get_ra_prefixes() {
+get_ra_info() {
   if [ $# -ne 1 ]; then
-    echo "ERROR: get_ra_prefixes <devicename>." 1>&2
+    echo "ERROR: get_ra_info <devicename>." 1>&2
     return 1
   fi
-  rdisc6 -1 $1								|
-  grep Prefix								|
-  awk '{print $3}'							|
-  awk -F\n -v ORS=',' '{print}'						|
+  rdisc6 -n $1
+  return $?
+}
+
+#
+get_ra_addrs() {
+  grep "^ from"                                                         |
+  awk '{print $2}'                                                      |
+  awk -F\n -v ORS=',' '{print}'                                         |
   sed 's/,$//'
   return $?
 }
 
 #
-get_ra_prefix_flags() {
-  (
-  if [ $# -ne 2 ]; then
-    echo "ERROR: get_ra_prefix_flags <devicename> <ra_prefix>." 1>&2
+get_ra_flags() {
+  if [ $# -ne 1 ]; then
+    echo "ERROR: get_ra_flags <ra_source>." 1>&2
     return 1
   fi
-  prefix=`echo $1 | awk -F/ '{print $2}'`
-  rdisc6 -1 $1								|
-  awk 'BEGIN{								#
-    find=0;								#
-    while (getline line) {						#
-      if (find==1) {							#
-        if (match(line,/'"On-link"'.*/) && match(line,/'"Yes"'.*/)) {	#
-          print "L";							#
-        } else if (match(line,/'"Autonomous"'.*/)			\
-                   && match(line,/'"Yes"'.*/)) {			#
-          print "A";							#
-          find=0;							#
-        }								#
-      } else if (match(line,/'"$prefix"'.*/)) {				#
-        find=1;								#
-      }									#
-    }									#
-  }'									|
-  awk -F\n -v ORS='' '{print}'
+  awk -v src=$1 'BEGIN {                                                #
+    flags=""                                                            #
+  } {                                                                   #
+    while (getline line) {                                              #
+      if (match(line,/^Stateful address conf./)                         \
+          && match(line,/Yes/)) {                                       #
+        flags=flags "M"                                                 #
+      } else if (match(line,/^Stateful other conf./)                    \
+                 && match(line,/Yes/)) {                                #
+        flags=flags "O"                                                 #
+      } else if (match(line,/^Mobile home agent/)                       \
+                 && match(line,/Yes/)) {                                #
+        flags=flags "H"                                                 #
+      } else if (match(line,/^Router preference/)) {                    #
+        if (match(line,/low/)) {                                        #
+          flags=flags "l"                                               #
+        } else if (match(line,/medium/)) {                              #
+          flags=flags "m"                                               #
+        } else if (match(line,/high/)) {                                #
+          flags=flags "h"                                               #
+        }                                                               #
+      } else if (match(line,/^Neighbor discovery proxy/)                \
+                 && match(line,/Yes/)) {                                #
+        flags=flags "P"                                                 #
+      } else if (match(line,/^ from.*/)) {                              #
+        if (line ~ src) {                                               #
+          exit                                                          #
+        } else {                                                        #
+          flags=""                                                      #
+        }                                                               #
+      }                                                                 #
+    }                                                                   #
+  } END {                                                               #
+    printf "%s", flags                                                  #
+  }'
   return $?
-  )
 }
 
 #
-get_ra_flags() {
+get_ra_hoplimit() {
   if [ $# -ne 1 ]; then
-    echo "ERROR: get_ra_flags <devicename>." 1>&2
+    echo "ERROR: get_ra_hoplimit <ra_source>." 1>&2
     return 1
   fi
-  rdisc6 -1 $1								|
-  awk 'BEGIN{								#
-    while (getline line) {						#
-      if (match(line,/'"Stateful address"'.*/)				\
-          && match(line,/'"Yes"'.*/)) {					#
-        print "M";							#
-      } else if (match(line,/'"Stateful other"'.*/)			\
-                 && match(line,/'"Yes"'.*/)) {				#
-        print "O";							#
-      }									#
-    }									#
-  }'									|
-  awk -F\n -v ORS='' '{print}'
+  awk -v src=$1 'BEGIN {                                                #
+    hops=""                                                             #
+  } {                                                                   #
+    while (getline line) {                                              #
+      if (match(line,/^Hop limit/)) {                                   #
+        split(line,h," ")                                               #
+        hops=h[4]                                                       #
+      } else if (match(line,/^ from.*/)) {                              #
+        if (line ~ src) {                                               #
+          exit                                                          #
+        } else {                                                        #
+          hops=""                                                       #
+        }                                                               #
+      }                                                                 #
+    }                                                                   #
+  } END {                                                               #
+    printf "%s", hops                                                   #
+  }'
+  return $?
+}
+
+#
+get_ra_lifetime() {
+  if [ $# -ne 1 ]; then
+    echo "ERROR: get_ra_lifetime <ra_source>." 1>&2
+    return 1
+  fi
+  awk -v src=$1 'BEGIN {                                                #
+    time=""                                                             #
+  } {                                                                   #
+    while (getline line) {                                              #
+      if (match(line,/^Router lifetime/)) {                             #
+        split(line,t," ")                                               #
+        time=t[4]                                                       #
+      } else if (match(line,/^ from.*/)) {                              #
+        if (line ~ src) {                                               #
+          exit                                                          #
+        } else {                                                        #
+          time=""                                                       #
+        }                                                               #
+      }                                                                 #
+    }                                                                   #
+  } END {                                                               #
+    printf "%s", time                                                   #
+  }'
+  return $?
+}
+
+#
+get_ra_reachable() {
+  if [ $# -ne 1 ]; then
+    echo "ERROR: get_ra_reachable <ra_source>." 1>&2
+    return 1
+  fi
+  awk -v src=$1 'BEGIN {                                                #
+    time=""                                                             #
+  } {                                                                   #
+    while (getline line) {                                              #
+      if (match(line,/^Reachable time/)) {                              #
+        split(line,t," ")                                               #
+        time=t[4]                                                       #
+      } else if (match(line,/^ from.*/)) {                              #
+        if (line ~ src) {                                               #
+          exit                                                          #
+        } else {                                                        #
+          time=""                                                       #
+        }                                                               #
+      }                                                                 #
+    }                                                                   #
+  } END {                                                               #
+    printf "%s", time                                                   #
+  }'
+  return $?
+}
+
+#
+get_ra_retransmit() {
+  if [ $# -ne 1 ]; then
+    echo "ERROR: get_ra_retransmit <ra_source>." 1>&2
+    return 1
+  fi
+  awk -v src=$1 'BEGIN {                                                #
+    time=""                                                             #
+  } {                                                                   #
+    while (getline line) {                                              #
+      if (match(line,/^Retransmit time/)) {                             #
+        split(line,t," ")                                               #
+        time=t[4]                                                       #
+      } else if (match(line,/^ from.*/)) {                              #
+        if (line ~ src) {                                               #
+          exit                                                          #
+        } else {                                                        #
+          time=""                                                       #
+        }                                                               #
+      }                                                                 #
+    }                                                                   #
+  } END {                                                               #
+    printf "%s", time                                                   #
+  }'
+  return $?
+}
+
+#
+get_ra_prefs() {
+  if [ $# -ne 1 ]; then
+    echo "ERROR: get_ra_prefs <ra_source>." 1>&2
+    return 1
+  fi
+  awk -v src=$1 'BEGIN {                                                #
+    prefs=""                                                            #
+  } {                                                                   #
+    while (getline line) {                                              #
+      if (match(line,/^ Prefix/)) {                                     #
+        split(line,p," ")                                               #
+        prefs=prefs ","p[3]                                             #
+      } else if (match(line,/^ from.*/)) {                              #
+        if (line ~ src) {                                               #
+          exit                                                          #
+        } else {                                                        #
+          prefs=""                                                      #
+        }                                                               #
+      }                                                                 #
+    }                                                                   #
+  } END {                                                               #
+    printf "%s", prefs                                                  #
+  }'                                                                    |
+  sed 's/^,//'
+  return $?
+}
+
+#
+get_ra_pref_flags() {
+  if [ $# -ne 2 ]; then
+    echo "ERROR: get_ra_pref_flags <ra_source> <ra_pref>." 1>&2
+    return 1
+  fi
+  awk -v src=$1 -v pref=$2 'BEGIN {                                     #
+    find=0                                                              #
+    flags=""                                                            #
+    split(pref,p,"/")                                                   #
+  } {                                                                   #
+    while (getline line) {                                              #
+      if (find==1) {                                                    #
+        if (match(line,/^  On-link/) && match(line,/Yes/)) {            #
+          flags=flags "L"                                               #
+        } else if (match(line,/^  Autonomous address conf./)            \
+                   && match(line,/Yes/)) {                              #
+          flags=flags "A"                                               #
+        } else if (match(line,/^  Pref. time/)) {                       #
+          find=0                                                        #
+        }                                                               #
+      } else if (match(line,/^ Prefix/) && line ~ p[1]) {               #
+        find=1                                                          #
+      } else if (match(line,/^ from.*/)) {                              #
+        if (line ~ src) {                                               #
+          exit                                                          #
+        } else {                                                        #
+          flags=""                                                      #
+        }                                                               #
+      }                                                                 #
+    }                                                                   #
+  } END {                                                               #
+    printf "%s", flags                                                  #
+  }'
+  return $?
+}
+
+#
+get_ra_pref_valid() {
+  if [ $# -ne 2 ]; then
+    echo "ERROR: get_ra_pref_valid <ra_source> <ra_pref>." 1>&2
+    return 1
+  fi
+  awk -v src=$1 -v pref=$2 'BEGIN {                                     #
+    find=0                                                              #
+    time=""                                                             #
+    split(pref,p,"/")                                                   #
+  } {                                                                   #
+    while (getline line) {                                              #
+      if (find==1) {                                                    #
+        if (match(line,/^  Valid time/)) {                              #
+          split(line,t," ")                                             #
+          time=t[4]                                                     #
+          find=0                                                        #
+        }                                                               #
+      } else if (match(line,/^ Prefix/) && line ~ p[1]) {               #
+        find=1                                                          #
+      } else if (match(line,/^ from.*/)) {                              #
+        if (line ~ src) {                                               #
+          exit                                                          #
+        } else {                                                        #
+          flags=""                                                      #
+        }                                                               #
+      }                                                                 #
+    }                                                                   #
+  } END {                                                               #
+    printf "%s", time                                                   #
+  }'
+  return $?
+}
+
+#
+get_ra_pref_preferred() {
+  if [ $# -ne 2 ]; then
+    echo "ERROR: get_ra_pref_preferred <ra_source> <ra_pref>." 1>&2
+    return 1
+  fi
+  awk -v src=$1 -v pref=$2 'BEGIN {                                     #
+    find=0                                                              #
+    time=""                                                             #
+    split(pref,p,"/")                                                   #
+  } {                                                                   #
+    while (getline line) {                                              #
+      if (find==1) {                                                    #
+        if (match(line,/^  Pref. time/)) {                              #
+          split(line,t," ")                                             #
+          time=t[4]                                                     #
+          find=0                                                        #
+        }                                                               #
+      } else if (match(line,/^ Prefix/) && line ~ p[1]) {               #
+        find=1                                                          #
+      } else if (match(line,/^ from.*/)) {                              #
+        if (line ~ src) {                                               #
+          exit                                                          #
+        } else {                                                        #
+          flags=""                                                      #
+        }                                                               #
+      }                                                                 #
+    }                                                                   #
+  } END {                                                               #
+    printf "%s", time                                                   #
+  }'
+  return $?
+}
+
+#
+get_ra_routes() {
+  if [ $# -ne 1 ]; then
+    echo "ERROR: get_ra_routes <ra_source>." 1>&2
+    return 1
+  fi
+  awk -v src=$1 'BEGIN {                                                #
+    routes=""                                                           #
+  } {                                                                   #
+    while (getline line) {                                              #
+      if (match(line,/^ Route/)) {                                      #
+        split(line,r," ")                                               #
+        routes=routes ","r[3]                                           #
+      } else if (match(line,/^ from.*/)) {                              #
+        if (line ~ src) {                                               #
+          exit                                                          #
+        } else {                                                        #
+          routes=""                                                     #
+        }                                                               #
+      }                                                                 #
+    }                                                                   #
+  } END {                                                               #
+    printf "%s", routes                                                 #
+  }'                                                                    |
+  sed 's/^,//'
+  return $?
+}
+
+#
+get_ra_route_flag() {
+  if [ $# -ne 2 ]; then
+    echo "ERROR: get_ra_route_flag <ra_source> <ra_route>." 1>&2
+    return 1
+  fi
+  awk -v src=$1 -v route=$2 'BEGIN {                                    #
+    find=0                                                              #
+    flag=""                                                             #
+    split(route,r,"/")                                                  #
+  } {                                                                   #
+    while (getline line) {                                              #
+      if (find==1) {                                                    #
+        if (match(line,/^  Route preference/)) {                        #
+          split(line,p," ")                                             #
+          flag=p[4]                                                     #
+          find=0                                                        #
+        }                                                               #
+      } else if (match(line,/^ Route/) && line ~ r[1]) {                #
+        find=1                                                          #
+      } else if (match(line,/^ from.*/)) {                              #
+        if (line ~ src) {                                               #
+          exit                                                          #
+        } else {                                                        #
+          flag=""                                                       #
+        }                                                               #
+      }                                                                 #
+    }                                                                   #
+  } END {                                                               #
+    printf "%s", flag                                                   #
+  }'
+  return $?
+}
+
+#
+get_ra_route_lifetime() {
+  if [ $# -ne 2 ]; then
+    echo "ERROR: get_ra_route_flag <ra_source> <ra_route>." 1>&2
+    return 1
+  fi
+  awk -v src=$1 -v route=$2 'BEGIN {                                    #
+    find=0                                                              #
+    time=""                                                             #
+    split(route,r,"/")                                                  #
+  } {                                                                   #
+    while (getline line) {                                              #
+      if (find==1) {                                                    #
+        if (match(line,/^  Route lifetime/)) {                          #
+          split(line,t," ")                                             #
+          time=t[4]                                                     #
+          find=0                                                        #
+        }                                                               #
+      } else if (match(line,/^ Route/) && line ~ r[1]) {                #
+        find=1                                                          #
+      } else if (match(line,/^ from.*/)) {                              #
+        if (line ~ src) {                                               #
+          exit                                                          #
+        } else {                                                        #
+          time=""                                                       #
+        }                                                               #
+      }                                                                 #
+    }                                                                   #
+  } END {                                                               #
+    printf "%s", time                                                   #
+  }'
+  return $?
+}
+
+#
+get_ra_rdnsses() {
+  if [ $# -ne 1 ]; then
+    echo "ERROR: get_ra_rdnsses <ra_source>." 1>&2
+    return 1
+  fi
+  awk -v src=$1 'BEGIN {                                                #
+    rdnsses=""                                                          #
+  } {                                                                   #
+    while (getline line) {                                              #
+      if (match(line,/^ Recursive DNS server/)) {                       #
+        split(line,r," ")                                               #
+        rdnsses=rdnsses ","r[5]                                         #
+      } else if (match(line,/^ from.*/)) {                              #
+        if (line ~ src) {                                               #
+          exit                                                          #
+        } else {                                                        #
+          rdnsses=""                                                    #
+        }                                                               #
+      }                                                                 #
+    }                                                                   #
+  } END {                                                               #
+    printf "%s", rdnsses                                                #
+  }'                                                                    |
+  sed 's/^,//'
+  return $?
+}
+
+#
+get_ra_rdnss_lifetime() {
+  if [ $# -ne 2 ]; then
+    echo "ERROR: get_ra_rdnss_flag <ra_source> <ra_route>." 1>&2
+    return 1
+  fi
+  awk -v src=$1 -v rdnss=$2 'BEGIN {                                    #
+    find=0                                                              #
+    time=""                                                             #
+  } {                                                                   #
+    while (getline line) {                                              #
+      if (find==1) {                                                    #
+        if (match(line,/^  DNS server lifetime/)) {                     #
+          split(line,t," ")                                             #
+          time=t[5]                                                     #
+          find=0                                                        #
+        }                                                               #
+      } else if (match(line,/^ Recursive DNS server/)                   \
+                 && line ~ rdnss) {                                     #
+        find=1                                                          #
+      } else if (match(line,/^ from.*/)) {                              #
+        if (line ~ src) {                                               #
+          exit                                                          #
+        } else {                                                        #
+          time=""                                                       #
+        }                                                               #
+      }                                                                 #
+    }                                                                   #
+  } END {                                                               #
+    printf "%s", time                                                   #
+  }'
   return $?
 }
 
@@ -1304,70 +1700,197 @@ if [ -n "${v6lladdr}" ]; then
   write_json ${layer} IPv6 v6lladdr ${INFO} self ${v6lladdr} 0
 fi
 
-# Get IPv6 RA flags
-ra_flags=$(get_ra_flags ${devicename})
-if [ -z "${ra_flags}" ]; then
-  ra_flags="none"
-fi
-if [ -n "${ra_flags}" ]; then
-  write_json ${layer} RA ra_flags ${INFO} self ${ra_flags} 0
-fi
-
-# Get IPv6 RA prefix
-ra_prefixes=$(get_ra_prefixes ${devicename})
-if [ -n "${ra_prefixes}" ]; then
-  write_json ${layer} RA ra_prefixes ${INFO} self ${ra_prefixes} 0
-fi
-
 # Report phase 2 results (IPv6)
 if [ "${VERBOSE}" = "yes" ]; then
   echo "  IPv6 conf: ${v6ifconf}"
   echo "  IPv6 lladdr: ${v6lladdr}"
 fi
 
-if [ "${ra_flags}" = "not_exist" ]; then
+# Get IPv6 RA infomation
+ra_info=$(get_ra_info ${devicename})
+
+# Get IPv6 RA source addresses
+ra_addrs=$(echo "${ra_info}" | get_ra_addrs)
+if [ -n "${ra_addrs}" ]; then
+  write_json ${layer} IPv6 ra_addrs ${INFO} self ${ra_addrs} 0
+fi
+
+if [ -z "${ra_info}" ]; then
   if [ "${VERBOSE}" = "yes" ]; then
     echo "   RA does not exist."
   fi
 else
-  if [ "${VERBOSE}" = "yes" ]; then
-    echo "  IPv6 RA flags: ${ra_flags}"
-  fi
   count=0
-  for pref in `echo ${ra_prefixes} | sed 's/,/ /g'`; do
-    # Get IPv6 RA prefix flags
-    ra_prefix_flags=$(get_ra_prefix_flags ${devicename} ${pref})
-    write_json ${layer} RA ra_prefix_flags ${INFO} ${pref} "${ra_prefix_flags}" ${count}
+  for addr in $(echo ${ra_addrs} | sed 's/,/ /g'); do
     if [ "${VERBOSE}" = "yes" ]; then
-      echo "  IPv6 RA prefix(flags): ${pref}(${ra_prefix_flags})"
+      echo "  IPv6 RA src addr: ${addr}"
+    fi
+    # Get IPv6 RA flags
+    ra_flags=$(echo "${ra_info}" | get_ra_flags ${addr})
+    if [ -z "${ra_flags}" ]; then
+      ra_flags="none"
+    fi
+    if [ -n "${ra_flags}" ]; then
+      write_json ${layer} RA ra_flags ${INFO} ${addr} ${ra_flags} ${count}
+    fi
+    if [ "${VERBOSE}" = "yes" ]; then
+      echo "   IPv6 RA flags: ${ra_flags}"
     fi
 
-    # Get IPv6 prefix length
-    prefixlen=$(get_prefixlen ${pref})
-    write_json ${layer} RA prefixlen ${INFO} ${pref} ${prefixlen} ${count}
+    # Get IPv6 RA parameters
+    ra_hoplimit=$(echo "${ra_info}" | get_ra_hoplimit ${addr})
+    if [ -n "${ra_hoplimit}" ]; then
+      write_json ${layer} RA ra_hoplimit ${INFO} ${addr} ${ra_hoplimit} ${count}
+    fi
+    if [ "${VERBOSE}" = "yes" ]; then
+      echo "   IPv6 RA hoplimit: ${ra_hoplimit}"
+    fi
+    ra_lifetime=$(echo "${ra_info}" | get_ra_lifetime ${addr})
+    if [ -n "${ra_lifetime}" ]; then
+      write_json ${layer} RA ra_lifetime ${INFO} ${addr} ${ra_lifetime} ${count}
+    fi
+    if [ "${VERBOSE}" = "yes" ]; then
+      echo "   IPv6 RA lifetime: ${ra_lifetime}"
+    fi
+    ra_reachable=$(echo "${ra_info}" | get_ra_reachable ${addr})
+    if [ -n "${ra_reachable}" ]; then
+      write_json ${layer} RA ra_reachable ${INFO} ${addr} ${ra_reachable} ${count}
+    fi
+    if [ "${VERBOSE}" = "yes" ]; then
+      echo "   IPv6 RA reachable: ${ra_reachable}"
+    fi
+    ra_retransmit=$(echo "${ra_info}" | get_ra_retransmit ${addr})
+    if [ -n "${ra_retransmit}" ]; then
+      write_json ${layer} RA ra_retransmit ${INFO} ${addr} ${ra_retransmit} ${count}
+    fi
+    if [ "${VERBOSE}" = "yes" ]; then
+      echo "   IPv6 RA retransmit: ${ra_retransmit}"
+    fi
 
-    # Check IPv6 autoconf
-    result_phase2_2=${FAIL}
-    rcount=0
-    while [ ${rcount} -lt "${MAX_RETRY}" ]; do
-      # Get IPv6 address
-      v6addrs=$(get_v6addrs ${devicename} ${pref})
-      v6autoconf=$(check_v6autoconf ${devicename} ${v6ifconf} ${ra_flags} ${pref} ${ra_prefix_flags})
-      if [ $? -eq 0 -a -n "${v6autoconf}" ]; then
-        result_phase2_2=${SUCCESS}
-        break
+    # Get IPv6 RA prefixes
+    ra_prefs=$(echo "${ra_info}" | get_ra_prefs ${addr})
+    if [ -n "${ra_prefs}" ]; then
+      write_json ${layer} RA ra_prefs ${INFO} ${addr} ${ra_prefs} ${count}
+    fi
+
+    s_count=0
+    for pref in $(echo ${ra_prefs} | sed 's/,/ /g'); do
+      if [ "${VERBOSE}" = "yes" ]; then
+        echo "   IPv6 RA prefix: ${pref}"
       fi
-      sleep 5
-      rcount=$(( rcount + 1 ))
-    done
-    write_json ${layer} IPv6 v6addrs ${INFO} ${pref} "${v6addrs}" ${count}
-    write_json ${layer} IPv6 v6autoconf ${result_phase2_2} ${pref} "${v6autoconf}" ${count}
-    if [ "${VERBOSE}" = "yes" ]; then
-      for addr in `echo ${v6addrs} | sed 's/,/ /g'`; do
-        echo "   IPv6 addr: ${addr}"
+      # Get IPv6 RA prefix flags
+      ra_pref_flags=$(echo "${ra_info}" | get_ra_pref_flags ${addr} ${pref})
+      if [ -n "${ra_pref_flags}" ]; then
+        write_json ${layer} RA ra_pref_flags ${INFO} ${addr}-${pref} ${ra_pref_flags} ${s_count}
+      fi
+      if [ "${VERBOSE}" = "yes" ]; then
+        echo "    flags: ${ra_pref_flags}"
+      fi
+
+      # Get IPv6 RA prefix parameters
+      ra_pref_valid=$(echo "${ra_info}" | get_ra_pref_valid ${addr} ${pref})
+      if [ -n "${ra_pref_valid}" ]; then
+        write_json ${layer} RA ra_pref_valid ${INFO} ${addr}-${pref} ${ra_pref_valid} ${s_count}
+      fi
+      if [ "${VERBOSE}" = "yes" ]; then
+        echo "    valid time: ${ra_pref_valid}"
+      fi
+      ra_pref_preferred=$(echo "${ra_info}" | get_ra_pref_preferred ${addr} ${pref})
+      if [ -n "${ra_pref_preferred}" ]; then
+        write_json ${layer} RA ra_pref_preferred ${INFO} ${addr}-${pref} ${ra_pref_preferred} ${s_count}
+      fi
+      if [ "${VERBOSE}" = "yes" ]; then
+        echo "    preferred time: ${ra_pref_preferred}"
+      fi
+
+      # Get IPv6 prefix length
+      ra_pref_len=$(get_prefixlen ${pref})
+      if [ -n "${ra_pref_len}" ]; then
+        write_json ${layer} RA ra_pref_len ${INFO} ${addr}-${pref} ${ra_pref_len} ${s_count}
+      fi
+
+      # Check IPv6 autoconf
+      result_phase2_2=${FAIL}
+      rcount=0
+      while [ ${rcount} -lt "${MAX_RETRY}" ]; do
+        # Get IPv6 address
+        v6addrs=$(get_v6addrs ${devicename} ${pref})
+        v6autoconf=$(check_v6autoconf ${devicename} ${v6ifconf} ${ra_flags} ${pref} ${ra_pref_flags})
+        if [ $? -eq 0 -a -n "${v6autoconf}" ]; then
+          result_phase2_2=${SUCCESS}
+          break
+        fi
+        sleep 5
+
+        rcount=$(( rcount + 1 ))
       done
-      echo "   intarface status (IPv6): ${result_phase2_2}"
+      write_json ${layer} IPv6 v6addrs ${INFO} ${pref} "${v6addrs}" ${count}
+      write_json ${layer} IPv6 v6autoconf ${result_phase2_2} ${pref} "${v6autoconf}" ${count}
+      if [ "${VERBOSE}" = "yes" ]; then
+        for addr in $(echo ${v6addrs} | sed 's/,/ /g'); do
+          echo "   IPv6 addr: ${addr}"
+        done
+        echo "   intarface status (IPv6): ${result_phase2_2}"
+      fi
+
+      s_count=$(( s_count + 1 ))
+    done
+
+    # Get IPv6 RA routes
+    ra_routes=$(echo "${ra_info}" | get_ra_routes ${addr})
+    if [ -n "${ra_routes}" ]; then
+      write_json ${layer} RA ra_routes ${INFO} ${addr} ${ra_routes} ${count}
     fi
+
+    s_count=0
+    for route in $(echo ${ra_routes} | sed 's/,/ /g'); do
+      if [ "${VERBOSE}" = "yes" ]; then
+        echo "   IPv6 RA route: ${route}"
+      fi
+      # Get IPv6 RA route flag
+      ra_route_flag=$(echo "${ra_info}" | get_ra_route_flag ${addr} ${route})
+      if [ -n "${ra_route_flag}" ]; then
+        write_json ${layer} RA ra_route_flag ${INFO} ${addr}-${route} ${ra_route_flag} ${s_count}
+      fi
+      if [ "${VERBOSE}" = "yes" ]; then
+        echo "    flag: ${ra_route_flag}"
+      fi
+
+      # Get IPv6 RA route parameters
+      ra_route_lifetime=$(echo "${ra_info}" | get_ra_route_lifetime ${addr} ${route})
+      if [ -n "${ra_route_lifetime}" ]; then
+        write_json ${layer} RA ra_route_lifetime ${INFO} ${addr}-${route} ${ra_route_lifetime} ${s_count}
+      fi
+      if [ "${VERBOSE}" = "yes" ]; then
+        echo "    lifetime: ${ra_route_lifetime}"
+      fi
+
+      s_count=$(( s_count + 1 ))
+    done
+
+    # Get IPv6 RA RDNSSes
+    ra_rdnsses=$(echo "${ra_info}" | get_ra_rdnsses ${addr})
+    if [ -n "${ra_rdnsses}" ]; then
+      write_json ${layer} RA ra_rdnsses ${INFO} ${addr} ${ra_rdnsses} ${count}
+    fi
+
+    s_count=0
+    for rdnss in $(echo ${ra_rdnsses} | sed 's/,/ /g'); do
+      if [ "${VERBOSE}" = "yes" ]; then
+        echo "   IPv6 RA rdnss: ${rdnss}"
+      fi
+      # Get IPv6 RA RDNSS lifetime
+      ra_rdnss_lifetime=$(echo "${ra_info}" | get_ra_rdnss_lifetime ${addr} ${rdnss})
+      if [ -n "${ra_rdnss_lifetime}" ]; then
+        write_json ${layer} RA ra_rdnss_lifetime ${INFO} ${addr}-${rdnss} ${ra_rdnss_lifetime} ${s_count}
+      fi
+      if [ "${VERBOSE}" = "yes" ]; then
+        echo "    lifetime: ${ra_rdnss_lifetime}"
+      fi
+
+      s_count=$(( s_count + 1 ))
+    done
+
     count=$(( count + 1 ))
   done
 
