@@ -1,7 +1,7 @@
 #!/bin/bash
 # sindan.sh
-# version 2.1.0
-VERSION="2.1.0"
+# version 2.1.1
+VERSION="2.1.1"
 
 # read configurationfile
 . ./sindan.conf
@@ -102,7 +102,7 @@ get_ifstatus() {
     echo "ERROR: get_ifstatus <devicename>." 1>&2
     return 1
   fi
-  status=`cat /sys/class/net/$1/operstate`
+  status=$(cat /sys/class/net/$1/operstate)
   if [ "${status}" = "up" ]; then
     echo ${status}; return 0
   else
@@ -139,8 +139,8 @@ get_mediatype() {
     echo "ERROR: get_mediatype <devicename>." 1>&2
     return 1
   fi
-  speed=`cat /sys/class/net/$1/speed`
-  duplex=`cat /sys/class/net/$1/duplex`
+  speed=$(cat /sys/class/net/$1/speed)
+  duplex=$(cat /sys/class/net/$1/duplex)
   echo ${speed}_${duplex}
   return $?
   )
@@ -229,32 +229,33 @@ get_wifi_environment() {
   fi
   echo "BSSID,Protocol,SSID,Quality,RSSI,Noise,BitRates"
   iwlist $1 scanning							|
-  awk 'BEGIN{								#
-    find=0;								#
+  awk 'BEGIN {								#
+    find=0								#
+  } {									#
     while (getline line) {						#
       if (find==1) {							#
         if (match(line,/Protocol:.*/)) {				#
-          split(line,a,":");						#
-          printf ",%s", a[2];						#
+          split(line,a,":")						#
+          printf ",%s", a[2]						#
         } else if (match(line,/ESSID:.*/)) {				#
-          split(line,a,"\"");						#
-          printf ",%s", a[2];						#
+          split(line,a,"\"")						#
+          printf ",%s", a[2]						#
         } else if (match(line,/Channel [0-9]*/)) {			#
-          split(substr(line,RSTART,RLENGTH),a," ");			#
-          printf ",%s", a[2];						#
+          split(substr(line,RSTART,RLENGTH),a," ")			#
+          printf ",%s", a[2]						#
         } else if (match(line,/Quality=.*/)) {				#
-          gsub(/=/," ",line);						#
-          split(line,a," ");						#
-          printf ",%s,%s,%s", a[2], a[5], a[9];				#
+          gsub(/=/," ",line)						#
+          split(line,a," ")						#
+          printf ",%s,%s,%s", a[2], a[5], a[9]				#
         } else if (match(line,/Rates:[0-9.]* /)) {			#
-          split(substr(line,RSTART,RLENGTH),a,":");			#
-          printf ",%s\n", a[2];						#
-          find=0;							#
+          split(substr(line,RSTART,RLENGTH),a,":")			#
+          printf ",%s\n", a[2]						#
+          find=0							#
         }								#
       } else if (match(line,/Address:.*/)) {				#
-        split(substr(line,RSTART,RLENGTH),a," ");			#
-        printf "%s", tolower(a[2]);					#
-        find=1;								#
+        split(substr(line,RSTART,RLENGTH),a," ")			#
+        printf "%s", tolower(a[2])					#
+        find=1								#
       }									#
     }									#
   }'
@@ -294,15 +295,15 @@ check_v4autoconf() {
     dhcp_data=""
     which dhcpcd > /dev/null 2>&1
     if [ $? -eq 0 ]; then
-      dhcp_data=`dhcpcd -4 -U $1 | sed "s/'//g"`
+      dhcp_data=$(dhcpcd -4 -U $1 | sed "s/'//g")
     else
-      dhcp_data=`cat /var/lib/dhcp/dhclient.$1.leases | sed 's/"//g'`
+      dhcp_data=$(cat /var/lib/dhcp/dhclient.$1.leases | sed 's/"//g')
     fi
     echo "${dhcp_data}"
 
     # simple comparision
-    dhcpv4addr=`echo "${dhcp_data}"                                     |
-                sed -n 's/^ip_address=\([0-9.]*\)/\1/p'`
+    dhcpv4addr=$(echo "${dhcp_data}"					|
+               sed -n 's/^ip_address=\([0-9.]*\)/\1/p')
     if [ -z "${dhcpv4addr}" -o -z "${v4addr}" ]; then
       return 1
     fi
@@ -336,7 +337,8 @@ get_netmask() {
     echo "ERROR: get_netmask <devicename>." 1>&2
     return 1
   fi
-  preflen=`ip -4 addr show $1 | sed -n 's/^.*inet [0-9.]*\/\([0-9]*\) .*$/\1/p'`
+  preflen=$(ip -4 addr show $1						|
+          sed -n 's/^.*inet [0-9.]*\/\([0-9]*\) .*$/\1/p')
   case "${preflen}" in
     16) echo "255.255.0.0" ;;
     17) echo "255.255.128.0" ;;
@@ -385,9 +387,7 @@ ip2decimal() {
     echo "ERROR: ip2decimal <v4addr>." 1>&2
     return 1
   fi
-  echo $1                                                               |
-  tr . '\n'                                                             |
-  awk '{s = s*256 + $1} END{print s}'
+  echo $1 | tr . '\n' | awk '{s = s*256 + $1} END{print s}'
 }
 
 #
@@ -451,7 +451,8 @@ get_v6ifconf() {
     echo "ERROR: get_v6ifconf <devicename>." 1>&2
     return 1
   fi
-  v6ifconf=`grep "$1 inet6" /etc/network/interfaces | awk '{print $4}'`
+  ## TODO: support netplan
+  v6ifconf=$(grep "$1 inet6" /etc/network/interfaces | awk '{print $4}')
   if [ -n "${v6ifconf}" ]; then
     cat ${v6ifconf}
   else
@@ -484,9 +485,9 @@ get_ra_info() {
 
 #
 get_ra_addrs() {
-  grep "^ from"                                                         |
-  awk '{print $2}'                                                      |
-  awk -F\n -v ORS=',' '{print}'                                         |
+  grep "^ from"								|
+  awk '{print $2}'							|
+  awk -F\n -v ORS=',' '{print}'						|
   sed 's/,$//'
   return $?
 }
@@ -497,40 +498,40 @@ get_ra_flags() {
     echo "ERROR: get_ra_flags <ra_source>." 1>&2
     return 1
   fi
-  awk -v src=$1 'BEGIN {                                                #
-    flags=""                                                            #
-  } {                                                                   #
-    while (getline line) {                                              #
-      if (match(line,/^Stateful address conf./)                         \
-          && match(line,/Yes/)) {                                       #
-        flags=flags "M"                                                 #
-      } else if (match(line,/^Stateful other conf./)                    \
-                 && match(line,/Yes/)) {                                #
-        flags=flags "O"                                                 #
-      } else if (match(line,/^Mobile home agent/)                       \
-                 && match(line,/Yes/)) {                                #
-        flags=flags "H"                                                 #
-      } else if (match(line,/^Router preference/)) {                    #
-        if (match(line,/low/)) {                                        #
-          flags=flags "l"                                               #
-        } else if (match(line,/medium/)) {                              #
-          flags=flags "m"                                               #
-        } else if (match(line,/high/)) {                                #
-          flags=flags "h"                                               #
-        }                                                               #
-      } else if (match(line,/^Neighbor discovery proxy/)                \
-                 && match(line,/Yes/)) {                                #
-        flags=flags "P"                                                 #
-      } else if (match(line,/^ from.*/)) {                              #
-        if (line ~ src) {                                               #
-          exit                                                          #
-        } else {                                                        #
-          flags=""                                                      #
-        }                                                               #
-      }                                                                 #
-    }                                                                   #
-  } END {                                                               #
-    printf "%s", flags                                                  #
+  awk -v src=$1 'BEGIN {						#
+    flags=""								#
+  } {									#
+    while (getline line) {						#
+      if (match(line,/^Stateful address conf./)				\
+          && match(line,/Yes/)) {					#
+        flags=flags "M"							#
+      } else if (match(line,/^Stateful other conf./)			\
+                 && match(line,/Yes/)) {				#
+        flags=flags "O"							#
+      } else if (match(line,/^Mobile home agent/)			\
+                 && match(line,/Yes/)) {				#
+        flags=flags "H"							#
+      } else if (match(line,/^Router preference/)) {			#
+        if (match(line,/low/)) {					#
+          flags=flags "l"						#
+        } else if (match(line,/medium/)) {				#
+          flags=flags "m"						#
+        } else if (match(line,/high/)) {				#
+          flags=flags "h"						#
+        }								#
+      } else if (match(line,/^Neighbor discovery proxy/)		\
+                 && match(line,/Yes/)) {				#
+        flags=flags "P"							#
+      } else if (match(line,/^ from.*/)) {				#
+        if (line ~ src) {						#
+          exit								#
+        } else {							#
+          flags=""							#
+        }								#
+      }									#
+    }									#
+  } END {								#
+    printf "%s", flags							#
   }'
   return $?
 }
@@ -541,23 +542,23 @@ get_ra_hoplimit() {
     echo "ERROR: get_ra_hoplimit <ra_source>." 1>&2
     return 1
   fi
-  awk -v src=$1 'BEGIN {                                                #
-    hops=""                                                             #
-  } {                                                                   #
-    while (getline line) {                                              #
-      if (match(line,/^Hop limit/)) {                                   #
-        split(line,h," ")                                               #
-        hops=h[4]                                                       #
-      } else if (match(line,/^ from.*/)) {                              #
-        if (line ~ src) {                                               #
-          exit                                                          #
-        } else {                                                        #
-          hops=""                                                       #
-        }                                                               #
-      }                                                                 #
-    }                                                                   #
-  } END {                                                               #
-    printf "%s", hops                                                   #
+  awk -v src=$1 'BEGIN {						#
+    hops=""								#
+  } {									#
+    while (getline line) {						#
+      if (match(line,/^Hop limit/)) {					#
+        split(line,h," ")						#
+        hops=h[4]							#
+      } else if (match(line,/^ from.*/)) {				#
+        if (line ~ src) {						#
+          exit								#
+        } else {							#
+          hops=""							#
+        }								#
+      }									#
+    }									#
+  } END {								#
+    printf "%s", hops							#
   }'
   return $?
 }
@@ -568,23 +569,23 @@ get_ra_lifetime() {
     echo "ERROR: get_ra_lifetime <ra_source>." 1>&2
     return 1
   fi
-  awk -v src=$1 'BEGIN {                                                #
-    time=""                                                             #
-  } {                                                                   #
-    while (getline line) {                                              #
-      if (match(line,/^Router lifetime/)) {                             #
-        split(line,t," ")                                               #
-        time=t[4]                                                       #
-      } else if (match(line,/^ from.*/)) {                              #
-        if (line ~ src) {                                               #
-          exit                                                          #
-        } else {                                                        #
-          time=""                                                       #
-        }                                                               #
-      }                                                                 #
-    }                                                                   #
-  } END {                                                               #
-    printf "%s", time                                                   #
+  awk -v src=$1 'BEGIN {						#
+    time=""								#
+  } {									#
+    while (getline line) {						#
+      if (match(line,/^Router lifetime/)) {				#
+        split(line,t," ")						#
+        time=t[4]							#
+      } else if (match(line,/^ from.*/)) {				#
+        if (line ~ src) {						#
+          exit								#
+        } else {							#
+          time=""							#
+        }								#
+      }									#
+    }									#
+  } END {								#
+    printf "%s", time							#
   }'
   return $?
 }
@@ -595,23 +596,23 @@ get_ra_reachable() {
     echo "ERROR: get_ra_reachable <ra_source>." 1>&2
     return 1
   fi
-  awk -v src=$1 'BEGIN {                                                #
-    time=""                                                             #
-  } {                                                                   #
-    while (getline line) {                                              #
-      if (match(line,/^Reachable time/)) {                              #
-        split(line,t," ")                                               #
-        time=t[4]                                                       #
-      } else if (match(line,/^ from.*/)) {                              #
-        if (line ~ src) {                                               #
-          exit                                                          #
-        } else {                                                        #
-          time=""                                                       #
-        }                                                               #
-      }                                                                 #
-    }                                                                   #
-  } END {                                                               #
-    printf "%s", time                                                   #
+  awk -v src=$1 'BEGIN {						#
+    time=""								#
+  } {									#
+    while (getline line) {						#
+      if (match(line,/^Reachable time/)) {				#
+        split(line,t," ")						#
+        time=t[4]							#
+      } else if (match(line,/^ from.*/)) {				#
+        if (line ~ src) {						#
+          exit								#
+        } else {							#
+          time=""							#
+        }								#
+      }									#
+    }									#
+  } END {								#
+    printf "%s", time							#
   }'
   return $?
 }
@@ -622,23 +623,23 @@ get_ra_retransmit() {
     echo "ERROR: get_ra_retransmit <ra_source>." 1>&2
     return 1
   fi
-  awk -v src=$1 'BEGIN {                                                #
-    time=""                                                             #
-  } {                                                                   #
-    while (getline line) {                                              #
-      if (match(line,/^Retransmit time/)) {                             #
-        split(line,t," ")                                               #
-        time=t[4]                                                       #
-      } else if (match(line,/^ from.*/)) {                              #
-        if (line ~ src) {                                               #
-          exit                                                          #
-        } else {                                                        #
-          time=""                                                       #
-        }                                                               #
-      }                                                                 #
-    }                                                                   #
-  } END {                                                               #
-    printf "%s", time                                                   #
+  awk -v src=$1 'BEGIN {						#
+    time=""								#
+  } {									#
+    while (getline line) {						#
+      if (match(line,/^Retransmit time/)) {				#
+        split(line,t," ")						#
+        time=t[4]							#
+      } else if (match(line,/^ from.*/)) {				#
+        if (line ~ src) {						#
+          exit								#
+        } else {							#
+          time=""							#
+        }								#
+      }									#
+    }									#
+  } END {								#
+    printf "%s", time							#
   }'
   return $?
 }
@@ -649,24 +650,24 @@ get_ra_prefs() {
     echo "ERROR: get_ra_prefs <ra_source>." 1>&2
     return 1
   fi
-  awk -v src=$1 'BEGIN {                                                #
-    prefs=""                                                            #
-  } {                                                                   #
-    while (getline line) {                                              #
-      if (match(line,/^ Prefix/)) {                                     #
-        split(line,p," ")                                               #
-        prefs=prefs ","p[3]                                             #
-      } else if (match(line,/^ from.*/)) {                              #
-        if (line ~ src) {                                               #
-          exit                                                          #
-        } else {                                                        #
-          prefs=""                                                      #
-        }                                                               #
-      }                                                                 #
-    }                                                                   #
-  } END {                                                               #
-    printf "%s", prefs                                                  #
-  }'                                                                    |
+  awk -v src=$1 'BEGIN {						#
+    prefs=""								#
+  } {									#
+    while (getline line) {						#
+      if (match(line,/^ Prefix/)) {					#
+        split(line,p," ")						#
+        prefs=prefs ","p[3]						#
+      } else if (match(line,/^ from.*/)) {				#
+        if (line ~ src) {						#
+          exit								#
+        } else {							#
+          prefs=""							#
+        }								#
+      }									#
+    }									#
+  } END {								#
+    printf "%s", prefs							#
+  }'									|
   sed 's/^,//'
   return $?
 }
@@ -677,33 +678,33 @@ get_ra_pref_flags() {
     echo "ERROR: get_ra_pref_flags <ra_source> <ra_pref>." 1>&2
     return 1
   fi
-  awk -v src=$1 -v pref=$2 'BEGIN {                                     #
-    find=0                                                              #
-    flags=""                                                            #
-    split(pref,p,"/")                                                   #
-  } {                                                                   #
-    while (getline line) {                                              #
-      if (find==1) {                                                    #
-        if (match(line,/^  On-link/) && match(line,/Yes/)) {            #
-          flags=flags "L"                                               #
-        } else if (match(line,/^  Autonomous address conf./)            \
-                   && match(line,/Yes/)) {                              #
-          flags=flags "A"                                               #
-        } else if (match(line,/^  Pref. time/)) {                       #
-          find=0                                                        #
-        }                                                               #
-      } else if (match(line,/^ Prefix/) && line ~ p[1]) {               #
-        find=1                                                          #
-      } else if (match(line,/^ from.*/)) {                              #
-        if (line ~ src) {                                               #
-          exit                                                          #
-        } else {                                                        #
-          flags=""                                                      #
-        }                                                               #
-      }                                                                 #
-    }                                                                   #
-  } END {                                                               #
-    printf "%s", flags                                                  #
+  awk -v src=$1 -v pref=$2 'BEGIN {					#
+    find=0								#
+    flags=""								#
+    split(pref,p,"/")							#
+  } {									#
+    while (getline line) {						#
+      if (find==1) {							#
+        if (match(line,/^  On-link/) && match(line,/Yes/)) {		#
+          flags=flags "L"						#
+        } else if (match(line,/^  Autonomous address conf./)		\
+                   && match(line,/Yes/)) {				#
+          flags=flags "A"						#
+        } else if (match(line,/^  Pref. time/)) {			#
+          find=0							#
+        }								#
+      } else if (match(line,/^ Prefix/) && line ~ p[1]) {		#
+        find=1								#
+      } else if (match(line,/^ from.*/)) {				#
+        if (line ~ src) {						#
+          exit								#
+        } else {							#
+          flags=""							#
+        }								#
+      }									#
+    }									#
+  } END {								#
+    printf "%s", flags							#
   }'
   return $?
 }
@@ -714,30 +715,30 @@ get_ra_pref_valid() {
     echo "ERROR: get_ra_pref_valid <ra_source> <ra_pref>." 1>&2
     return 1
   fi
-  awk -v src=$1 -v pref=$2 'BEGIN {                                     #
-    find=0                                                              #
-    time=""                                                             #
-    split(pref,p,"/")                                                   #
-  } {                                                                   #
-    while (getline line) {                                              #
-      if (find==1) {                                                    #
-        if (match(line,/^  Valid time/)) {                              #
-          split(line,t," ")                                             #
-          time=t[4]                                                     #
-          find=0                                                        #
-        }                                                               #
-      } else if (match(line,/^ Prefix/) && line ~ p[1]) {               #
-        find=1                                                          #
-      } else if (match(line,/^ from.*/)) {                              #
-        if (line ~ src) {                                               #
-          exit                                                          #
-        } else {                                                        #
-          flags=""                                                      #
-        }                                                               #
-      }                                                                 #
-    }                                                                   #
-  } END {                                                               #
-    printf "%s", time                                                   #
+  awk -v src=$1 -v pref=$2 'BEGIN {					#
+    find=0								#
+    time=""								#
+    split(pref,p,"/")							#
+  } {									#
+    while (getline line) {						#
+      if (find==1) {							#
+        if (match(line,/^  Valid time/)) {				#
+          split(line,t," ")						#
+          time=t[4]							#
+          find=0							#
+        }								#
+      } else if (match(line,/^ Prefix/) && line ~ p[1]) {		#
+        find=1								#
+      } else if (match(line,/^ from.*/)) {				#
+        if (line ~ src) {						#
+          exit								#
+        } else {							#
+          flags=""							#
+        }								#
+      }									#
+    }									#
+  } END {								#
+    printf "%s", time							#
   }'
   return $?
 }
@@ -748,30 +749,30 @@ get_ra_pref_preferred() {
     echo "ERROR: get_ra_pref_preferred <ra_source> <ra_pref>." 1>&2
     return 1
   fi
-  awk -v src=$1 -v pref=$2 'BEGIN {                                     #
-    find=0                                                              #
-    time=""                                                             #
-    split(pref,p,"/")                                                   #
-  } {                                                                   #
-    while (getline line) {                                              #
-      if (find==1) {                                                    #
-        if (match(line,/^  Pref. time/)) {                              #
-          split(line,t," ")                                             #
-          time=t[4]                                                     #
-          find=0                                                        #
-        }                                                               #
-      } else if (match(line,/^ Prefix/) && line ~ p[1]) {               #
-        find=1                                                          #
-      } else if (match(line,/^ from.*/)) {                              #
-        if (line ~ src) {                                               #
-          exit                                                          #
-        } else {                                                        #
-          flags=""                                                      #
-        }                                                               #
-      }                                                                 #
-    }                                                                   #
-  } END {                                                               #
-    printf "%s", time                                                   #
+  awk -v src=$1 -v pref=$2 'BEGIN {					#
+    find=0								#
+    time=""								#
+    split(pref,p,"/")							#
+  } {									#
+    while (getline line) {						#
+      if (find==1) {							#
+        if (match(line,/^  Pref. time/)) {				#
+          split(line,t," ")						#
+          time=t[4]							#
+          find=0							#
+        }								#
+      } else if (match(line,/^ Prefix/) && line ~ p[1]) {		#
+        find=1								#
+      } else if (match(line,/^ from.*/)) {				#
+        if (line ~ src) {						#
+          exit								#
+        } else {							#
+          flags=""							#
+        }								#
+      }									#
+    }									#
+  } END {								#
+    printf "%s", time							#
   }'
   return $?
 }
@@ -782,24 +783,24 @@ get_ra_routes() {
     echo "ERROR: get_ra_routes <ra_source>." 1>&2
     return 1
   fi
-  awk -v src=$1 'BEGIN {                                                #
-    routes=""                                                           #
-  } {                                                                   #
-    while (getline line) {                                              #
-      if (match(line,/^ Route/)) {                                      #
-        split(line,r," ")                                               #
-        routes=routes ","r[3]                                           #
-      } else if (match(line,/^ from.*/)) {                              #
-        if (line ~ src) {                                               #
-          exit                                                          #
-        } else {                                                        #
-          routes=""                                                     #
-        }                                                               #
-      }                                                                 #
-    }                                                                   #
-  } END {                                                               #
-    printf "%s", routes                                                 #
-  }'                                                                    |
+  awk -v src=$1 'BEGIN {						#
+    routes=""								#
+  } {									#
+    while (getline line) {						#
+      if (match(line,/^ Route/)) {					#
+        split(line,r," ")						#
+        routes=routes ","r[3]						#
+      } else if (match(line,/^ from.*/)) {				#
+        if (line ~ src) {						#
+          exit								#
+        } else {							#
+          routes=""							#
+        }								#
+      }									#
+    }									#
+  } END {								#
+    printf "%s", routes							#
+  }'									|
   sed 's/^,//'
   return $?
 }
@@ -810,30 +811,30 @@ get_ra_route_flag() {
     echo "ERROR: get_ra_route_flag <ra_source> <ra_route>." 1>&2
     return 1
   fi
-  awk -v src=$1 -v route=$2 'BEGIN {                                    #
-    find=0                                                              #
-    flag=""                                                             #
-    split(route,r,"/")                                                  #
-  } {                                                                   #
-    while (getline line) {                                              #
-      if (find==1) {                                                    #
-        if (match(line,/^  Route preference/)) {                        #
-          split(line,p," ")                                             #
-          flag=p[4]                                                     #
-          find=0                                                        #
-        }                                                               #
-      } else if (match(line,/^ Route/) && line ~ r[1]) {                #
-        find=1                                                          #
-      } else if (match(line,/^ from.*/)) {                              #
-        if (line ~ src) {                                               #
-          exit                                                          #
-        } else {                                                        #
-          flag=""                                                       #
-        }                                                               #
-      }                                                                 #
-    }                                                                   #
-  } END {                                                               #
-    printf "%s", flag                                                   #
+  awk -v src=$1 -v route=$2 'BEGIN {					#
+    find=0								#
+    flag=""								#
+    split(route,r,"/")							#
+  } {									#
+    while (getline line) {						#
+      if (find==1) {							#
+        if (match(line,/^  Route preference/)) {			#
+          split(line,p," ")						#
+          flag=p[4]							#
+          find=0							#
+        }								#
+      } else if (match(line,/^ Route/) && line ~ r[1]) {		#
+        find=1								#
+      } else if (match(line,/^ from.*/)) {				#
+        if (line ~ src) {						#
+          exit								#
+        } else {							#
+          flag=""							#
+        }								#
+      }									#
+    }									#
+  } END {								#
+    printf "%s", flag							#
   }'
   return $?
 }
@@ -844,30 +845,30 @@ get_ra_route_lifetime() {
     echo "ERROR: get_ra_route_flag <ra_source> <ra_route>." 1>&2
     return 1
   fi
-  awk -v src=$1 -v route=$2 'BEGIN {                                    #
-    find=0                                                              #
-    time=""                                                             #
-    split(route,r,"/")                                                  #
-  } {                                                                   #
-    while (getline line) {                                              #
-      if (find==1) {                                                    #
-        if (match(line,/^  Route lifetime/)) {                          #
-          split(line,t," ")                                             #
-          time=t[4]                                                     #
-          find=0                                                        #
-        }                                                               #
-      } else if (match(line,/^ Route/) && line ~ r[1]) {                #
-        find=1                                                          #
-      } else if (match(line,/^ from.*/)) {                              #
-        if (line ~ src) {                                               #
-          exit                                                          #
-        } else {                                                        #
-          time=""                                                       #
-        }                                                               #
-      }                                                                 #
-    }                                                                   #
-  } END {                                                               #
-    printf "%s", time                                                   #
+  awk -v src=$1 -v route=$2 'BEGIN {					#
+    find=0								#
+    time=""								#
+    split(route,r,"/")							#
+  } {									#
+    while (getline line) {						#
+      if (find==1) {							#
+        if (match(line,/^  Route lifetime/)) {				#
+          split(line,t," ")						#
+          time=t[4]							#
+          find=0							#
+        }								#
+      } else if (match(line,/^ Route/) && line ~ r[1]) {		#
+        find=1								#
+      } else if (match(line,/^ from.*/)) {				#
+        if (line ~ src) {						#
+          exit								#
+        } else {							#
+          time=""							#
+        }								#
+      }									#
+    }									#
+  } END {								#
+    printf "%s", time							#
   }'
   return $?
 }
@@ -878,24 +879,24 @@ get_ra_rdnsses() {
     echo "ERROR: get_ra_rdnsses <ra_source>." 1>&2
     return 1
   fi
-  awk -v src=$1 'BEGIN {                                                #
-    rdnsses=""                                                          #
-  } {                                                                   #
-    while (getline line) {                                              #
-      if (match(line,/^ Recursive DNS server/)) {                       #
-        split(line,r," ")                                               #
-        rdnsses=rdnsses ","r[5]                                         #
-      } else if (match(line,/^ from.*/)) {                              #
-        if (line ~ src) {                                               #
-          exit                                                          #
-        } else {                                                        #
-          rdnsses=""                                                    #
-        }                                                               #
-      }                                                                 #
-    }                                                                   #
-  } END {                                                               #
-    printf "%s", rdnsses                                                #
-  }'                                                                    |
+  awk -v src=$1 'BEGIN {						#
+    rdnsses=""								#
+  } {									#
+    while (getline line) {						#
+      if (match(line,/^ Recursive DNS server/)) {			#
+        split(line,r," ")						#
+        rdnsses=rdnsses ","r[5]						#
+      } else if (match(line,/^ from.*/)) {				#
+        if (line ~ src) {						#
+          exit								#
+        } else {							#
+          rdnsses=""							#
+        }								#
+      }									#
+    }									#
+  } END {								#
+    printf "%s", rdnsses						#
+  }'									|
   sed 's/^,//'
   return $?
 }
@@ -906,30 +907,30 @@ get_ra_rdnss_lifetime() {
     echo "ERROR: get_ra_rdnss_flag <ra_source> <ra_route>." 1>&2
     return 1
   fi
-  awk -v src=$1 -v rdnss=$2 'BEGIN {                                    #
-    find=0                                                              #
-    time=""                                                             #
-  } {                                                                   #
-    while (getline line) {                                              #
-      if (find==1) {                                                    #
-        if (match(line,/^  DNS server lifetime/)) {                     #
-          split(line,t," ")                                             #
-          time=t[5]                                                     #
-          find=0                                                        #
-        }                                                               #
-      } else if (match(line,/^ Recursive DNS server/)                   \
-                 && line ~ rdnss) {                                     #
-        find=1                                                          #
-      } else if (match(line,/^ from.*/)) {                              #
-        if (line ~ src) {                                               #
-          exit                                                          #
-        } else {                                                        #
-          time=""                                                       #
-        }                                                               #
-      }                                                                 #
-    }                                                                   #
-  } END {                                                               #
-    printf "%s", time                                                   #
+  awk -v src=$1 -v rdnss=$2 'BEGIN {					#
+    find=0								#
+    time=""								#
+  } {									#
+    while (getline line) {						#
+      if (find==1) {							#
+        if (match(line,/^  DNS server lifetime/)) {			#
+          split(line,t," ")						#
+          time=t[5]							#
+          find=0							#
+        }								#
+      } else if (match(line,/^ Recursive DNS server/)			\
+                 && line ~ rdnss) {					#
+        find=1								#
+      } else if (match(line,/^ from.*/)) {				#
+        if (line ~ src) {						#
+          exit								#
+        } else {							#
+          time=""							#
+        }								#
+      }									#
+    }									#
+  } END {								#
+    printf "%s", time							#
   }'
   return $?
 }
@@ -943,10 +944,10 @@ check_v6autoconf() {
   fi
   result=1
   if [ $2 = "automatic" ]; then
-    o_flag=`echo $3 | grep O`
-    m_flag=`echo $3 | grep M`
+    o_flag=$(echo $3 | grep O)
+    m_flag=$(echo $3 | grep M)
     v6addrs=$(get_v6addrs $1 $4)
-    a_flag=`echo $5 | grep A`
+    a_flag=$(echo $5 | grep A)
     dhcp_data=""
     #
     rdisc6 -1 $1
@@ -956,15 +957,15 @@ check_v6autoconf() {
     if [ -n "${o_flag}" -o -n "${m_flag}" ]; then
       which dhcpcd > /dev/null 2>&1
       if [ $? -eq 0 ]; then
-        dhcp_data=`dhcpcd -6 -U $1 | sed "s/'//g"`
+        dhcp_data=$(dhcpcd -6 -U $1 | sed "s/'//g")
       else
-        dhcp_data=`cat /var/lib/dhcp/dhclient.$1.leases | sed 's/"//g'`
+        dhcp_data=$(cat /var/lib/dhcp/dhclient.$1.leases | sed 's/"//g')
       fi
       echo "${dhcp_data}"
     fi
     if [ -n "${m_flag}" ]; then
       result=$(( result + 2 ))
-      for addr in `echo ${v6addrs} | sed 's/,/ /g'`; do
+      for addr in $(echo ${v6addrs} | sed 's/,/ /g'); do
         # simple comparision
         echo "${dhcp_data}"						|
         grep "dhcp6_ia_na1_ia_addr1=${addr}" > /dev/null 2>&1
@@ -987,7 +988,7 @@ get_v6addrs() {
     echo "ERROR: get_v6addrs <devicename> <ra_prefix>." 1>&2
     return 1
   fi
-  pref=`echo $2 | sed -n 's/^\([0-9a-f:]*\)::\/.*$/\1/p'`
+  pref=$(echo $2 | sed -n 's/^\([0-9a-f:]*\)::\/.*$/\1/p')
   ip -6 addr show $1 scope global					|
   sed -n "s/^.*inet6 \(${pref}:[0-9a-f:]*\)\/.*$/\1/p"			|
   awk -F\n -v ORS=',' '{print}'						|
@@ -1111,7 +1112,7 @@ cmdset_ping() {
   count=$5
   rtt_type=(min ave max dev)
   result=${FAIL}
-  string=`echo " ping to ${ipv} ${type}: ${target}"`
+  string=$(echo " ping to ${ipv} ${type}: ${target}")
   ping_result=$(do_ping ${ver} ${target})
   if [ $? -eq 0 ]; then
     result=${SUCCESS}
@@ -1127,9 +1128,9 @@ cmdset_ping() {
     rtt_loss=$(get_loss "${ping_result}")
     write_json ${layer} ${ipv} v${ver}loss_${type} ${INFO} ${target}	\
                ${rtt_loss} ${count}
-    string=`echo "${string}\n  status: ok, rtt: ${rtt_data[1]} msec, loss: ${rtt_loss} %"`
+    string=$(echo "${string}\n  status: ok, rtt: ${rtt_data[1]} msec, loss: ${rtt_loss} %")
   else
-    string=`echo "${string}\n  status: ng"`
+    string=$(echo "${string}\n  status: ng")
   fi
   if [ "${VERBOSE}" = "yes" ]; then
     echo -e "${string}"
@@ -1216,7 +1217,7 @@ cmdset_trace () {
   target=$4
   count=$5
   result=${FAIL}
-  string=`echo " traceroute to ${ipv} server: ${target}"`
+  string=$(echo " traceroute to ${ipv} server: ${target}")
   path_result=$(do_traceroute ${ver} ${target})
   if [ $? -eq 0 ]; then
     result=${SUCCESS}
@@ -1227,9 +1228,9 @@ cmdset_trace () {
     path_data=$(get_tracepath "${path_result}")
     write_json ${layer} ${ipv} v${ver}path_${type} ${INFO} ${target}	\
                ${path_data} ${count}
-    string=`echo "${string}\n  path: ${path_data}"`
+    string=$(echo "${string}\n  path: ${path_data}")
   else
-    string=`echo "${string}\n  status: ng"`
+    string=$(echo "${string}\n  status: ng")
   fi
   if [ "${VERBOSE}" = "yes" ]; then
     echo -e "${string}"
@@ -1252,16 +1253,16 @@ cmdset_pmtud () {
   min_mtu=1200
   max_mtu=$5
   count=$6
-  string=`echo " pmtud to ${ipv} server: ${target}"`
+  string=$(echo " pmtud to ${ipv} server: ${target}")
   pmtu_result=$(do_pmtud ${ver} ${target} ${min_mtu} ${max_mtu})
   if [ "${pmtu_result}" -eq 0 ]; then
     write_json ${layer} ${ipv} v${ver}pmtu_${type} ${INFO} ${target}	\
                unmeasurable ${count}
-    string=`echo "${string}\n  pmtud: unmeasurable"`
+    string=$(echo "${string}\n  pmtud: unmeasurable")
   else
     write_json ${layer} ${ipv} v${ver}pmtu_${type} ${INFO} ${target}	\
                ${pmtu_result} ${count}
-    string=`echo "${string}\n  pmtu: ${pmtu_result} MB"`
+    string=$(echo "${string}\n  pmtu: ${pmtu_result} MB")
   fi
   if [ "${VERBOSE}" = "yes" ]; then
     echo -e "${string}"
@@ -1353,10 +1354,10 @@ cmdset_dnslookup () {
   type=$3
   target=$4
   dns_result=""
-  string=`echo " dns lookup for ${type} record by ${ipv} nameserver: ${target}"`
-  for fqdn in `echo ${FQDNS} | sed 's/,/ /g'`; do
+  string=$(echo " dns lookup for ${type} record by ${ipv} nameserver: ${target}")
+  for fqdn in $(echo ${FQDNS} | sed 's/,/ /g'); do
     result=${FAIL}
-    string=`echo "${string}\n  resolve server: ${fqdn}"`
+    string=$(echo "${string}\n  resolve server: ${fqdn}")
     dns_result=$(do_dnslookup ${target} ${type} ${fqdn})
     if [ $? -eq 0 ]; then
       result=${SUCCESS}
@@ -1375,9 +1376,9 @@ cmdset_dnslookup () {
       dns_rtt=$(get_dnsrtt "${dns_result}")
       write_json ${layer} ${ipv} v${ver}dnsrtt_${type}_${fqdn} ${INFO}	\
                  ${target} "${dns_rtt}" ${count}
-      string=`echo "${string}\n   status: ok, result(ttl): ${dns_ans}(${dns_ttl} s), query time: ${dns_rtt} ms"`
+      string=$(echo "${string}\n   status: ok, result(ttl): ${dns_ans}(${dns_ttl} s), query time: ${dns_rtt} ms")
     else
-      string=`echo "${string}\n   status: ng ($stat)"`
+      string=$(echo "${string}\n   status: ng ($stat)")
     fi
   done
   if [ "${VERBOSE}" = "yes" ]; then
@@ -1416,7 +1417,7 @@ cmdset_http () {
   target=$4
   count=$5
   result=${FAIL}
-  string=`echo " curl to extarnal server: ${target} by ${ipv}"`
+  string=$(echo " curl to extarnal server: ${target} by ${ipv}")
   http_ans=$(do_curl ${ver} ${target})
   if [ $? -eq 0 ]; then
     result=${SUCCESS}
@@ -1426,9 +1427,9 @@ cmdset_http () {
   write_json ${layer} ${ipv} v${ver}http_${type} ${result} ${target}	\
              "${http_ans}" ${count}
   if [ "${result}" = "${SUCCESS}" ]; then
-    string=`echo "${string}\n  status: ok, http status code: ${http_ans}"`
+    string=$(echo "${string}\n  status: ok, http status code: ${http_ans}")
   else
-    string=`echo "${string}\n  status: ng ($stat)"`
+    string=$(echo "${string}\n  status: ng ($stat)")
   fi
   if [ "${VERBOSE}" = "yes" ]; then
     echo -e "${string}"
@@ -1470,7 +1471,7 @@ trap 'rm -f ${LOCKFILE}; exit 0' INT
 if [ ! -e ${LOCKFILE} ]; then
   echo $$ >"${LOCKFILE}"
 else
-  pid=`cat "${LOCKFILE}"`
+  pid=$(cat "${LOCKFILE}")
   kill -0 "${pid}" > /dev/null 2>&1
   if [ $? -eq 0 ]; then
     exit 0
@@ -1925,28 +1926,28 @@ layer="localnet"
 
 # Do ping to IPv4 routers
 count=0
-for target in `echo ${v4routers} | sed 's/,/ /g'`; do
+for target in $(echo ${v4routers} | sed 's/,/ /g'); do
   cmdset_ping ${layer} 4 router ${target} ${count} &
   count=$(( count + 1 ))
 done
 
 # Do ping to IPv4 nameservers
 count=0
-for target in `echo ${v4nameservers} | sed 's/,/ /g'`; do
+for target in $(echo ${v4nameservers} | sed 's/,/ /g'); do
   cmdset_ping ${layer} 4 namesrv ${target} ${count} &
   count=$(( count + 1 ))
 done
 
 # Do ping to IPv6 routers
 count=0
-for target in `echo ${v6routers} | sed 's/,/ /g'`; do
+for target in $(echo ${v6routers} | sed 's/,/ /g'); do
   cmdset_ping ${layer} 6 router ${target} ${count} &
   count=$(( count + 1 ))
 done
 
 # Do ping to IPv6 nameservers
 count=0
-for target in `echo ${v6nameservers} | sed 's/,/ /g'`; do
+for target in $(echo ${v6nameservers} | sed 's/,/ /g'); do
   cmdset_ping ${layer} 6 namesrv ${target} ${count} &
   count=$(( count + 1 ))
 done
@@ -1963,7 +1964,7 @@ if [ "${MODE}" = "client" ]; then
   v4addr_type=$(check_v4addr ${v4addr})
   if [ "${v4addr_type}" = "private" -o "${v4addr_type}" = "grobal" ]; then
     count=0
-    for target in `echo ${PING_SRVS} | sed 's/,/ /g'`; do
+    for target in $(echo ${PING_SRVS} | sed 's/,/ /g'); do
 
       # Do ping to extarnal IPv4 servers
       cmdset_ping ${layer} 4 srv ${target} ${count} &
@@ -1980,7 +1981,7 @@ if [ "${MODE}" = "client" ]; then
 
   if [ -n "${v6addrs}" ]; then
     count=0
-    for target in `echo ${PING6_SRVS} | sed 's/,/ /g'`; do
+    for target in $(echo ${PING6_SRVS} | sed 's/,/ /g'); do
 
       # Do ping to extarnal IPv6 servers
       cmdset_ping ${layer} 6 srv ${target} ${count} &
@@ -2008,7 +2009,7 @@ if [ "${MODE}" = "client" ]; then
 
   if [ "${v4addr_type}" = "private" -o "${v4addr_type}" = "grobal" ]; then
     count=0
-    for target in `echo "${v4nameservers} ${GPDNS4}" | sed 's/,/ /g'`; do
+    for target in $(echo "${v4nameservers} ${GPDNS4}" | sed 's/,/ /g'); do
 
       # Do dns lookup for A record by IPv4
       cmdset_dnslookup ${layer} 4 A ${target} ${count} &
@@ -2023,7 +2024,7 @@ if [ "${MODE}" = "client" ]; then
   exist_dns64="no"
   if [ -n "${v6addrs}" ]; then
     count=0
-    for target in `echo "${v6nameservers} ${GPDNS6}" | sed 's/,/ /g'`; do
+    for target in $(echo "${v6nameservers} ${GPDNS6}" | sed 's/,/ /g'); do
 
       # Do dns lookup for A record by IPv6
       cmdset_dnslookup ${layer} 6 A ${target} ${count} &
@@ -2035,7 +2036,7 @@ if [ "${MODE}" = "client" ]; then
     done
 
     # check DNS64
-    for target in `echo ${v6nameservers} | sed 's/,/ /g'`; do
+    for target in $(echo ${v6nameservers} | sed 's/,/ /g'); do
       exist_dns64=$(check_dns64 ${target})
     done
   fi
@@ -2050,7 +2051,7 @@ if [ "${MODE}" = "client" ]; then
 
   if [ "${v4addr_type}" = "private" -o "${v4addr_type}" = "grobal" ]; then
     count=0
-    for target in `echo ${V4WEB_SRVS} | sed 's/,/ /g'`; do
+    for target in $(echo ${V4WEB_SRVS} | sed 's/,/ /g'); do
 
       # Do curl to IPv4 web servers by IPv4
       cmdset_http ${layer} 4 srv ${target} ${count} &
@@ -2065,7 +2066,7 @@ if [ "${MODE}" = "client" ]; then
 
   if [ -n "${v6addrs}" ]; then
     count=0
-    for target in `echo ${V6WEB_SRVS} | sed 's/,/ /g'`; do
+    for target in $(echo ${V6WEB_SRVS} | sed 's/,/ /g'); do
 
       # Do curl to IPv6 web servers by IPv6
       cmdset_http ${layer} 6 srv ${target} ${count} &
@@ -2081,7 +2082,7 @@ if [ "${MODE}" = "client" ]; then
     if [ "${exist_dns64}" = "yes" ]; then
       echo " exist dns64 server"
       count=0
-      for target in `echo ${V4WEB_SRVS} | sed 's/,/ /g'`; do
+      for target in $(echo ${V4WEB_SRVS} | sed 's/,/ /g'); do
 
         # Do curl to IPv4 web servers by IPv6
         cmdset_http ${layer} 6 srv ${target} ${count} &
@@ -2100,13 +2101,72 @@ if [ "${MODE}" = "client" ]; then
 elif [ "${MODE}" = "probe" ]; then
   ####################
   ## Phase 4
-  echo "Phase 4: Local name server checking..."
-  layer="dns"
+  echo "Phase 4: Globalnet Layer checking..."
+  layer="globalnet"
 
   v4addr_type=$(check_v4addr ${v4addr})
   if [ "${v4addr_type}" = "private" -o "${v4addr_type}" = "grobal" ]; then
     count=0
-    for target in `echo ${v4nameservers} | sed 's/,/ /g'`; do
+    for target in $(echo ${PING_SRVS} | sed 's/,/ /g'); do
+
+      # Do ping to IPv4 routers
+      count_r=0
+      for target_r in $(echo ${v4routers} | sed 's/,/ /g'); do
+        cmdset_ping ${layer} 4 router ${target_r} ${count_r} &
+        count_r=$(( count_r + 1 ))
+      done
+
+      # Do ping to extarnal IPv4 servers
+      cmdset_ping ${layer} 4 srv ${target} ${count} &
+
+      # Do traceroute to extarnal IPv4 servers
+      cmdset_trace ${layer} 4 srv ${target} ${count} &
+
+      # Check path MTU to extarnal IPv4 servers
+      cmdset_pmtud ${layer} 4 srv ${target} ${ifmtu} ${count} &
+
+      count=$(( count + 1 ))
+    done
+  fi
+
+  if [ -n "${v6addrs}" ]; then
+    count=0
+    for target in $(echo ${PING6_SRVS} | sed 's/,/ /g'); do
+
+      # Do ping to IPv6 routers
+      count_r=0
+      for target_r in $(echo ${v6routers} | sed 's/,/ /g'); do
+        cmdset_ping ${layer} 6 router ${target_r} ${count_r} &
+        count_r=$(( count_r + 1 ))
+      done
+
+      # Do ping to extarnal IPv6 servers
+      cmdset_ping ${layer} 6 srv ${target} ${count} &
+  
+      # Do traceroute to extarnal IPv6 servers
+      cmdset_trace ${layer} 6 srv ${target} ${count} &
+  
+      # Check path MTU to extarnal IPv6 servers
+      cmdset_pmtud ${layer} 6 srv ${target} ${ifmtu} ${count} &
+
+      count=$(( count + 1 ))
+    done
+  fi
+
+  wait
+  echo " done."
+
+  ####################
+  ## Phase 5
+  echo "Phase 5: DNS Layer checking..."
+  layer="dns"
+
+  # Clear dns local cache
+  #TBD
+
+  if [ "${v4addr_type}" = "private" -o "${v4addr_type}" = "grobal" ]; then
+    count=0
+    for target in $(echo "${v4nameservers}" | sed 's/,/ /g'); do
 
       # Do ping to IPv4 nameservers
       cmdset_ping ${layer} 4 namesrv ${target} ${count} &
@@ -2119,49 +2179,22 @@ elif [ "${MODE}" = "probe" ]; then
 
       count=$(( count + 1 ))
     done
-  fi
 
-  if [ -n "${v6addrs}" ]; then
     count=0
-    for target in `echo ${v6nameservers} | sed 's/,/ /g'`; do
-
-      # Do ping to IPv6 nameservers
-      cmdset_ping ${layer} 6 namesrv ${target} ${count} &
-  
-      # Do dns lookup for A record by IPv6
-      cmdset_dnslookup ${layer} 6 A ${target} ${count} &
-
-      # Do dns lookup for AAAA record by IPv6
-      cmdset_dnslookup ${layer} 6 AAAA ${target} ${count} &
-
-      count=$(( count + 1 ))
-    done
-  fi
-
-  wait
-  echo " done."
-
-  ####################
-  ## Phase 5
-  echo "Phase 5: Extarnal name server checking..."
-  layer="dns"
-
-  if [ "${v4addr_type}" = "private" -o "${v4addr_type}" = "grobal" ]; then
-    count=0
-    for target in `echo ${GPDNS4} | sed 's/,/ /g'`; do
+    for target in $(echo ${GPDNS4} | sed 's/,/ /g'); do
 
       # Do ping to IPv4 routers
       count_r=0
-      for target_r in `echo ${v4routers} | sed 's/,/ /g'`; do
+      for target_r in $(echo ${v4routers} | sed 's/,/ /g'); do
         cmdset_ping ${layer} 4 router ${target_r} ${count_r} &
         count_r=$(( count_r + 1 ))
       done
 
-      # Do ping to extarnal IPv4 nameservers
-      cmdset_ping globalnet 4 namesrv ${target} ${count} &
+      # Do ping to IPv4 nameservers
+      cmdset_ping ${layer} 4 namesrv ${target} ${count} &
 
       # Do traceroute to IPv4 nameservers
-      cmdset_trace globalnet 4 srv ${target} ${count} &
+      cmdset_trace ${layer} 4 namesrv ${target} ${count} &
 
       # Do dns lookup for A record by IPv4
       cmdset_dnslookup ${layer} 4 A ${target} ${count} &
@@ -2173,23 +2206,42 @@ elif [ "${MODE}" = "probe" ]; then
     done
   fi
 
+  exist_dns64="no"
   if [ -n "${v6addrs}" ]; then
     count=0
-    for target in `echo ${GPDNS6} | sed 's/,/ /g'`; do
+    for target in $(echo "${v6nameservers}" | sed 's/,/ /g'); do
+
+      # Do ping to IPv6 nameservers
+      cmdset_ping ${layer} 6 namesrv ${target} ${count} &
+
+      # Do dns lookup for A record by IPv6
+      cmdset_dnslookup ${layer} 6 A ${target} ${count} &
+
+      # Do dns lookup for AAAA record by IPv6
+      cmdset_dnslookup ${layer} 6 AAAA ${target} ${count} &
+
+      # check DNS64
+      exist_dns64=$(check_dns64 ${target})
+
+      count=$(( count + 1 ))
+    done
+
+    count=0
+    for target in $(echo ${GPDNS6} | sed 's/,/ /g'); do
 
       # Do ping to IPv6 routers
       count_r=0
-      for target_r in `echo ${v6routers} | sed 's/,/ /g'`; do
+      for target_r in $(echo ${v6routers} | sed 's/,/ /g'); do
         cmdset_ping ${layer} 6 router ${target_r} ${count_r} &
         count_r=$(( count_r + 1 ))
       done
 
       # Do ping to IPv6 nameservers
-      cmdset_ping globalnet 6 namesrv ${target} ${count} &
+      cmdset_ping ${layer} 6 namesrv ${target} ${count} &
 
       # Do traceroute to IPv6 nameservers
-      cmdset_trace globalnet 6 srv ${target} ${count} &
-  
+      cmdset_trace ${layer} 6 namesrv ${target} ${count} &
+
       # Do dns lookup for A record by IPv6
       cmdset_dnslookup ${layer} 6 A ${target} ${count} &
 
@@ -2210,20 +2262,20 @@ elif [ "${MODE}" = "probe" ]; then
 
   if [ "${v4addr_type}" = "private" -o "${v4addr_type}" = "grobal" ]; then
     count=0
-    for target in `echo ${V4WEB_SRVS} | sed 's/,/ /g'`; do
+    for target in $(echo ${V4WEB_SRVS} | sed 's/,/ /g'); do
 
       # Do ping to IPv4 routers
       count_r=0
-      for target_r in `echo ${v4routers} | sed 's/,/ /g'`; do
+      for target_r in $(echo ${v4routers} | sed 's/,/ /g'); do
         cmdset_ping ${layer} 4 router ${target_r} ${count_r} &
         count_r=$(( count_r + 1 ))
       done
 
       # Do ping to IPv4 web servers
-      cmdset_ping globalnet 4 srv ${target} ${count} &
+      cmdset_ping ${layer} 4 srv ${target} ${count} &
 
       # Do traceroute to IPv4 web servers
-      cmdset_trace globalnet 4 srv ${target} ${count} &
+      cmdset_trace ${layer} 4 srv ${target} ${count} &
 
       # Do curl to IPv4 web servers by IPv4
       cmdset_http ${layer} 4 srv ${target} ${count} &
@@ -2238,20 +2290,20 @@ elif [ "${MODE}" = "probe" ]; then
 
   if [ -n "${v6addrs}" ]; then
     count=0
-    for target in `echo ${V6WEB_SRVS} | sed 's/,/ /g'`; do
+    for target in $(echo ${V6WEB_SRVS} | sed 's/,/ /g'); do
 
       # Do ping to IPv6 routers
       count_r=0
-      for target_r in `echo ${v6routers} | sed 's/,/ /g'`; do
+      for target_r in $(echo ${v6routers} | sed 's/,/ /g'); do
         cmdset_ping ${layer} 6 router ${target_r} ${count_r} &
         count_r=$(( count_r + 1 ))
       done
 
       # Do ping to IPv6 web servers
-      cmdset_ping globalnet 6 srv ${target} ${count} &
+      cmdset_ping ${layer} 6 srv ${target} ${count} &
 
       # Do traceroute to IPv6 web servers
-      cmdset_trace globalnet 6 srv ${target} ${count} &
+      cmdset_trace ${layer} 6 srv ${target} ${count} &
 
       # Do curl to IPv6 web servers by IPv6
       cmdset_http ${layer} 6 srv ${target} ${count} &
@@ -2267,20 +2319,20 @@ elif [ "${MODE}" = "probe" ]; then
   # DNS64
   if [ "${exist_dns64}" = "yes" ]; then
     echo " exist dns64 server"
-    for target in `echo ${V4WEB_SRVS} | sed 's/,/ /g'`; do
+    for target in $(echo ${V4WEB_SRVS} | sed 's/,/ /g'); do
 
       # Do ping to IPv6 routers
       count_r=0
-      for target_r in `echo ${v6routers} | sed 's/,/ /g'`; do
+      for target_r in $(echo ${v6routers} | sed 's/,/ /g'); do
         cmdset_ping ${layer} 6 router ${target_r} ${count_r} &
         count_r=$(( count_r + 1 ))
       done
 
       # Do ping to IPv4 web servers by IPv6
-      cmdset_ping globalnet 6 srv ${target} ${count} &
+      cmdset_ping ${layer} 6 srv ${target} ${count} &
 
       # Do traceroute to IPv4 web servers by IPv6
-      cmdset_trace globalnet 6 srv ${target} ${count} &
+      cmdset_trace ${layer} 6 srv ${target} ${count} &
 
       # Do curl to IPv4 web servers by IPv6
       cmdset_http ${layer} 6 srv ${target} ${count} &
