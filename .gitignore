@@ -1,3 +1,5 @@
 .DS_Store
 *~
 *.swp
+/linux/trace-tmp.json
+/linux/node_modules
