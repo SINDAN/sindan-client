@@ -1437,6 +1437,46 @@ cmdset_http () {
   )
 }
 
+do_speedindex () {
+  if [ $# -ne 1 ]; then
+    echo "ERROR: do_speedindex <target_url>." 1>&2
+    return 1
+  fi
+
+  tracejson=trace-json/$(echo "$1" | sed 's/[.:/]/_/g').json
+  node speedindex.js $1 ${tracejson}
+  return $?
+}
+cmdset_speedindex () {
+  (
+  if [ $# -ne 4 ]; then
+    echo "ERROR: cmdset_speedindex <layer> <target_type> <target_addr> <count>." 1>&2
+    return 1
+  fi
+  layer=$1
+  type=$2
+  target=$3
+  count=$4
+  result=${FAIL}
+  string=$(echo " speedindex to extarnal server: ${target} by ${ipv}")
+  speedindex_ans=$(do_speedindex ${target})
+  if [ $? -eq 0 ]; then
+    result=${SUCCESS}
+  else
+    stat=$?
+  fi
+  write_json ${layer} ${ipv} UX speedindex ${result} ${target}	\
+             "${speedindex_ans}" ${count}
+  if [ "${result}" = "${SUCCESS}" ]; then
+    string=$(echo "${string}\n  status: ok, speed index value: ${speedindex_ans}")
+  else
+    string=$(echo "${string}\n  status: ng ($stat)")
+  fi
+  if [ "${VERBOSE}" = "yes" ]; then
+    echo -e "${string}"
+  fi
+  )
+}
 
 #
 # main
@@ -1483,6 +1523,7 @@ fi
 
 # Make log directory
 mkdir -p log
+mkdir -p trace-json
 
 # Cleate UUID
 uuid=$(cleate_uuid)
@@ -2213,6 +2254,16 @@ if [ -n "${v6addrs}" ]; then
     done
   fi
 fi
+
+# SPEEDINDEX
+count=0
+for target in $(echo ${SI_SRVS} | sed 's/,/ /g'); do
+
+  # Do speedindex
+  cmdset_speedindex ${layer} srv ${target} ${count} &
+
+  count=$(( count + 1 ))
+done
 
 wait
 echo " done."
