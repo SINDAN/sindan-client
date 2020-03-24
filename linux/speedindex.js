@@ -11,14 +11,14 @@
 // node speedindex.js https://www.sindan-net.com/
 // OUTPUT [speedindex]
 
-const puppeteer = require('puppeteer');
+const puppeteer = require('puppeteer-core');
 const speedline = require('speedline');
 
 var url = process.argv[2];
 var traceJson = 'trace-tmp.json';
 
 (async () => {
-  const browser = await puppeteer.launch();
+  const browser = await puppeteer.launch({executablePath: '/usr/bin/chromium-browser'});
   const page = await browser.newPage();
   await page.tracing.start({
     path: traceJson,
