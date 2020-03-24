@@ -1,7 +1,7 @@
 #!/bin/bash
 # sindan.sh
-# version 2.1.1
-VERSION="2.1.1"
+# version 2.1.2
+VERSION="2.1.2"
 
 # read configurationfile
 . ./sindan.conf
@@ -2122,9 +2122,6 @@ elif [ "${MODE}" = "probe" ]; then
       # Do traceroute to extarnal IPv4 servers
       cmdset_trace ${layer} 4 srv ${target} ${count} &
 
-      # Check path MTU to extarnal IPv4 servers
-      cmdset_pmtud ${layer} 4 srv ${target} ${ifmtu} ${count} &
-
       count=$(( count + 1 ))
     done
   fi
@@ -2146,9 +2143,6 @@ elif [ "${MODE}" = "probe" ]; then
       # Do traceroute to extarnal IPv6 servers
       cmdset_trace ${layer} 6 srv ${target} ${count} &
   
-      # Check path MTU to extarnal IPv6 servers
-      cmdset_pmtud ${layer} 6 srv ${target} ${ifmtu} ${count} &
-
       count=$(( count + 1 ))
     done
   fi
