@@ -3,5 +3,4 @@
 *.swp
 /linux/log
 /linux/trace-json
-/linux/trace-tmp.json
 /linux/node_modules
