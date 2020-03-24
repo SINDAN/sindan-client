@@ -15,12 +15,9 @@ const puppeteer = require('puppeteer');
 const speedline = require('speedline');
 
 var url = process.argv[2];
-var tmpJson = 'trace-tmp.json'
+var traceJson = 'trace-tmp.json';
 
 (async () => {
-
-  const timestamp = new Date();
-
   const browser = await puppeteer.launch();
   const page = await browser.newPage();
   await page.tracing.start({
