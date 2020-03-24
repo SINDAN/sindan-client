@@ -15,7 +15,7 @@ const puppeteer = require('puppeteer');
 const speedline = require('speedline');
 
 var url = process.argv[2];
-var tmpJson = trace-tmp.json
+var tmpJson = 'trace-tmp.json'
 
 (async () => {
 
