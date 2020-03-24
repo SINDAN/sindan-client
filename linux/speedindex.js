@@ -15,7 +15,7 @@ const puppeteer = require('puppeteer-core');
 const speedline = require('speedline');
 
 var url = process.argv[2];
-var traceJson = 'trace-tmp.json';
+var traceJson = process.argv[3];
 
 (async () => {
   const browser = await puppeteer.launch({executablePath: '/usr/bin/chromium-browser'});
