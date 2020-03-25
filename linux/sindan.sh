@@ -1,7 +1,7 @@
 #!/bin/bash
 # sindan.sh
-# version 2.1.3
-VERSION="2.1.3"
+# version 2.1.4
+VERSION="2.1.4"
 
 # read configurationfile
 . ./sindan.conf
@@ -485,6 +485,7 @@ get_ra_info() {
 
 #
 get_ra_addrs() {
+  # require get_ra_info() data from STDIN.
   grep "^ from"								|
   awk '{print $2}'							|
   awk -F\n -v ORS=',' '{print}'						|
@@ -494,6 +495,7 @@ get_ra_addrs() {
 
 #
 get_ra_flags() {
+  # require get_ra_info() data from STDIN.
   if [ $# -ne 1 ]; then
     echo "ERROR: get_ra_flags <ra_source>." 1>&2
     return 1
@@ -538,6 +540,7 @@ get_ra_flags() {
 
 #
 get_ra_hoplimit() {
+  # require get_ra_info() data from STDIN.
   if [ $# -ne 1 ]; then
     echo "ERROR: get_ra_hoplimit <ra_source>." 1>&2
     return 1
@@ -565,6 +568,7 @@ get_ra_hoplimit() {
 
 #
 get_ra_lifetime() {
+  # require get_ra_info() data from STDIN.
   if [ $# -ne 1 ]; then
     echo "ERROR: get_ra_lifetime <ra_source>." 1>&2
     return 1
@@ -592,6 +596,7 @@ get_ra_lifetime() {
 
 #
 get_ra_reachable() {
+  # require get_ra_info() data from STDIN.
   if [ $# -ne 1 ]; then
     echo "ERROR: get_ra_reachable <ra_source>." 1>&2
     return 1
@@ -619,6 +624,7 @@ get_ra_reachable() {
 
 #
 get_ra_retransmit() {
+  # require get_ra_info() data from STDIN.
   if [ $# -ne 1 ]; then
     echo "ERROR: get_ra_retransmit <ra_source>." 1>&2
     return 1
@@ -646,6 +652,7 @@ get_ra_retransmit() {
 
 #
 get_ra_prefs() {
+  # require get_ra_info() data from STDIN.
   if [ $# -ne 1 ]; then
     echo "ERROR: get_ra_prefs <ra_source>." 1>&2
     return 1
@@ -674,6 +681,7 @@ get_ra_prefs() {
 
 #
 get_ra_pref_flags() {
+  # require get_ra_info() data from STDIN.
   if [ $# -ne 2 ]; then
     echo "ERROR: get_ra_pref_flags <ra_source> <ra_pref>." 1>&2
     return 1
@@ -711,6 +719,7 @@ get_ra_pref_flags() {
 
 #
 get_ra_pref_valid() {
+  # require get_ra_info() data from STDIN.
   if [ $# -ne 2 ]; then
     echo "ERROR: get_ra_pref_valid <ra_source> <ra_pref>." 1>&2
     return 1
@@ -745,6 +754,7 @@ get_ra_pref_valid() {
 
 #
 get_ra_pref_preferred() {
+  # require get_ra_info() data from STDIN.
   if [ $# -ne 2 ]; then
     echo "ERROR: get_ra_pref_preferred <ra_source> <ra_pref>." 1>&2
     return 1
@@ -779,6 +789,7 @@ get_ra_pref_preferred() {
 
 #
 get_ra_routes() {
+  # require get_ra_info() data from STDIN.
   if [ $# -ne 1 ]; then
     echo "ERROR: get_ra_routes <ra_source>." 1>&2
     return 1
@@ -807,6 +818,7 @@ get_ra_routes() {
 
 #
 get_ra_route_flag() {
+  # require get_ra_info() data from STDIN.
   if [ $# -ne 2 ]; then
     echo "ERROR: get_ra_route_flag <ra_source> <ra_route>." 1>&2
     return 1
@@ -841,6 +853,7 @@ get_ra_route_flag() {
 
 #
 get_ra_route_lifetime() {
+  # require get_ra_info() data from STDIN.
   if [ $# -ne 2 ]; then
     echo "ERROR: get_ra_route_flag <ra_source> <ra_route>." 1>&2
     return 1
@@ -875,6 +888,7 @@ get_ra_route_lifetime() {
 
 #
 get_ra_rdnsses() {
+  # require get_ra_info() data from STDIN.
   if [ $# -ne 1 ]; then
     echo "ERROR: get_ra_rdnsses <ra_source>." 1>&2
     return 1
@@ -903,6 +917,7 @@ get_ra_rdnsses() {
 
 #
 get_ra_rdnss_lifetime() {
+  # require get_ra_info() data from STDIN.
   if [ $# -ne 2 ]; then
     echo "ERROR: get_ra_rdnss_flag <ra_source> <ra_route>." 1>&2
     return 1
@@ -1146,19 +1161,15 @@ do_traceroute() {
     return 1
   fi
   case $1 in
-    "4" ) traceroute -n -w 2 -q 1 -m 20 $2; return $? ;;
-    "6" ) traceroute6 -n -w 2 -q 1 -m 20 $2; return $? ;;
+    "4" ) traceroute -n -I -w 2 -q 1 -m 20 $2; return $? ;;
+    "6" ) traceroute6 -n -I -w 2 -q 1 -m 20 $2; return $? ;;
     * ) echo "ERROR: <version> must be 4 or 6." 1>&2; return 9 ;;
   esac
 }
 
 #
 get_tracepath () {
-  if [ $# -ne 1 ]; then
-    echo "ERROR: get_tracepath <trace_result>." 1>&2
-    return 1
-  fi
-  echo "$1"								|
+  # require do_traceroute() data from STDIN.
   grep -v traceroute							|
   awk '{print $2}'							|
   awk -F\n -v ORS=',' '{print}'						|
@@ -1168,7 +1179,6 @@ get_tracepath () {
 
 #
 do_pmtud() {
-  (
   if [ $# -ne 4 ]; then
     echo "ERROR: do_pmtud <version> <target_addr> <min_mtu> <max_mtu>." 1>&2
     return 1
@@ -1178,96 +1188,85 @@ do_pmtud() {
     "6" ) command="ping6 -i 0.2 -W 1"; dfopt=""; header=48 ;;
     * ) echo "ERROR: <version> must be 4 or 6." 1>&2; return 9 ;;
   esac
-  ${command} -c 1 $2 > /dev/null
+  $command -c 1 $2 > /dev/null
   if [ $? -ne 0 ]; then
     echo 0
     return 1
   fi
-  version=$1
-  target=$2
-  min=$3
-  max=$4
-  mid=$(( ( min + max ) / 2 ))
-  result=0
-  if [ "${min}" -eq "${mid}" ] || [ "${max}" -eq "${mid}" ]; then
+  local version=$1
+  local target=$2
+  local min=$3
+  local max=$4
+  local mid=$(( ( min + max ) / 2 ))
+  local result=0
+  if [ "$min" -eq "$mid" ] || [ "$max" -eq "$mid" ]; then
     echo "$(( min + header ))"
     return 0
   fi
-  ${command} -c 1 -s ${mid} ${dfopt} ${target} >/dev/null 2>/dev/null
+  $command -c 1 -s $mid $dfopt $target >/dev/null 2>/dev/null
   if [ $? -eq 0 ]; then
-    result=$(do_pmtud ${version} ${target} ${mid} ${max})
+    result=$(do_pmtud $version $target $mid $max)
   else
-    result=$(do_pmtud ${version} ${target} ${min} ${mid})
+    result=$(do_pmtud $version $target $min $mid)
   fi
-  echo ${result}
-  )
+  echo $result
 }
 
 #
 cmdset_trace () {
-  (
   if [ $# -ne 5 ]; then
     echo "ERROR: cmdset_trace <layer> <version> <target_type> <target_addr> <count>." 1>&2
     return 1
   fi
-  layer=$1
-  ver=$2
-  ipv="IPv${ver}"
-  type=$3
-  target=$4
-  count=$5
-  result=${FAIL}
-  string=$(echo " traceroute to ${ipv} server: ${target}")
-  path_result=$(do_traceroute ${ver} ${target})
-  if [ $? -eq 0 ]; then
-    result=${SUCCESS}
+  local layer=$1
+  local ver=$2
+  local ipv="IPv${ver}"
+  local type=$3
+  local target=$4
+  local count=$5
+  local result=$FAIL
+  local path_result=$(do_traceroute $ver $target)
+  write_json $layer $ipv v${ver}path_detail_${type} $INFO $target	\
+             "$path_result" $count
+  local path_data=$(echo "$path_result" | get_tracepath)
+  write_json $layer $ipv v${ver}path_${type} $INFO $target		\
+             $path_data $count
+  if [ "$VERBOSE" = "yes" ]; then
+    echo " traceroute to $ipv server: $target"
+    echo "  path: $path_data"
   fi
-  write_json ${layer} ${ipv} v${ver}path_detail_${type} ${INFO}		\
-             ${target} "${path_result}" ${count}
-  if [ "${result}" = "${SUCCESS}" ]; then
-    path_data=$(get_tracepath "${path_result}")
-    write_json ${layer} ${ipv} v${ver}path_${type} ${INFO} ${target}	\
-               ${path_data} ${count}
-    string=$(echo "${string}\n  path: ${path_data}")
-  else
-    string=$(echo "${string}\n  status: ng")
-  fi
-  if [ "${VERBOSE}" = "yes" ]; then
-    echo -e "${string}"
-  fi
-  )
 }
 
 #
 cmdset_pmtud () {
-  (
   if [ $# -ne 6 ]; then
     echo "ERROR: cmdset_pmtud <layer> <version> <target_type> <target_addr> <ifmtu> <count>." 1>&2
     return 1
   fi
-  layer=$1
-  ver=$2
-  ipv="IPv${ver}"
-  type=$3
-  target=$4
-  min_mtu=1200
-  max_mtu=$5
-  count=$6
-  string=$(echo " pmtud to ${ipv} server: ${target}")
-  pmtu_result=$(do_pmtud ${ver} ${target} ${min_mtu} ${max_mtu})
-  if [ "${pmtu_result}" -eq 0 ]; then
-    write_json ${layer} ${ipv} v${ver}pmtu_${type} ${INFO} ${target}	\
-               unmeasurable ${count}
-    string=$(echo "${string}\n  pmtud: unmeasurable")
+  local layer=$1
+  local ver=$2
+  local ipv="IPv${ver}"
+  local type=$3
+  local target=$4
+  local min_mtu=1200
+  local max_mtu=$5
+  local count=$6
+  local pmtu_result=$(do_pmtud ${ver} ${target} ${min_mtu} ${max_mtu})
+  if [ "$pmtu_result" -eq 0 ]; then
+    write_json $layer $ipv v${ver}pmtu_${type} $INFO $target		\
+               unmeasurable $count
+    if [ "${VERBOSE}" = "yes" ]; then
+      echo " pmtud to $ipv server: $target"
+      echo "  pmtu: unmeasurable"
+    fi
   else
-    write_json ${layer} ${ipv} v${ver}pmtu_${type} ${INFO} ${target}	\
-               ${pmtu_result} ${count}
-    string=$(echo "${string}\n  pmtu: ${pmtu_result} MB")
+    write_json $layer $ipv v${ver}pmtu_${type} $INFO $target		\
+               $pmtu_result $count
+    if [ "$VERBOSE" = "yes" ]; then
+      echo " pmtud to $ipv server: $target"
+      echo "  pmtu: $pmtu_result MB"
+    fi
   fi
-  if [ "${VERBOSE}" = "yes" ]; then
-    echo -e "${string}"
-  fi
-  )
 }
 
 ## for dns layer
