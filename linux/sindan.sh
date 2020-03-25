@@ -1,7 +1,7 @@
 #!/bin/bash
 # sindan.sh
-# version 2.1.4
-VERSION="2.1.4"
+# version 2.2.0
+VERSION="2.2.0"
 
 # read configurationfile
 . ./sindan.conf
@@ -18,48 +18,45 @@ cleate_uuid() {
 
 #
 write_json_campaign() {
-  (
   if [ $# -ne 4 ]; then
     echo "ERROR: write_json_campaign <uuid> <mac_addr> <os> <ssid>." 1>&2
     echo "DEBUG(input data): $1, $2, $3, $4" 1>&2
     return 1
   fi
-  json="{ \"log_campaign_uuid\" : \"$1\",
-          \"mac_addr\" : \"$2\",
-          \"os\" : \"$3\",
-          \"ssid\" : \"$4\",
-          \"version\" : \"${VERSION}\",
-          \"occurred_at\" : \"`date -u '+%Y-%m-%d %T'`\" }"
-  echo ${json} > log/campaign_`date -u '+%s'`.json
+  local json="{ \"log_campaign_uuid\" : \"$1\",
+                \"mac_addr\" : \"$2\",
+                \"os\" : \"$3\",
+                \"ssid\" : \"$4\",
+                \"version\" : \"$VERSION\",
+                \"occurred_at\" : \"$(date -u '+%Y-%m-%d %T')\" }"
+  echo $json > log/campaign_$(date -u '+%s').json
   return $?
-  )
 }
 
 #
 write_json() {
-  (
   if [ $# -ne 7 ]; then
-    echo "ERROR: write_json <layer> <group> <type> <result> <target> <detail> <count>. ($3)" 1>&2
+    echo "ERROR: write_json <layer> <group> <type> <result> <target>"	\
+         "<detail> <count>. ($4)" 1>&2
     echo "DEBUG(input data): $1, $2, $3, $4, $5, $6, $7" 1>&2
     return 1
   fi
-  json="{ \"layer\" : \"$1\",
-          \"log_group\" : \"$2\",
-          \"log_type\" : \"$3\",
-          \"log_campaign_uuid\" : \"${uuid}\",
-          \"result\" : \"$4\",
-          \"target\" : \"$5\",
-          \"detail\" : \"$6\",
-          \"occurred_at\" : \"`date -u '+%Y-%m-%d %T'`\" }"
-  echo ${json} > log/sindan_$1_$3_$7_`date -u '+%s'`.json
+  local json="{ \"layer\" : \"$1\",
+                \"log_group\" : \"$2\",
+                \"log_type\" : \"$3\",
+                \"log_campaign_uuid\" : \"$UUID\",
+                \"result\" : \"$4\",
+                \"target\" : \"$5\",
+                \"detail\" : \"$6\",
+                \"occurred_at\" : \"$(date -u '+%Y-%m-%d %T')\" }"
+  echo $json > log/sindan_$1_$3_$7_$(date -u '+%s').json
   return $?
-  )
 }
 
 ## for datalink layer
 #
 get_devicename() {
-  echo ${DEVNAME}
+  echo $DEVNAME
   return $?
 }
 
@@ -97,18 +94,16 @@ get_os() {
 
 #
 get_ifstatus() {
-  (
   if [ $# -ne 1 ]; then
     echo "ERROR: get_ifstatus <devicename>." 1>&2
     return 1
   fi
-  status=$(cat /sys/class/net/$1/operstate)
-  if [ "${status}" = "up" ]; then
-    echo ${status}; return 0
+  local status=$(cat /sys/class/net/$1/operstate)
+  if [ "$status" = "up" ]; then
+    echo $status; return 0
   else
-    echo ${status}; return 1
+    echo $status; return 1
   fi
-  )
 }
 
 #
@@ -134,16 +129,14 @@ get_macaddr() {
 
 #
 get_mediatype() {
-  (
   if [ $# -ne 1 ]; then
     echo "ERROR: get_mediatype <devicename>." 1>&2
     return 1
   fi
-  speed=$(cat /sys/class/net/$1/speed)
-  duplex=$(cat /sys/class/net/$1/duplex)
+  local speed=$(cat /sys/class/net/$1/speed)
+  local duplex=$(cat /sys/class/net/$1/duplex)
   echo ${speed}_${duplex}
   return $?
-  )
 }
 
 #
@@ -285,30 +278,29 @@ get_v4ifconf() {
 
 #
 check_v4autoconf() {
-  (
   if [ $# -ne 2 ]; then
     echo "ERROR: check_v4autoconf <devicename> <v4ifconf>." 1>&2
     return 1
   fi
   if [ $2 = "dhcp" ]; then
-    v4addr=$(get_v4addr $1)
-    dhcp_data=""
+    local v4addr=$(get_v4addr $1)
+    local dhcp_data=""
     which dhcpcd > /dev/null 2>&1
     if [ $? -eq 0 ]; then
       dhcp_data=$(dhcpcd -4 -U $1 | sed "s/'//g")
     else
       dhcp_data=$(cat /var/lib/dhcp/dhclient.$1.leases | sed 's/"//g')
     fi
-    echo "${dhcp_data}"
+    echo "$dhcp_data"
 
     # simple comparision
-    dhcpv4addr=$(echo "${dhcp_data}"					|
-               sed -n 's/^ip_address=\([0-9.]*\)/\1/p')
-    if [ -z "${dhcpv4addr}" -o -z "${v4addr}" ]; then
+    local dhcpv4addr=$(echo "$dhcp_data"				|
+                     sed -n 's/^ip_address=\([0-9.]*\)/\1/p')
+    if [ -z "$dhcpv4addr" -o -z "$v4addr" ]; then
       return 1
     fi
-    cmp=$(compare_v4addr ${dhcpv4addr} ${v4addr})
-    if [ ${cmp} = "same" ]; then
+    local cmp=$(compare_v4addr $dhcpv4addr $v4addr)
+    if [ $cmp = "same" ]; then
       return 0
     else
       return 1
@@ -316,7 +308,6 @@ check_v4autoconf() {
   fi
   echo "v4conf is $2"
   return 0
-  )
 }
 
 #
@@ -332,14 +323,13 @@ get_v4addr() {
 
 #
 get_netmask() {
-  (
   if [ $# -ne 1 ]; then
     echo "ERROR: get_netmask <devicename>." 1>&2
     return 1
   fi
-  preflen=$(ip -4 addr show $1						|
-          sed -n 's/^.*inet [0-9.]*\/\([0-9]*\) .*$/\1/p')
-  case "${preflen}" in
+  local preflen=$(ip -4 addr show $1					|
+                sed -n 's/^.*inet [0-9.]*\/\([0-9]*\) .*$/\1/p')
+  case "$preflen" in
     16) echo "255.255.0.0" ;;
     17) echo "255.255.128.0" ;;
     18) echo "255.255.192.0" ;;
@@ -359,7 +349,6 @@ get_netmask() {
     *) ;;
   esac
   return $?
-  )
 }
 
 #
@@ -377,7 +366,7 @@ get_v4routers() {
 get_v4nameservers() {
   cat /etc/resolv.conf							|
   sed -n 's/^nameserver \([0-9.]*\)$/\1/p'				|
-  awk -v ORS=' ' '1; END{printf "\n"}'
+  awk -v ORS=' ' '1; END {printf "\n"}'
   return $?
 }
 
@@ -387,7 +376,7 @@ ip2decimal() {
     echo "ERROR: ip2decimal <v4addr>." 1>&2
     return 1
   fi
-  echo $1 | tr . '\n' | awk '{s = s*256 + $1} END{print s}'
+  echo $1 | tr . '\n' | awk '{s = s*256 + $1} END {print s}'
 }
 
 #
@@ -401,19 +390,17 @@ decimal2ip() {
 
 #
 compare_v4addr() {
-  (
   if [ $# -ne 2 ]; then
     echo "ERROR: compare_v4addr <v4addr1> <v4addr2>." 1>&2
     return 1
   fi
-  addr1=$(ip2decimal $1)
-  addr2=$(ip2decimal $2)
-  if [ ${addr1} = ${addr2} ]; then
+  local addr1=$(ip2decimal $1)
+  local addr2=$(ip2decimal $2)
+  if [ $addr1 = $addr2 ]; then
     echo "same"
   else
     echo "diff"
   fi
-  )
 }
 
 #
@@ -446,20 +433,19 @@ check_v4addr() {
 
 #
 get_v6ifconf() {
-  (
   if [ $# -ne 1 ]; then
     echo "ERROR: get_v6ifconf <devicename>." 1>&2
     return 1
   fi
   ## TODO: support netplan
-  v6ifconf=$(grep "$1 inet6" /etc/network/interfaces | awk '{print $4}')
-  if [ -n "${v6ifconf}" ]; then
-    cat ${v6ifconf}
+  local v6ifconf=$(grep "$1 inet6" /etc/network/interfaces		|
+                 awk '{print $4}')
+  if [ -n "$v6ifconf" ]; then
+    echo "$v6ifconf"
   else
     echo "automatic"
   fi
   return $?
-  )
 }
 
 #
@@ -952,64 +938,61 @@ get_ra_rdnss_lifetime() {
 
 #
 check_v6autoconf() {
-  (
   if [ $# -ne 5 ]; then
-    echo "ERROR: check_v6autoconf <devicename> <v6ifconf> <ra_flags> <ra_prefix> <ra_prefix_flags>." 1>&2
+    echo "ERROR: check_v6autoconf <devicename> <v6ifconf> <ra_flags>"	\
+         "<ra_prefix> <ra_prefix_flags>." 1>&2
     return 1
   fi
-  result=1
+  local result=1
   if [ $2 = "automatic" ]; then
-    o_flag=$(echo $3 | grep O)
-    m_flag=$(echo $3 | grep M)
-    v6addrs=$(get_v6addrs $1 $4)
-    a_flag=$(echo $5 | grep A)
-    dhcp_data=""
+    local o_flag=$(echo $3 | grep O)
+    local m_flag=$(echo $3 | grep M)
+    local v6addrs=$(get_v6addrs $1 $4)
+    local a_flag=$(echo $5 | grep A)
+    local dhcp_data=""
     #
-    rdisc6 -1 $1
-    if [ -n "${a_flag}" -a -n "${v6addrs}" ]; then
+    rdisc6 -n $1
+    if [ -n "$a_flag" -a -n "$v6addrs" ]; then
       result=0
     fi
-    if [ -n "${o_flag}" -o -n "${m_flag}" ]; then
+    if [ -n "$o_flag" -o -n "$m_flag" ]; then
       which dhcpcd > /dev/null 2>&1
       if [ $? -eq 0 ]; then
         dhcp_data=$(dhcpcd -6 -U $1 | sed "s/'//g")
       else
         dhcp_data=$(cat /var/lib/dhcp/dhclient.$1.leases | sed 's/"//g')
       fi
-      echo "${dhcp_data}"
+      echo "$dhcp_data"
     fi
-    if [ -n "${m_flag}" ]; then
+    if [ -n "$m_flag" ]; then
       result=$(( result + 2 ))
-      for addr in $(echo ${v6addrs} | sed 's/,/ /g'); do
+      for addr in $(echo $v6addrs | sed 's/,/ /g'); do
         # simple comparision
-        echo "${dhcp_data}"						|
+        echo "$dhcp_data"						|
         grep "dhcp6_ia_na1_ia_addr1=${addr}" > /dev/null 2>&1
         if [ $? -eq 0 ]; then
           result=0
         fi
       done
     fi
-    return ${result}
+    return $result
   fi
   echo "v6conf is $2"
   return 0
-  )
 }
 
 #
 get_v6addrs() {
-  (
   if [ $# -ne 2 ]; then
     echo "ERROR: get_v6addrs <devicename> <ra_prefix>." 1>&2
     return 1
   fi
-  pref=$(echo $2 | sed -n 's/^\([0-9a-f:]*\)::\/.*$/\1/p')
+  local pref=$(echo $2 | sed -n 's/^\([0-9a-f:]*\)::\/.*$/\1/p')
   ip -6 addr show $1 scope global					|
   sed -n "s/^.*inet6 \(${pref}:[0-9a-f:]*\)\/.*$/\1/p"			|
   awk -F\n -v ORS=',' '{print}'						|
   sed 's/,$//'
   return $?
-  )
 }
 
 #
@@ -1091,11 +1074,7 @@ do_ping() {
 
 #
 get_rtt() {
-  if [ $# -ne 1 ]; then
-    echo "ERROR: get_rtt <ping_result>." 1>&2
-    return 1
-  fi
-  echo "$1"								|
+  # require do_ping() data from STDIN.
   sed -n 's/^rtt.* \([0-9\.\/]*\) .*$/\1/p'				|
   sed 's/\// /g'
   return $?
@@ -1103,54 +1082,50 @@ get_rtt() {
 
 #
 get_loss() {
-  if [ $# -ne 1 ]; then
-    echo "ERROR: get_loss <ping_result>." 1>&2
-    return 1
-  fi
-  echo "$1"								|
+  # require do_ping() data from STDIN.
   sed -n 's/^.* \([0-9.]*\)\% packet loss.*$/\1/p'
   return $?
 }
 
 #
 cmdset_ping() {
-  (
   if [ $# -ne 5 ]; then
-    echo "ERROR: cmdset_ping <layer> <version> <target_type> <target_addr> <count>." 1>&2
+    echo "ERROR: cmdset_ping <layer> <version> <target_type>"		\
+         "<target_addr> <count>." 1>&2
     return 1
   fi
-  layer=$1
-  ver=$2
-  ipv="IPv${ver}"
-  type=$3
-  target=$4
-  count=$5
-  rtt_type=(min ave max dev)
-  result=${FAIL}
-  string=$(echo " ping to ${ipv} ${type}: ${target}")
-  ping_result=$(do_ping ${ver} ${target})
+  local layer=$1
+  local ver=$2
+  local ipv="IPv${ver}"
+  local type=$3
+  local target=$4
+  local count=$5
+  local rtt_type=(min ave max dev)
+  local result=$FAIL
+  local string=$(echo " ping to $ipv $type: $target")
+  local ping_result=$(do_ping $ver $target)
   if [ $? -eq 0 ]; then
-    result=${SUCCESS}
+    result=$SUCCESS
   fi
-  write_json ${layer} ${ipv} v${ver}alive_${type} ${result} ${target}	\
-             "${ping_result}" ${count}
-  if [ "${result}" = "${SUCCESS}" ]; then
-    rtt_data=($(get_rtt "${ping_result}"))
+  write_json $layer $ipv v${ver}alive_${type} $result $target		\
+             "$ping_result" $count
+  if [ "$result" = "$SUCCESS" ]; then
+    local rtt_data=($(echo "$ping_result" | get_rtt))
     for i in 0 1 2 3; do
-      write_json ${layer} ${ipv} "v${ver}rtt_${type}_${rtt_type[$i]}"	\
-                 ${INFO} ${target} "${rtt_data[$i]}" ${count}
+      write_json $layer $ipv "v${ver}rtt_${type}_${rtt_type[$i]}"	\
+                 $INFO $target "$rtt_data[$i]" $count
     done
-    rtt_loss=$(get_loss "${ping_result}")
-    write_json ${layer} ${ipv} v${ver}loss_${type} ${INFO} ${target}	\
-               ${rtt_loss} ${count}
-    string=$(echo "${string}\n  status: ok, rtt: ${rtt_data[1]} msec, loss: ${rtt_loss} %")
+    local rtt_loss=$(echo "$ping_result" | get_loss)
+    write_json $layer $ipv v${ver}loss_${type} $INFO $target		\
+               $rtt_loss $count
+    string=$(echo "$string\n  status: ok, rtt: ${rtt_data[1]} msec,"	\
+           "loss: $rtt_loss %")
   else
-    string=$(echo "${string}\n  status: ng")
+    string=$(echo "$string\n  status: ng")
   fi
-  if [ "${VERBOSE}" = "yes" ]; then
-    echo -e "${string}"
+  if [ "$VERBOSE" = "yes" ]; then
+    echo -e "$string"
   fi
-  )
 }
 
 ## for globalnet layer
@@ -1180,7 +1155,8 @@ get_tracepath () {
 #
 do_pmtud() {
   if [ $# -ne 4 ]; then
-    echo "ERROR: do_pmtud <version> <target_addr> <min_mtu> <max_mtu>." 1>&2
+    echo "ERROR: do_pmtud <version> <target_addr> <min_mtu>"		\
+         "<max_mtu>." 1>&2
     return 1
   fi
   case $1 in
@@ -1215,7 +1191,8 @@ do_pmtud() {
 #
 cmdset_trace () {
   if [ $# -ne 5 ]; then
-    echo "ERROR: cmdset_trace <layer> <version> <target_type> <target_addr> <count>." 1>&2
+    echo "ERROR: cmdset_trace <layer> <version> <target_type>"		\
+         "<target_addr> <count>." 1>&2
     return 1
   fi
   local layer=$1
@@ -1225,22 +1202,32 @@ cmdset_trace () {
   local target=$4
   local count=$5
   local result=$FAIL
-  local path_result=$(do_traceroute $ver $target)
+  local string=$(echo " traceroute to $ipv server: $target")
+  local path_result=$(do_traceroute $ver $target			|
+                    sed 's/\*/-/g')
+  if [ $? -eq 0 ]; then
+    result=$SUCCESS
+  fi
   write_json $layer $ipv v${ver}path_detail_${type} $INFO $target	\
              "$path_result" $count
-  local path_data=$(echo "$path_result" | get_tracepath)
-  write_json $layer $ipv v${ver}path_${type} $INFO $target		\
-             $path_data $count
+  if [ "$result" = "$SUCCESS" ]; then
+    local path_data=$(echo "$path_result" | get_tracepath)
+    write_json $layer $ipv v${ver}path_${type} $INFO $target		\
+               $path_data $count
+    string=$(echo "$string\n  path: $path_data")
+  else
+    string=$(echo "$string\n  status: ng")
+  fi
   if [ "$VERBOSE" = "yes" ]; then
-    echo " traceroute to $ipv server: $target"
-    echo "  path: $path_data"
+    echo -e "$string"
   fi
 }
 
 #
 cmdset_pmtud () {
   if [ $# -ne 6 ]; then
-    echo "ERROR: cmdset_pmtud <layer> <version> <target_type> <target_addr> <ifmtu> <count>." 1>&2
+    echo "ERROR: cmdset_pmtud <layer> <version> <target_type>"		\
+         "<target_addr> <ifmtu> <count>." 1>&2
     return 1
   fi
   local layer=$1
@@ -1251,21 +1238,19 @@ cmdset_pmtud () {
   local min_mtu=1200
   local max_mtu=$5
   local count=$6
-  local pmtu_result=$(do_pmtud ${ver} ${target} ${min_mtu} ${max_mtu})
+  local string=$(echo " pmtud to $ipv server: $target")
+  local pmtu_result=$(do_pmtud $ver $target $min_mtu $max_mtu)
   if [ "$pmtu_result" -eq 0 ]; then
     write_json $layer $ipv v${ver}pmtu_${type} $INFO $target		\
                unmeasurable $count
-    if [ "${VERBOSE}" = "yes" ]; then
-      echo " pmtud to $ipv server: $target"
-      echo "  pmtu: unmeasurable"
-    fi
+    string=$(echo "  pmtu: unmeasurable")
   else
     write_json $layer $ipv v${ver}pmtu_${type} $INFO $target		\
                $pmtu_result $count
-    if [ "$VERBOSE" = "yes" ]; then
-      echo " pmtud to $ipv server: $target"
-      echo "  pmtu: $pmtu_result MB"
-    fi
+    string=$(echo "  pmtu: $pmtu_result MB")
+  fi
+  if [ "$VERBOSE" = "yes" ]; then
+    echo -e "$string"
   fi
 }
 
@@ -1273,7 +1258,8 @@ cmdset_pmtud () {
 #
 do_dnslookup() {
   if [ $# -ne 3 ]; then
-    echo "ERROR: do_dnslookup <nameserver> <query_type> <target_fqdn>." 1>&2
+    echo "ERROR: do_dnslookup <nameserver> <query_type>"		\
+         "<target_fqdn>." 1>&2
     return 1
   fi
   dig @$1 $3 $2 +time=1
@@ -1288,11 +1274,11 @@ do_dnslookup() {
 
 #
 get_dnsans() {
-  if [ $# -ne 2 ]; then
-    echo "ERROR: get_dnsans <query_type> <dig_result>." 1>&2
+  # require do_dnslookup() data from STDIN.
+  if [ $# -ne 1 ]; then
+    echo "ERROR: get_dnsans <query_type>." 1>&2
     return 1
   fi
-  echo "$2"								|
   grep -v -e '^$' -e '^;'						|
   grep "	$1" -m 1						|
   awk '{print $5}'
@@ -1301,11 +1287,11 @@ get_dnsans() {
 
 #
 get_dnsttl() {
-  if [ $# -ne 2 ]; then
-    echo "ERROR: get_dnsttl <query_type> <dig_result>." 1>&2
+  # require do_dnslookup() data from STDIN.
+  if [ $# -ne 1 ]; then
+    echo "ERROR: get_dnsttl <query_type>." 1>&2
     return 1
   fi
-  echo "$2"								|
   grep -v -e '^$' -e '^;'						|
   grep "	$1" -m 1						|
   awk '{print $2}'
@@ -1314,76 +1300,71 @@ get_dnsttl() {
 
 #
 get_dnsrtt() {
-  if [ $# -ne 1 ]; then
-    echo "ERROR: get_dnsrtt <dig_result>." 1>&2
-    return 1
-  fi
-  echo "$1"								|
+  # require do_dnslookup() data from STDIN.
   sed -n 's/^;; Query time: \([0-9]*\) msec$/\1/p'
   return $?
 }
 
 #
 check_dns64 () {
-  (
   if [ $# -ne 1 ]; then
     echo "ERROR: check_dns64 <target_addr>." 1>&2
     return 1
   fi
-  dns_result=$(do_dnslookup ${target} "AAAA" "ipv4only.arpa")
-  dns_ans=$(get_dnsans "AAAA" "${dns_result}")
-  if [ -n "${dns_ans}" ]; then
+  local dns_ans=$(do_dnslookup $target AAAA ipv4only.arpa		|
+                get_dnsans AAAA)
+  if [ -n "$dns_ans" ]; then
     echo "yes"
   else
     echo "no"
   fi
-  )
 }
 
 #
 cmdset_dnslookup () {
-  (
   if [ $# -ne 5 ]; then
-    echo "ERROR: cmdset_dnslookup <layer> <version> <target_type> <target_addr> <count>." 1>&2
+    echo "ERROR: cmdset_dnslookup <layer> <version> <target_type>"	\
+         "<target_addr> <count>." 1>&2
     return 1
   fi
-  layer=$1
-  ver=$2
-  ipv="IPv${ver}"
-  type=$3
-  target=$4
-  dns_result=""
-  string=$(echo " dns lookup for ${type} record by ${ipv} nameserver: ${target}")
-  for fqdn in $(echo ${FQDNS} | sed 's/,/ /g'); do
-    result=${FAIL}
-    string=$(echo "${string}\n  resolve server: ${fqdn}")
-    dns_result=$(do_dnslookup ${target} ${type} ${fqdn})
+  local layer=$1
+  local ver=$2
+  local ipv="IPv${ver}"
+  local type=$3
+  local target=$4
+  local dns_result=""
+  local string=$(echo " dns lookup for $type record by $ipv"		\
+               "nameserver: $target")
+  for fqdn in $(echo $FQDNS | sed 's/,/ /g'); do
+    local result=$FAIL
+    string=$(echo "$string\n  resolve server: $fqdn")
+    dns_result=$(do_dnslookup $target $type $fqdn)
     if [ $? -eq 0 ]; then
-      result=${SUCCESS}
+      result=$SUCCESS
     else
       stat=$?
     fi
-    write_json ${layer} ${ipv} v${ver}dnsqry_${type}_${fqdn} ${result}	\
-               ${target} "${dns_result}" ${count}
-    if [ "${result}" = "${SUCCESS}" ]; then
-      dns_ans=$(get_dnsans ${type} "${dns_result}")
-      write_json ${layer} ${ipv} v${ver}dnsans_${type}_${fqdn} ${INFO}	\
-                 ${target} "${dns_ans}" ${count}
-      dns_ttl=$(get_dnsttl ${type} "${dns_result}")
-      write_json ${layer} ${ipv} v${ver}dnsttl_${type}_${fqdn} ${INFO}	\
-                 ${target} "${dns_ttl}" ${count}
-      dns_rtt=$(get_dnsrtt "${dns_result}")
-      write_json ${layer} ${ipv} v${ver}dnsrtt_${type}_${fqdn} ${INFO}	\
-                 ${target} "${dns_rtt}" ${count}
-      string=$(echo "${string}\n   status: ok, result(ttl): ${dns_ans}(${dns_ttl} s), query time: ${dns_rtt} ms")
+    write_json $layer $ipv v${ver}dnsqry_${type}_${fqdn} $result	\
+               $target "$dns_result" $count
+    if [ "$result" = "$SUCCESS" ]; then
+      local dns_ans=$(echo "$dns_result" | get_dnsans $type)
+      write_json $layer $ipv v${ver}dnsans_${type}_${fqdn} $INFO	\
+                 $target "$dns_ans" $count
+      local dns_ttl=$(echo "$dns_result" | get_dnsttl $type)
+      write_json $layer $ipv v${ver}dnsttl_${type}_${fqdn} $INFO	\
+                 $target "$dns_ttl" $count
+      local dns_rtt=$(echo "$dns_result" | get_dnsrtt)
+      write_json $layer ${ipv} v${ver}dnsrtt_${type}_${fqdn} $INFO	\
+                 $target "$dns_rtt" $count
+      string=$(echo "$string\n   status: ok, result(ttl):"		\
+             "$dns_ans($dns_ttl s), query time: $dns_rtt ms")
     else
-      string=$(echo "${string}\n   status: ng ($stat)")
+      string=$(echo "$string\n   status: ng ($stat)")
     fi
   done
-  if [ "${VERBOSE}" = "yes" ]; then
-    echo -e "${string}"
+  if [ "$VERBOSE" = "yes" ]; then
+    echo -e "$string"
   fi
-  )
 }
 
 ## for web layer
@@ -1404,36 +1385,35 @@ do_curl() {
 
 #
 cmdset_http () {
-  (
   if [ $# -ne 5 ]; then
-    echo "ERROR: cmdset_http <layer> <version> <target_type> <target_addr> <count>." 1>&2
+    echo "ERROR: cmdset_http <layer> <version> <target_type>"		\
+         "<target_addr> <count>." 1>&2
     return 1
   fi
-  layer=$1
-  ver=$2
-  ipv="IPv${ver}"
-  type=$3
-  target=$4
-  count=$5
-  result=${FAIL}
-  string=$(echo " curl to extarnal server: ${target} by ${ipv}")
-  http_ans=$(do_curl ${ver} ${target})
+  local layer=$1
+  local ver=$2
+  local ipv="IPv${ver}"
+  local type=$3
+  local target=$4
+  local count=$5
+  local result=$FAIL
+  local string=$(echo " curl to extarnal server: $target by $ipv")
+  local http_ans=$(do_curl $ver $target)
   if [ $? -eq 0 ]; then
-    result=${SUCCESS}
+    result=$SUCCESS
   else
     stat=$?
   fi
-  write_json ${layer} ${ipv} v${ver}http_${type} ${result} ${target}	\
-             "${http_ans}" ${count}
-  if [ "${result}" = "${SUCCESS}" ]; then
-    string=$(echo "${string}\n  status: ok, http status code: ${http_ans}")
+  write_json $layer $ipv v${ver}http_${type} $result $target		\
+             "$http_ans" $count
+  if [ "$result" = "$SUCCESS" ]; then
+    string=$(echo "$string\n  status: ok, http status code: $http_ans")
   else
-    string=$(echo "${string}\n  status: ng ($stat)")
+    string=$(echo "$string\n  status: ng ($stat)")
   fi
-  if [ "${VERBOSE}" = "yes" ]; then
-    echo -e "${string}"
+  if [ "$VERBOSE" = "yes" ]; then
+    echo -e "$string"
   fi
-  )
 }
 
 
@@ -1446,17 +1426,17 @@ cmdset_http () {
 
 # Check parameters
 for param in LOCKFILE MAX_RETRY IFTYPE DEVNAME PING_SRVS PING6_SRVS FQDNS GPDNS4 GPDNS6 V4WEB_SRVS V6WEB_SRVS; do
-  if [ -z `eval echo '$'${param}` ]; then
-    echo "ERROR: ${param} is null in configration file." 1>&2
+  if [ -z `eval echo '$'$param` ]; then
+    echo "ERROR: $param is null in configration file." 1>&2
     exit 1
   fi
 done
 
 # Check commands
 for cmd in uuidgen iwgetid iwconfig; do
-  which ${cmd} > /dev/null 2>&1
+  which $cmd > /dev/null 2>&1
   if [ $? -ne 0 ]; then
-    echo "ERROR: ${cmd} is not found." 1>&2
+    echo "ERROR: $cmd is not found." 1>&2
     exit 1
   fi
 done
@@ -1465,17 +1445,17 @@ done
 ## Phase 0
 
 # Set lock file
-trap 'rm -f ${LOCKFILE}; exit 0' INT
+trap 'rm -f $LOCKFILE; exit 0' INT
 
-if [ ! -e ${LOCKFILE} ]; then
-  echo $$ >"${LOCKFILE}"
+if [ ! -e $LOCKFILE ]; then
+  echo $$ >"$LOCKFILE"
 else
-  pid=$(cat "${LOCKFILE}")
-  kill -0 "${pid}" > /dev/null 2>&1
+  pid=`cat "$LOCKFILE"`
+  kill -0 "$pid" > /dev/null 2>&1
   if [ $? -eq 0 ]; then
     exit 0
   else
-    echo $$ >"${LOCKFILE}"
+    echo $$ >"$LOCKFILE"
     echo "Warning: previous check appears to have not finished correctly"
   fi
 fi
@@ -1484,13 +1464,13 @@ fi
 mkdir -p log
 
 # Cleate UUID
-uuid=$(cleate_uuid)
+UUID=$(cleate_uuid)
 
 # Get devicename
-devicename=$(get_devicename "${IFTYPE}")
+devicename=$(get_devicename "$IFTYPE")
 
 # Get MAC address
-mac_addr=$(get_macaddr ${devicename})
+mac_addr=$(get_macaddr $devicename)
 
 # Get OS version
 os=$(get_os)
@@ -1501,124 +1481,124 @@ echo "Phase 1: Datalink Layer checking..."
 layer="datalink"
 
 # Get current SSID
-if [ ${IFTYPE} = "Wi-Fi" ]; then
-  pre_ssid=$(get_wifi_ssid ${devicename})
+if [ "$IFTYPE" = "Wi-Fi" ]; then
+  pre_ssid=$(get_wifi_ssid $devicename)
 fi
 
 # Down, Up interface
-if [ ${RECONNECT} = "yes" ]; then
+if [ "$RECONNECT" = "yes" ]; then
   # Down target interface
-  if [ "${VERBOSE}" = "yes" ]; then
-    echo " interface:${devicename} down"
+  if [ "$VERBOSE" = "yes" ]; then
+    echo " interface:$devicename down"
   fi
-  do_ifdown ${devicename}
+  do_ifdown $devicename
   sleep 2
 
   # Start target interface
-  if [ "${VERBOSE}" = "yes" ]; then
-    echo " interface:${devicename} up"
+  if [ "$VERBOSE" = "yes" ]; then
+    echo " interface:$devicename up"
   fi
-  do_ifup ${devicename}
+  do_ifup $devicename
 fi
 sleep 5
 
 # Check I/F status
-result_phase1=${FAIL}
+result_phase1=$FAIL
 rcount=0
-while [ "${rcount}" -lt "${MAX_RETRY}" ]; do
-  ifstatus=$(get_ifstatus ${devicename})
+while [ "$rcount" -lt "$MAX_RETRY" ]; do
+  ifstatus=$(get_ifstatus $devicename)
   if [ $? -eq 0 ]; then
-    result_phase1=${SUCCESS}
+    result_phase1=$SUCCESS
     break
   fi
   sleep 5
   rcount=$(( rcount + 1 ))
 done
-if [ -n "${ifstatus}" ]; then
-  write_json ${layer} "common" ifstatus ${result_phase1} self ${ifstatus} 0
+if [ -n "$ifstatus" ]; then
+  write_json $layer common ifstatus $result_phase1 self $ifstatus 0
 fi
 
 # Get iftype
-write_json ${layer} "common" iftype ${INFO} self ${IFTYPE} 0
+write_json $layer common iftype $INFO self "$IFTYPE" 0
 
 # Get ifmtu
-ifmtu=$(get_ifmtu ${devicename})
-if [ -n "${ifmtu}" ]; then
-  write_json ${layer} "common" ifmtu ${INFO} self ${ifmtu} 0
+ifmtu=$(get_ifmtu $devicename)
+if [ -n "$ifmtu" ]; then
+  write_json $layer common ifmtu $INFO self $ifmtu 0
 fi
 
 #
-if [ "${IFTYPE}" != "Wi-Fi" ]; then
+if [ "$IFTYPE" != "Wi-Fi" ]; then
   # Get media type
-  media=$(get_mediatype ${devicename})
-  if [ -n "${media}" ]; then
-    write_json ${layer} "${IFTYPE}" media ${INFO} self ${media} 0
+  media=$(get_mediatype $devicename)
+  if [ -n "$media" ]; then
+    write_json $layer "$IFTYPE" media $INFO self $media 0
   fi
 else
   # Get Wi-Fi SSID
-  ssid=$(get_wifi_ssid ${devicename})
-  if [ -n "${ssid}" ]; then
-    write_json ${layer} "${IFTYPE}" ssid ${INFO} self "${ssid}" 0
+  ssid=$(get_wifi_ssid $devicename)
+  if [ -n "$ssid" ]; then
+    write_json $layer "$IFTYPE" ssid $INFO self "$ssid" 0
   fi
   # Get Wi-Fi BSSID
-  bssid=$(get_wifi_bssid ${devicename})
-  if [ -n "${bssid}" ]; then
-    write_json ${layer} "${IFTYPE}" bssid ${INFO} self ${bssid} 0
+  bssid=$(get_wifi_bssid $devicename)
+  if [ -n "$bssid" ]; then
+    write_json $layer "$IFTYPE" bssid $INFO self $bssid 0
   fi
   # Get Wi-Fi channel
-  channel=$(get_wifi_channel ${devicename})
-  if [ -n "${channel}" ]; then
-    write_json ${layer} "${IFTYPE}" channel ${INFO} self ${channel} 0
+  channel=$(get_wifi_channel $devicename)
+  if [ -n "$channel" ]; then
+    write_json $layer "$IFTYPE" channel $INFO self $channel 0
   fi
   # Get Wi-Fi RSSI
-  rssi=$(get_wifi_rssi ${devicename})
-  if [ -n "${rssi}" ]; then
-    write_json ${layer} "${IFTYPE}" rssi ${INFO} self ${rssi} 0
+  rssi=$(get_wifi_rssi $devicename)
+  if [ -n "$rssi" ]; then
+    write_json $layer "$IFTYPE" rssi $INFO self $rssi 0
   fi
   # Get Wi-Fi noise
-  noise=$(get_wifi_noise ${devicename})
-  if [ -n "${noise}" ]; then
-    write_json ${layer} "${IFTYPE}" noise ${INFO} self ${noise} 0
+  noise=$(get_wifi_noise $devicename)
+  if [ -n "$noise" ]; then
+    write_json $layer "$IFTYPE" noise $INFO self $noise 0
   fi
   # Get Wi-Fi quality
-  quarity=$(get_wifi_quality ${devicename})
-  if [ -n "${quarity}" ]; then
-    write_json ${layer} "${IFTYPE}" quarity ${INFO} self ${quarity} 0
+  quarity=$(get_wifi_quality $devicename)
+  if [ -n "$quarity" ]; then
+    write_json $layer "$IFTYPE" quarity $INFO self $quarity 0
   fi
   # Get Wi-Fi rate
-  rate=$(get_wifi_rate ${devicename})
-  if [ -n "${rate}" ]; then
-    write_json ${layer} "${IFTYPE}" rate ${INFO} self ${rate} 0
+  rate=$(get_wifi_rate $devicename)
+  if [ -n "$rate" ]; then
+    write_json $layer "$IFTYPE" rate $INFO self $rate 0
   fi
   # Get Wi-Fi environment
-  environment=$(get_wifi_environment ${devicename})
-  if [ -n "${environment}" ]; then
-    write_json ${layer} "${IFTYPE}" environment ${INFO} self "${environment}" 0
+  environment=$(get_wifi_environment $devicename)
+  if [ -n "$environment" ]; then
+    write_json $layer "$IFTYPE" environment $INFO self "$environment" 0
   fi
 fi
 
 ## Write campaign log file (pre)
 #ssid=WIRED
-#if [ "${IFTYPE}" = "Wi-Fi" ]; then
-#  ssid=$(get_wifi_ssid ${devicename})
+#if [ "$IFTYPE" = "Wi-Fi" ]; then
+#  ssid=$(get_wifi_ssid $devicename)
 #fi
-#write_json_campaign ${uuid} ${mac_addr} "${os}" "${ssid}"
+#write_json_campaign $UUID $mac_addr "$os" "$ssid"
 
 # Report phase 1 results
-if [ "${VERBOSE}" = "yes" ]; then
+if [ "$VERBOSE" = "yes" ]; then
   echo " datalink information:"
-  echo "  datalink status: ${result_phase1}"
-  echo "  type: ${IFTYPE}, dev: ${devicename}"
-  echo "  status: ${ifstatus}, mtu: ${ifmtu} MB"
-  if [ "${IFTYPE}" != "Wi-Fi" ]; then
-    echo "  media: ${media}"
+  echo "  datalink status: $result_phase1"
+  echo "  type: $IFTYPE, dev: $devicename"
+  echo "  status: $ifstatus, mtu: $ifmtu MB"
+  if [ "$IFTYPE" != "Wi-Fi" ]; then
+    echo "  media: $media"
   else
-    echo "  ssid: ${ssid}, ch: ${channel}, rate: ${rate} Mbps"
-    echo "  bssid: ${bssid}"
-    echo "  rssi: ${rssi} dB, noise: ${noise} dB"
-    echo "  quarity: ${quarity}"
+    echo "  ssid: $ssid, ch: $channel, rate: $rate Mbps"
+    echo "  bssid: $bssid"
+    echo "  rssi: $rssi dB, noise: $noise dB"
+    echo "  quarity: $quarity"
     echo "  environment:"
-    echo "${environment}"
+    echo "$environment"
   fi
 fi
 
@@ -1631,261 +1611,248 @@ layer="interface"
 
 ## IPv4
 # Get IPv4 I/F configurations
-v4ifconf=$(get_v4ifconf "${devicename}")
-if [ -n "${v4ifconf}" ]; then
-  write_json ${layer} IPv4 v4ifconf ${INFO} self ${v4ifconf} 0
+v4ifconf=$(get_v4ifconf "$devicename")
+if [ -n "$v4ifconf" ]; then
+  write_json $layer IPv4 v4ifconf $INFO self $v4ifconf 0
 fi
 
 # Check IPv4 autoconf
-result_phase2_1=${FAIL}
+result_phase2_1=$FAIL
 rcount=0
-while [ ${rcount} -lt "${MAX_RETRY}" ]; do
-  v4autoconf=$(check_v4autoconf ${devicename} ${v4ifconf})
-  if [ $? -eq 0 -a -n "${v4autoconf}" ]; then
-    result_phase2_1=${SUCCESS}
+while [ $rcount -lt "$MAX_RETRY" ]; do
+  v4autoconf=$(check_v4autoconf $devicename $v4ifconf)
+  if [ $? -eq 0 -a -n "$v4autoconf" ]; then
+    result_phase2_1=$SUCCESS
     break
   fi
   sleep 5
   rcount=$(( rcount + 1 ))
 done
-write_json ${layer} IPv4 v4autoconf ${result_phase2_1} self "${v4autoconf}" 0
+write_json $layer IPv4 v4autoconf $result_phase2_1 self "$v4autoconf" 0
 
 # Get IPv4 address
-v4addr=$(get_v4addr ${devicename})
-if [ -n "${v4addr}" ]; then
-  write_json ${layer} IPv4 v4addr ${INFO} self ${v4addr} 0
+v4addr=$(get_v4addr $devicename)
+if [ -n "$v4addr" ]; then
+  write_json $layer IPv4 v4addr $INFO self $v4addr 0
 fi
 
 # Get IPv4 netmask
-netmask=$(get_netmask ${devicename})
-if [ -n "${netmask}" ]; then
-  write_json ${layer} IPv4 netmask ${INFO} self ${netmask} 0
+netmask=$(get_netmask $devicename)
+if [ -n "$netmask" ]; then
+  write_json $layer IPv4 netmask $INFO self $netmask 0
 fi
 
 # Get IPv4 routers
-v4routers=$(get_v4routers ${devicename})
-if [ -n "${v4routers}" ]; then
-  write_json ${layer} IPv4 v4routers ${INFO} self "${v4routers}" 0
+v4routers=$(get_v4routers $devicename)
+if [ -n "$v4routers" ]; then
+  write_json $layer IPv4 v4routers $INFO self "$v4routers" 0
 fi
 
 # Get IPv4 name servers
 v4nameservers=$(get_v4nameservers)
-if [ -n "${v4nameservers}" ]; then
-  write_json ${layer} IPv4 v4nameservers ${INFO} self "${v4nameservers}" 0
+if [ -n "$v4nameservers" ]; then
+  write_json $layer IPv4 v4nameservers $INFO self "$v4nameservers" 0
 fi
 
 # Get IPv4 NTP servers
 #TBD
 
 # Report phase 2 results (IPv4)
-if [ "${VERBOSE}" = "yes" ]; then
+if [ "$VERBOSE" = "yes" ]; then
   echo " interface information:"
-  echo "  intarface status (IPv4): ${result_phase2_1}"
-  echo "  IPv4 conf: ${v4ifconf}"
+  echo "  intarface status (IPv4): $result_phase2_1"
+  echo "  IPv4 conf: $v4ifconf"
   echo "  IPv4 addr: ${v4addr}/${netmask}"
-  echo "  IPv4 router: ${v4routers}"
-  echo "  IPv4 namesrv: ${v4nameservers}"
+  echo "  IPv4 router: $v4routers"
+  echo "  IPv4 namesrv: $v4nameservers"
 fi
 
 ## IPv6
 # Get IPv6 I/F configurations
-v6ifconf=$(get_v6ifconf ${devicename})
-if [ -n "${v6ifconf}" ]; then
-  write_json ${layer} IPv6 v6ifconf ${INFO} self ${v6ifconf} 0
+v6ifconf=$(get_v6ifconf $devicename)
+if [ -n "$v6ifconf" ]; then
+  write_json $layer IPv6 v6ifconf $INFO self $v6ifconf 0
 fi
 
 # Get IPv6 linklocal address
-v6lladdr=$(get_v6lladdr ${devicename})
-if [ -n "${v6lladdr}" ]; then
-  write_json ${layer} IPv6 v6lladdr ${INFO} self ${v6lladdr} 0
+v6lladdr=$(get_v6lladdr $devicename)
+if [ -n "$v6lladdr" ]; then
+  write_json $layer IPv6 v6lladdr $INFO self $v6lladdr 0
 fi
 
 # Report phase 2 results (IPv6)
-if [ "${VERBOSE}" = "yes" ]; then
-  echo "  IPv6 conf: ${v6ifconf}"
-  echo "  IPv6 lladdr: ${v6lladdr}"
+if [ "$VERBOSE" = "yes" ]; then
+  echo "  IPv6 conf: $v6ifconf"
+  echo "  IPv6 lladdr: $v6lladdr"
 fi
 
 # Get IPv6 RA infomation
-ra_info=$(get_ra_info ${devicename})
+ra_info=$(get_ra_info $devicename)
 
 # Get IPv6 RA source addresses
-ra_addrs=$(echo "${ra_info}" | get_ra_addrs)
-if [ -n "${ra_addrs}" ]; then
-  write_json ${layer} IPv6 ra_addrs ${INFO} self ${ra_addrs} 0
+ra_addrs=$(echo "$ra_info" | get_ra_addrs)
+if [ -n "$ra_addrs" ]; then
+  write_json $layer IPv6 ra_addrs $INFO self $ra_addrs 0
 fi
 
-if [ -z "${ra_info}" ]; then
-  if [ "${VERBOSE}" = "yes" ]; then
+if [ -z "$ra_addrs" ]; then
+  # Report phase 2 results (IPv6-RA)
+  if [ "$VERBOSE" = "yes" ]; then
     echo "   RA does not exist."
   fi
 else
   count=0
-  for addr in $(echo ${ra_addrs} | sed 's/,/ /g'); do
-    if [ "${VERBOSE}" = "yes" ]; then
-      echo "  IPv6 RA src addr: ${addr}"
-    fi
+  for addr in $(echo $ra_addrs | sed 's/,/ /g'); do
     # Get IPv6 RA flags
-    ra_flags=$(echo "${ra_info}" | get_ra_flags ${addr})
-    if [ -z "${ra_flags}" ]; then
+    ra_flags=$(echo "$ra_info" | get_ra_flags $addr)
+    if [ -z "$ra_flags" ]; then
       ra_flags="none"
     fi
-    if [ -n "${ra_flags}" ]; then
-      write_json ${layer} RA ra_flags ${INFO} ${addr} ${ra_flags} ${count}
-    fi
-    if [ "${VERBOSE}" = "yes" ]; then
-      echo "   IPv6 RA flags: ${ra_flags}"
+    if [ -n "$ra_flags" ]; then
+      write_json $layer RA ra_flags $INFO $addr $ra_flags $count
     fi
 
     # Get IPv6 RA parameters
-    ra_hoplimit=$(echo "${ra_info}" | get_ra_hoplimit ${addr})
-    if [ -n "${ra_hoplimit}" ]; then
-      write_json ${layer} RA ra_hoplimit ${INFO} ${addr} ${ra_hoplimit} ${count}
+    ra_hoplimit=$(echo "$ra_info" | get_ra_hoplimit $addr)
+    if [ -n "$ra_hoplimit" ]; then
+      write_json $layer RA ra_hoplimit $INFO $addr $ra_hoplimit $count
     fi
-    if [ "${VERBOSE}" = "yes" ]; then
-      echo "   IPv6 RA hoplimit: ${ra_hoplimit}"
+    ra_lifetime=$(echo "$ra_info" | get_ra_lifetime $addr)
+    if [ -n "$ra_lifetime" ]; then
+      write_json $layer RA ra_lifetime $INFO $addr $ra_lifetime $count
     fi
-    ra_lifetime=$(echo "${ra_info}" | get_ra_lifetime ${addr})
-    if [ -n "${ra_lifetime}" ]; then
-      write_json ${layer} RA ra_lifetime ${INFO} ${addr} ${ra_lifetime} ${count}
+    ra_reachable=$(echo "$ra_info" | get_ra_reachable $addr)
+    if [ -n "$ra_reachable" ]; then
+      write_json $layer RA ra_reachable $INFO $addr $ra_reachable $count
     fi
-    if [ "${VERBOSE}" = "yes" ]; then
-      echo "   IPv6 RA lifetime: ${ra_lifetime}"
+    ra_retransmit=$(echo "$ra_info" | get_ra_retransmit $addr)
+    if [ -n "$ra_retransmit" ]; then
+      write_json $layer RA ra_retransmit $INFO $addr $ra_retransmit $count
     fi
-    ra_reachable=$(echo "${ra_info}" | get_ra_reachable ${addr})
-    if [ -n "${ra_reachable}" ]; then
-      write_json ${layer} RA ra_reachable ${INFO} ${addr} ${ra_reachable} ${count}
-    fi
-    if [ "${VERBOSE}" = "yes" ]; then
-      echo "   IPv6 RA reachable: ${ra_reachable}"
-    fi
-    ra_retransmit=$(echo "${ra_info}" | get_ra_retransmit ${addr})
-    if [ -n "${ra_retransmit}" ]; then
-      write_json ${layer} RA ra_retransmit ${INFO} ${addr} ${ra_retransmit} ${count}
-    fi
-    if [ "${VERBOSE}" = "yes" ]; then
-      echo "   IPv6 RA retransmit: ${ra_retransmit}"
+
+    # Report phase 2 results (IPv6-RA)
+    if [ "$VERBOSE" = "yes" ]; then
+      echo "  IPv6 RA src addr: $addr"
+      echo "   IPv6 RA flags: $ra_flags"
+      echo "   IPv6 RA hoplimit: $ra_hoplimit"
+      echo "   IPv6 RA lifetime: $ra_lifetime"
+      echo "   IPv6 RA reachable: $ra_reachable"
+      echo "   IPv6 RA retransmit: $ra_retransmit"
     fi
 
     # Get IPv6 RA prefixes
-    ra_prefs=$(echo "${ra_info}" | get_ra_prefs ${addr})
-    if [ -n "${ra_prefs}" ]; then
-      write_json ${layer} RA ra_prefs ${INFO} ${addr} ${ra_prefs} ${count}
+    ra_prefs=$(echo "$ra_info" | get_ra_prefs $addr)
+    if [ -n "$ra_prefs" ]; then
+      write_json $layer RA ra_prefs $INFO $addr $ra_prefs $count
     fi
 
     s_count=0
-    for pref in $(echo ${ra_prefs} | sed 's/,/ /g'); do
-      if [ "${VERBOSE}" = "yes" ]; then
-        echo "   IPv6 RA prefix: ${pref}"
-      fi
+    for pref in $(echo $ra_prefs | sed 's/,/ /g'); do
       # Get IPv6 RA prefix flags
-      ra_pref_flags=$(echo "${ra_info}" | get_ra_pref_flags ${addr} ${pref})
-      if [ -n "${ra_pref_flags}" ]; then
-        write_json ${layer} RA ra_pref_flags ${INFO} ${addr}-${pref} ${ra_pref_flags} ${s_count}
-      fi
-      if [ "${VERBOSE}" = "yes" ]; then
-        echo "    flags: ${ra_pref_flags}"
+      ra_pref_flags=$(echo "$ra_info" | get_ra_pref_flags $addr $pref)
+      if [ -n "$ra_pref_flags" ]; then
+        write_json $layer RA ra_pref_flags $INFO ${addr}-${pref} $ra_pref_flags $s_count
       fi
 
       # Get IPv6 RA prefix parameters
-      ra_pref_valid=$(echo "${ra_info}" | get_ra_pref_valid ${addr} ${pref})
-      if [ -n "${ra_pref_valid}" ]; then
-        write_json ${layer} RA ra_pref_valid ${INFO} ${addr}-${pref} ${ra_pref_valid} ${s_count}
+      ra_pref_valid=$(echo "$ra_info" | get_ra_pref_valid $addr $pref)
+      if [ -n "$ra_pref_valid" ]; then
+        write_json $layer RA ra_pref_valid $INFO ${addr}-${pref} $ra_pref_valid $s_count
       fi
-      if [ "${VERBOSE}" = "yes" ]; then
-        echo "    valid time: ${ra_pref_valid}"
-      fi
-      ra_pref_preferred=$(echo "${ra_info}" | get_ra_pref_preferred ${addr} ${pref})
-      if [ -n "${ra_pref_preferred}" ]; then
-        write_json ${layer} RA ra_pref_preferred ${INFO} ${addr}-${pref} ${ra_pref_preferred} ${s_count}
-      fi
-      if [ "${VERBOSE}" = "yes" ]; then
-        echo "    preferred time: ${ra_pref_preferred}"
+      ra_pref_preferred=$(echo "$ra_info" | get_ra_pref_preferred $addr $pref)
+      if [ -n "$ra_pref_preferred" ]; then
+        write_json $layer RA ra_pref_preferred $INFO ${addr}-${pref} $ra_pref_preferred $s_count
       fi
 
       # Get IPv6 prefix length
-      ra_pref_len=$(get_prefixlen ${pref})
-      if [ -n "${ra_pref_len}" ]; then
-        write_json ${layer} RA ra_pref_len ${INFO} ${addr}-${pref} ${ra_pref_len} ${s_count}
+      ra_pref_len=$(get_prefixlen $pref)
+      if [ -n "$ra_pref_len" ]; then
+        write_json $layer RA ra_pref_len $INFO ${addr}-${pref} $ra_pref_len $s_count
+      fi
+
+      # Report phase 2 results (IPv6-RA-Prefix)
+      if [ "$VERBOSE" = "yes" ]; then
+        echo "   IPv6 RA prefix: $pref"
+        echo "    flags: $ra_pref_flags"
+        echo "    valid time: $ra_pref_valid"
+        echo "    preferred time: $ra_pref_preferred"
       fi
 
       # Check IPv6 autoconf
-      result_phase2_2=${FAIL}
+      result_phase2_2=$FAIL
       rcount=0
-      while [ ${rcount} -lt "${MAX_RETRY}" ]; do
+      while [ $rcount -lt "$MAX_RETRY" ]; do
         # Get IPv6 address
-        v6addrs=$(get_v6addrs ${devicename} ${pref})
-        v6autoconf=$(check_v6autoconf ${devicename} ${v6ifconf} ${ra_flags} ${pref} ${ra_pref_flags})
-        if [ $? -eq 0 -a -n "${v6autoconf}" ]; then
-          result_phase2_2=${SUCCESS}
+        v6addrs=$(get_v6addrs $devicename $pref)
+        v6autoconf=$(check_v6autoconf $devicename $v6ifconf $ra_flags $pref $ra_pref_flags)
+        if [ $? -eq 0 -a -n "$v6autoconf" ]; then
+          result_phase2_2=$SUCCESS
           break
         fi
         sleep 5
 
         rcount=$(( rcount + 1 ))
       done
-      write_json ${layer} IPv6 v6addrs ${INFO} ${pref} "${v6addrs}" ${count}
-      write_json ${layer} IPv6 v6autoconf ${result_phase2_2} ${pref} "${v6autoconf}" ${count}
-      if [ "${VERBOSE}" = "yes" ]; then
-        for addr in $(echo ${v6addrs} | sed 's/,/ /g'); do
-          echo "   IPv6 addr: ${addr}"
+      write_json $layer IPv6 v6addrs $INFO $pref "$v6addrs" $count
+      write_json $layer IPv6 v6autoconf $result_phase2_2 $pref "$v6autoconf" $count
+      if [ "$VERBOSE" = "yes" ]; then
+        for addr in $(echo $v6addrs | sed 's/,/ /g'); do
+          echo "   IPv6 addr: $addr"
         done
-        echo "   intarface status (IPv6): ${result_phase2_2}"
+        echo "   intarface status (IPv6): $result_phase2_2"
       fi
 
       s_count=$(( s_count + 1 ))
     done
 
     # Get IPv6 RA routes
-    ra_routes=$(echo "${ra_info}" | get_ra_routes ${addr})
-    if [ -n "${ra_routes}" ]; then
-      write_json ${layer} RA ra_routes ${INFO} ${addr} ${ra_routes} ${count}
+    ra_routes=$(echo "$ra_info" | get_ra_routes $addr)
+    if [ -n "$ra_routes" ]; then
+      write_json $layer RA ra_routes $INFO $addr $ra_routes $count
     fi
 
     s_count=0
-    for route in $(echo ${ra_routes} | sed 's/,/ /g'); do
-      if [ "${VERBOSE}" = "yes" ]; then
-        echo "   IPv6 RA route: ${route}"
-      fi
+    for route in $(echo $ra_routes | sed 's/,/ /g'); do
       # Get IPv6 RA route flag
-      ra_route_flag=$(echo "${ra_info}" | get_ra_route_flag ${addr} ${route})
-      if [ -n "${ra_route_flag}" ]; then
-        write_json ${layer} RA ra_route_flag ${INFO} ${addr}-${route} ${ra_route_flag} ${s_count}
-      fi
-      if [ "${VERBOSE}" = "yes" ]; then
-        echo "    flag: ${ra_route_flag}"
+      ra_route_flag=$(echo "$ra_info" | get_ra_route_flag $addr $route)
+      if [ -n "$ra_route_flag" ]; then
+        write_json $layer RA ra_route_flag $INFO ${addr}-${route} $ra_route_flag $s_count
       fi
 
       # Get IPv6 RA route parameters
-      ra_route_lifetime=$(echo "${ra_info}" | get_ra_route_lifetime ${addr} ${route})
-      if [ -n "${ra_route_lifetime}" ]; then
-        write_json ${layer} RA ra_route_lifetime ${INFO} ${addr}-${route} ${ra_route_lifetime} ${s_count}
+      ra_route_lifetime=$(echo "$ra_info" | get_ra_route_lifetime $addr $route)
+      if [ -n "$ra_route_lifetime" ]; then
+        write_json $layer RA ra_route_lifetime $INFO ${addr}-${route} $ra_route_lifetime $s_count
       fi
-      if [ "${VERBOSE}" = "yes" ]; then
-        echo "    lifetime: ${ra_route_lifetime}"
+
+      # Report phase 2 results (IPv6-RA-Route)
+      if [ "$VERBOSE" = "yes" ]; then
+        echo "   IPv6 RA route: $route"
+        echo "    flag: $ra_route_flag"
+        echo "    lifetime: $ra_route_lifetime"
       fi
 
       s_count=$(( s_count + 1 ))
     done
 
     # Get IPv6 RA RDNSSes
-    ra_rdnsses=$(echo "${ra_info}" | get_ra_rdnsses ${addr})
-    if [ -n "${ra_rdnsses}" ]; then
-      write_json ${layer} RA ra_rdnsses ${INFO} ${addr} ${ra_rdnsses} ${count}
+    ra_rdnsses=$(echo "$ra_info" | get_ra_rdnsses $addr)
+    if [ -n "$ra_rdnsses" ]; then
+      write_json $layer RA ra_rdnsses $INFO $addr $ra_rdnsses $count
     fi
 
     s_count=0
-    for rdnss in $(echo ${ra_rdnsses} | sed 's/,/ /g'); do
-      if [ "${VERBOSE}" = "yes" ]; then
-        echo "   IPv6 RA rdnss: ${rdnss}"
-      fi
+    for rdnss in $(echo $ra_rdnsses | sed 's/,/ /g'); do
       # Get IPv6 RA RDNSS lifetime
-      ra_rdnss_lifetime=$(echo "${ra_info}" | get_ra_rdnss_lifetime ${addr} ${rdnss})
-      if [ -n "${ra_rdnss_lifetime}" ]; then
-        write_json ${layer} RA ra_rdnss_lifetime ${INFO} ${addr}-${rdnss} ${ra_rdnss_lifetime} ${s_count}
+      ra_rdnss_lifetime=$(echo "$ra_info" | get_ra_rdnss_lifetime $addr $rdnss)
+      if [ -n "$ra_rdnss_lifetime" ]; then
+        write_json $layer RA ra_rdnss_lifetime $INFO ${addr}-${rdnss} $ra_rdnss_lifetime $s_count
       fi
-      if [ "${VERBOSE}" = "yes" ]; then
-        echo "    lifetime: ${ra_rdnss_lifetime}"
+
+      # Report phase 2 results (IPv6-RA-RDNSS)
+      if [ "$VERBOSE" = "yes" ]; then
+        echo "   IPv6 RA rdnss: $rdnss"
+        echo "    lifetime: $ra_rdnss_lifetime"
       fi
 
       s_count=$(( s_count + 1 ))
@@ -1895,25 +1862,25 @@ else
   done
 
   # Get IPv6 routers
-  v6routers=$(get_v6routers ${devicename})
-  if [ -n "${v6routers}" ]; then
-    write_json ${layer} IPv6 v6routers ${INFO} self "${v6routers}" 0
-  fi
-  if [ "${VERBOSE}" = "yes" ]; then
-    echo "  IPv6 routers: ${v6routers}"
+  v6routers=$(get_v6routers $devicename)
+  if [ -n "$v6routers" ]; then
+    write_json $layer IPv6 v6routers $INFO self "$v6routers" 0
   fi
 
   # Get IPv6 name servers
   v6nameservers=$(get_v6nameservers)
-  if [ -n "${v6nameservers}" ]; then
-    write_json ${layer} IPv6 v6nameservers ${INFO} self "${v6nameservers}" 0
-  fi
-  if [ "${VERBOSE}" = "yes" ]; then
-    echo "  IPv6 nameservers: ${v6nameservers}"
+  if [ -n "$v6nameservers" ]; then
+    write_json $layer IPv6 v6nameservers $INFO self "$v6nameservers" 0
   fi
 
   # Get IPv6 NTP servers
   #TBD
+
+  # Report phase 2 results (IPv6)
+  if [ "$VERBOSE" = "yes" ]; then
+    echo "  IPv6 routers: $v6routers"
+    echo "  IPv6 nameservers: $v6nameservers"
+  fi
 fi
 
 echo " done."
@@ -1925,29 +1892,29 @@ layer="localnet"
 
 # Do ping to IPv4 routers
 count=0
-for target in $(echo ${v4routers} | sed 's/,/ /g'); do
-  cmdset_ping ${layer} 4 router ${target} ${count} &
+for target in $(echo $v4routers | sed 's/,/ /g'); do
+  cmdset_ping $layer 4 router $target $count &
   count=$(( count + 1 ))
 done
 
 # Do ping to IPv4 nameservers
 count=0
-for target in $(echo ${v4nameservers} | sed 's/,/ /g'); do
-  cmdset_ping ${layer} 4 namesrv ${target} ${count} &
+for target in $(echo $v4nameservers | sed 's/,/ /g'); do
+  cmdset_ping $layer 4 namesrv $target $count &
   count=$(( count + 1 ))
 done
 
 # Do ping to IPv6 routers
 count=0
-for target in $(echo ${v6routers} | sed 's/,/ /g'); do
-  cmdset_ping ${layer} 6 router ${target} ${count} &
+for target in $(echo $v6routers | sed 's/,/ /g'); do
+  cmdset_ping $layer 6 router $target $count &
   count=$(( count + 1 ))
 done
 
 # Do ping to IPv6 nameservers
 count=0
-for target in $(echo ${v6nameservers} | sed 's/,/ /g'); do
-  cmdset_ping ${layer} 6 namesrv ${target} ${count} &
+for target in $(echo $v6nameservers | sed 's/,/ /g'); do
+  cmdset_ping $layer 6 namesrv $target $count &
   count=$(( count + 1 ))
 done
 
@@ -1959,55 +1926,55 @@ echo " done."
 echo "Phase 4: Globalnet Layer checking..."
 layer="globalnet"
 
-v4addr_type=$(check_v4addr ${v4addr})
-if [ "${v4addr_type}" = "private" -o "${v4addr_type}" = "grobal" ]; then
+v4addr_type=$(check_v4addr $v4addr)
+if [ "$v4addr_type" = "private" -o "$v4addr_type" = "grobal" ]; then
   count=0
-  for target in $(echo ${PING_SRVS} | sed 's/,/ /g'); do
-    if [ "${MODE}" = "probe" ]; then
+  for target in $(echo $PING_SRVS | sed 's/,/ /g'); do
+    if [ "$MODE" = "probe" ]; then
       # Do ping to IPv4 routers
       count_r=0
-      for target_r in $(echo ${v4routers} | sed 's/,/ /g'); do
-        cmdset_ping ${layer} 4 router ${target_r} ${count_r} &
+      for target_r in $(echo $v4routers | sed 's/,/ /g'); do
+        cmdset_ping $layer 4 router $target_r $count_r &
         count_r=$(( count_r + 1 ))
       done
     fi
 
     # Do ping to extarnal IPv4 servers
-    cmdset_ping ${layer} 4 srv ${target} ${count} &
+    cmdset_ping $layer 4 srv $target $count &
 
     # Do traceroute to extarnal IPv4 servers
-    cmdset_trace ${layer} 4 srv ${target} ${count} &
+    cmdset_trace $layer 4 srv $target $count &
 
-    if [ "${MODE}" = "client" ]; then
+    if [ "$MODE" = "client" ]; then
       # Check path MTU to extarnal IPv4 servers
-      cmdset_pmtud ${layer} 4 srv ${target} ${ifmtu} ${count} &
+      cmdset_pmtud $layer 4 srv $target $ifmtu $count &
     fi
 
     count=$(( count + 1 ))
   done
 fi
 
-if [ -n "${v6addrs}" ]; then
+if [ -n "$v6addrs" ]; then
   count=0
-  for target in $(echo ${PING6_SRVS} | sed 's/,/ /g'); do
-    if [ "${MODE}" = "probe" ]; then
+  for target in $(echo $PING6_SRVS | sed 's/,/ /g'); do
+    if [ "$MODE" = "probe" ]; then
       # Do ping to IPv6 routers
       count_r=0
-      for target_r in $(echo ${v6routers} | sed 's/,/ /g'); do
-        cmdset_ping ${layer} 6 router ${target_r} ${count_r} &
+      for target_r in $(echo $v6routers | sed 's/,/ /g'); do
+        cmdset_ping $layer 6 router $target_r $count_r &
         count_r=$(( count_r + 1 ))
       done
     fi
 
     # Do ping to extarnal IPv6 servers
-    cmdset_ping ${layer} 6 srv ${target} ${count} &
+    cmdset_ping $layer 6 srv $target $count &
   
     # Do traceroute to extarnal IPv6 servers
-    cmdset_trace ${layer} 6 srv ${target} ${count} &
+    cmdset_trace $layer 6 srv $target $count &
   
-    if [ "${MODE}" = "client" ]; then
+    if [ "$MODE" = "client" ]; then
       # Check path MTU to extarnal IPv6 servers
-      cmdset_pmtud ${layer} 6 srv ${target} ${ifmtu} ${count} &
+      cmdset_pmtud $layer 6 srv $target $ifmtu $count &
     fi
 
     count=$(( count + 1 ))
@@ -2025,93 +1992,93 @@ layer="dns"
 # Clear dns local cache
 #TBD
 
-if [ "${v4addr_type}" = "private" -o "${v4addr_type}" = "grobal" ]; then
+if [ "$v4addr_type" = "private" -o "$v4addr_type" = "grobal" ]; then
   count=0
-  for target in $(echo "${v4nameservers}" | sed 's/,/ /g'); do
-    if [ "${MODE}" = "probe" ]; then
+  for target in $(echo "$v4nameservers" | sed 's/,/ /g'); do
+    if [ "$MODE" = "probe" ]; then
       # Do ping to IPv4 nameservers
-      cmdset_ping ${layer} 4 namesrv ${target} ${count} &
+      cmdset_ping $layer 4 namesrv $target $count &
     fi
 
     # Do dns lookup for A record by IPv4
-    cmdset_dnslookup ${layer} 4 A ${target} ${count} &
+    cmdset_dnslookup $layer 4 A $target $count &
 
     # Do dns lookup for AAAA record by IPv4
-    cmdset_dnslookup ${layer} 4 AAAA ${target} ${count} &
+    cmdset_dnslookup $layer 4 AAAA $target $count &
 
     count=$(( count + 1 ))
   done
 
   count=0
-  for target in $(echo ${GPDNS4} | sed 's/,/ /g'); do
-    if [ "${MODE}" = "probe" ]; then
+  for target in $(echo $GPDNS4 | sed 's/,/ /g'); do
+    if [ "$MODE" = "probe" ]; then
       # Do ping to IPv4 routers
       count_r=0
-      for target_r in $(echo ${v4routers} | sed 's/,/ /g'); do
-        cmdset_ping ${layer} 4 router ${target_r} ${count_r} &
+      for target_r in $(echo $v4routers | sed 's/,/ /g'); do
+        cmdset_ping $layer 4 router $target_r $count_r &
         count_r=$(( count_r + 1 ))
       done
 
       # Do ping to IPv4 nameservers
-      cmdset_ping ${layer} 4 namesrv ${target} ${count} &
+      cmdset_ping $layer 4 namesrv $target $count &
 
       # Do traceroute to IPv4 nameservers
-      cmdset_trace ${layer} 4 namesrv ${target} ${count} &
+      cmdset_trace $layer 4 namesrv $target $count &
     fi
 
     # Do dns lookup for A record by IPv4
-    cmdset_dnslookup ${layer} 4 A ${target} ${count} &
+    cmdset_dnslookup $layer 4 A $target $count &
 
     # Do dns lookup for AAAA record by IPv4
-    cmdset_dnslookup ${layer} 4 AAAA ${target} ${count} &
+    cmdset_dnslookup $layer 4 AAAA $target $count &
 
     count=$(( count + 1 ))
   done
 fi
 
 exist_dns64="no"
-if [ -n "${v6addrs}" ]; then
+if [ -n "$v6addrs" ]; then
   count=0
-  for target in $(echo "${v6nameservers}" | sed 's/,/ /g'); do
-    if [ "${MODE}" = "probe" ]; then
+  for target in $(echo "$v6nameservers" | sed 's/,/ /g'); do
+    if [ "$MODE" = "probe" ]; then
       # Do ping to IPv6 nameservers
-      cmdset_ping ${layer} 6 namesrv ${target} ${count} &
+      cmdset_ping $layer 6 namesrv $target $count &
     fi
 
     # Do dns lookup for A record by IPv6
-    cmdset_dnslookup ${layer} 6 A ${target} ${count} &
+    cmdset_dnslookup $layer 6 A $target $count &
 
     # Do dns lookup for AAAA record by IPv6
-    cmdset_dnslookup ${layer} 6 AAAA ${target} ${count} &
+    cmdset_dnslookup $layer 6 AAAA $target $count &
 
     # check DNS64
-    exist_dns64=$(check_dns64 ${target})
+    exist_dns64=$(check_dns64 $target)
 
     count=$(( count + 1 ))
   done
 
   count=0
-  for target in $(echo ${GPDNS6} | sed 's/,/ /g'); do
-    if [ "${MODE}" = "probe" ]; then
+  for target in $(echo $GPDNS6 | sed 's/,/ /g'); do
+    if [ "$MODE" = "probe" ]; then
       # Do ping to IPv6 routers
       count_r=0
-      for target_r in $(echo ${v6routers} | sed 's/,/ /g'); do
-        cmdset_ping ${layer} 6 router ${target_r} ${count_r} &
+      for target_r in $(echo $v6routers | sed 's/,/ /g'); do
+        cmdset_ping $layer 6 router $target_r $count_r &
         count_r=$(( count_r + 1 ))
       done
 
       # Do ping to IPv6 nameservers
-      cmdset_ping ${layer} 6 namesrv ${target} ${count} &
+      cmdset_ping $layer 6 namesrv $target $count &
 
       # Do traceroute to IPv6 nameservers
-      cmdset_trace ${layer} 6 namesrv ${target} ${count} &
+      cmdset_trace $layer 6 namesrv $target $count &
     fi
 
     # Do dns lookup for A record by IPv6
-    cmdset_dnslookup ${layer} 6 A ${target} ${count} &
+    cmdset_dnslookup $layer 6 A $target $count &
 
     # Do dns lookup for AAAA record by IPv6
-    cmdset_dnslookup ${layer} 6 AAAA ${target} ${count} &
+    cmdset_dnslookup $layer 6 AAAA $target $count &
 
     count=$(( count + 1 ))
   done
@@ -2125,26 +2092,26 @@ echo " done."
 echo "Phase 6: Web Layer checking..."
 layer="web"
 
-if [ "${v4addr_type}" = "private" -o "${v4addr_type}" = "grobal" ]; then
+if [ "$v4addr_type" = "private" -o "$v4addr_type" = "grobal" ]; then
   count=0
-  for target in $(echo ${V4WEB_SRVS} | sed 's/,/ /g'); do
-    if [ "${MODE}" = "probe" ]; then
+  for target in $(echo $V4WEB_SRVS | sed 's/,/ /g'); do
+    if [ "$MODE" = "probe" ]; then
       # Do ping to IPv4 routers
       count_r=0
-      for target_r in $(echo ${v4routers} | sed 's/,/ /g'); do
-        cmdset_ping ${layer} 4 router ${target_r} ${count_r} &
+      for target_r in $(echo $v4routers | sed 's/,/ /g'); do
+        cmdset_ping $layer 4 router $target_r $count_r &
         count_r=$(( count_r + 1 ))
       done
 
       # Do ping to IPv4 web servers
-      cmdset_ping ${layer} 4 srv ${target} ${count} &
+      cmdset_ping $layer 4 srv $target $count &
 
       # Do traceroute to IPv4 web servers
-      cmdset_trace ${layer} 4 srv ${target} ${count} &
+      cmdset_trace $layer 4 srv $target $count &
     fi
 
     # Do curl to IPv4 web servers by IPv4
-    cmdset_http ${layer} 4 srv ${target} ${count} &
+    cmdset_http $layer 4 srv $target $count &
 
     # Do measure http throuput by IPv4
     #TBD
@@ -2154,25 +2121,25 @@ if [ "${v4addr_type}" = "private" -o "${v4addr_type}" = "grobal" ]; then
   done
 fi
 
-if [ -n "${v6addrs}" ]; then
+if [ -n "$v6addrs" ]; then
   count=0
-  for target in $(echo ${V6WEB_SRVS} | sed 's/,/ /g'); do
-    if [ "${MODE}" = "probe" ]; then
+  for target in $(echo $V6WEB_SRVS | sed 's/,/ /g'); do
+    if [ "$MODE" = "probe" ]; then
       count_r=0
-      for target_r in $(echo ${v6routers} | sed 's/,/ /g'); do
-        cmdset_ping ${layer} 6 router ${target_r} ${count_r} &
+      for target_r in $(echo $v6routers | sed 's/,/ /g'); do
+        cmdset_ping $layer 6 router $target_r $count_r &
         count_r=$(( count_r + 1 ))
       done
 
       # Do ping to IPv6 web servers
-      cmdset_ping ${layer} 6 srv ${target} ${count} &
+      cmdset_ping $layer 6 srv $target $count &
 
       # Do traceroute to IPv6 web servers
-      cmdset_trace ${layer} 6 srv ${target} ${count} &
+      cmdset_trace $layer 6 srv $target $count &
     fi
 
     # Do curl to IPv6 web servers by IPv6
-    cmdset_http ${layer} 6 srv ${target} ${count} &
+    cmdset_http $layer 6 srv $target $count &
 
     # Do measure http throuput by IPv6
     #TBD
@@ -2182,27 +2149,27 @@ if [ -n "${v6addrs}" ]; then
   done
 
   # DNS64
-  if [ "${exist_dns64}" = "yes" ]; then
+  if [ "$exist_dns64" = "yes" ]; then
     echo " exist dns64 server"
     count=0
-    for target in $(echo ${V4WEB_SRVS} | sed 's/,/ /g'); do
-      if [ "${MODE}" = "probe" ]; then
+    for target in $(echo $V4WEB_SRVS | sed 's/,/ /g'); do
+      if [ "$MODE" = "probe" ]; then
         # Do ping to IPv6 routers
         count_r=0
-        for target_r in $(echo ${v6routers} | sed 's/,/ /g'); do
-          cmdset_ping ${layer} 6 router ${target_r} ${count_r} &
+        for target_r in $(echo $v6routers | sed 's/,/ /g'); do
+          cmdset_ping $layer 6 router $target_r $count_r &
           count_r=$(( count_r + 1 ))
         done
 
         # Do ping to IPv4 web servers by IPv6
-        cmdset_ping ${layer} 6 srv ${target} ${count} &
+        cmdset_ping $layer 6 srv $target $count &
 
         # Do traceroute to IPv4 web servers by IPv6
-        cmdset_trace ${layer} 6 srv ${target} ${count} &
+        cmdset_trace $layer 6 srv $target $count &
       fi
 
       # Do curl to IPv4 web servers by IPv6
-      cmdset_http ${layer} 6 srv ${target} ${count} &
+      cmdset_http $layer 6 srv $target $count &
 
       # Do measure http throuput by IPv6
       #TBD
@@ -2222,13 +2189,13 @@ echo "Phase 7: Create campaign log..."
 
 # Write campaign log file (overwrite)
 ssid=WIRED
-if [ "${IFTYPE}" = "Wi-Fi" ]; then
-  ssid=$(get_wifi_ssid ${devicename})
+if [ "$IFTYPE" = "Wi-Fi" ]; then
+  ssid=$(get_wifi_ssid $devicename)
 fi
-write_json_campaign ${uuid} ${mac_addr} "${os}" "${ssid}"
+write_json_campaign $UUID $mac_addr "$os" "$ssid"
 
 # remove lock file
-rm -f ${LOCKFILE}
+rm -f $LOCKFILE
 
 echo " done."
 
