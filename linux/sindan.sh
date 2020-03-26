@@ -1,7 +1,7 @@
 #!/bin/bash
 # sindan.sh
-# version 2.2.1
-VERSION="2.2.1"
+# version 2.2.2
+VERSION="2.2.2"
 
 # read configurationfile
 . ./sindan.conf
@@ -1610,276 +1610,280 @@ echo "Phase 2: Interface Layer checking..."
 layer="interface"
 
 ## IPv4
-# Get IPv4 I/F configurations
-v4ifconf=$(get_v4ifconf "$devicename")
-if [ -n "$v4ifconf" ]; then
-  write_json $layer IPv4 v4ifconf $INFO self $v4ifconf 0
-fi
-
-# Check IPv4 autoconf
-result_phase2_1=$FAIL
-rcount=0
-while [ $rcount -lt "$MAX_RETRY" ]; do
-  v4autoconf=$(check_v4autoconf $devicename $v4ifconf)
-  if [ $? -eq 0 -a -n "$v4autoconf" ]; then
-    result_phase2_1=$SUCCESS
-    break
+if [ "$EXCL_IPv4" != "yes" ]; then
+  # Get IPv4 I/F configurations
+  v4ifconf=$(get_v4ifconf "$devicename")
+  if [ -n "$v4ifconf" ]; then
+    write_json $layer IPv4 v4ifconf $INFO self $v4ifconf 0
   fi
-  sleep 5
-  rcount=$(( rcount + 1 ))
-done
-write_json $layer IPv4 v4autoconf $result_phase2_1 self "$v4autoconf" 0
 
-# Get IPv4 address
-v4addr=$(get_v4addr $devicename)
-if [ -n "$v4addr" ]; then
-  write_json $layer IPv4 v4addr $INFO self $v4addr 0
-fi
+  # Check IPv4 autoconf
+  result_phase2_1=$FAIL
+  rcount=0
+  while [ $rcount -lt "$MAX_RETRY" ]; do
+    v4autoconf=$(check_v4autoconf $devicename $v4ifconf)
+    if [ $? -eq 0 -a -n "$v4autoconf" ]; then
+      result_phase2_1=$SUCCESS
+      break
+    fi
+    sleep 5
+    rcount=$(( rcount + 1 ))
+  done
+  write_json $layer IPv4 v4autoconf $result_phase2_1 self "$v4autoconf" 0
 
-# Get IPv4 netmask
-netmask=$(get_netmask $devicename)
-if [ -n "$netmask" ]; then
-  write_json $layer IPv4 netmask $INFO self $netmask 0
-fi
+  # Get IPv4 address
+  v4addr=$(get_v4addr $devicename)
+  if [ -n "$v4addr" ]; then
+    write_json $layer IPv4 v4addr $INFO self $v4addr 0
+  fi
 
-# Get IPv4 routers
-v4routers=$(get_v4routers $devicename)
-if [ -n "$v4routers" ]; then
-  write_json $layer IPv4 v4routers $INFO self "$v4routers" 0
-fi
+  # Get IPv4 netmask
+  netmask=$(get_netmask $devicename)
+  if [ -n "$netmask" ]; then
+    write_json $layer IPv4 netmask $INFO self $netmask 0
+  fi
 
-# Get IPv4 name servers
-v4nameservers=$(get_v4nameservers)
-if [ -n "$v4nameservers" ]; then
-  write_json $layer IPv4 v4nameservers $INFO self "$v4nameservers" 0
-fi
+  # Get IPv4 routers
+  v4routers=$(get_v4routers $devicename)
+  if [ -n "$v4routers" ]; then
+    write_json $layer IPv4 v4routers $INFO self "$v4routers" 0
+  fi
 
-# Get IPv4 NTP servers
-#TBD
+  # Get IPv4 name servers
+  v4nameservers=$(get_v4nameservers)
+  if [ -n "$v4nameservers" ]; then
+    write_json $layer IPv4 v4nameservers $INFO self "$v4nameservers" 0
+  fi
 
-# Report phase 2 results (IPv4)
-if [ "$VERBOSE" = "yes" ]; then
-  echo " interface information:"
-  echo "  intarface status (IPv4): $result_phase2_1"
-  echo "  IPv4 conf: $v4ifconf"
-  echo "  IPv4 addr: ${v4addr}/${netmask}"
-  echo "  IPv4 router: $v4routers"
-  echo "  IPv4 namesrv: $v4nameservers"
+  # Get IPv4 NTP servers
+  #TBD
+
+  # Report phase 2 results (IPv4)
+  if [ "$VERBOSE" = "yes" ]; then
+    echo " interface information:"
+    echo "  intarface status (IPv4): $result_phase2_1"
+    echo "  IPv4 conf: $v4ifconf"
+    echo "  IPv4 addr: ${v4addr}/${netmask}"
+    echo "  IPv4 router: $v4routers"
+    echo "  IPv4 namesrv: $v4nameservers"
+  fi
 fi
 
 ## IPv6
-# Get IPv6 I/F configurations
-v6ifconf=$(get_v6ifconf $devicename)
-if [ -n "$v6ifconf" ]; then
-  write_json $layer IPv6 v6ifconf $INFO self $v6ifconf 0
-fi
-
-# Get IPv6 linklocal address
-v6lladdr=$(get_v6lladdr $devicename)
-if [ -n "$v6lladdr" ]; then
-  write_json $layer IPv6 v6lladdr $INFO self $v6lladdr 0
-fi
-
-# Report phase 2 results (IPv6)
-if [ "$VERBOSE" = "yes" ]; then
-  echo "  IPv6 conf: $v6ifconf"
-  echo "  IPv6 lladdr: $v6lladdr"
-fi
-
-# Get IPv6 RA infomation
-ra_info=$(get_ra_info $devicename)
-
-# Get IPv6 RA source addresses
-ra_addrs=$(echo "$ra_info" | get_ra_addrs)
-if [ -n "$ra_addrs" ]; then
-  write_json $layer IPv6 ra_addrs $INFO self $ra_addrs 0
-fi
-
-if [ -z "$ra_addrs" ]; then
-  # Report phase 2 results (IPv6-RA)
-  if [ "$VERBOSE" = "yes" ]; then
-    echo "   RA does not exist."
-  fi
-else
-  count=0
-  for addr in $(echo $ra_addrs | sed 's/,/ /g'); do
-    # Get IPv6 RA flags
-    ra_flags=$(echo "$ra_info" | get_ra_flags $addr)
-    if [ -z "$ra_flags" ]; then
-      ra_flags="none"
-    fi
-    if [ -n "$ra_flags" ]; then
-      write_json $layer RA ra_flags $INFO $addr $ra_flags $count
-    fi
-
-    # Get IPv6 RA parameters
-    ra_hoplimit=$(echo "$ra_info" | get_ra_hoplimit $addr)
-    if [ -n "$ra_hoplimit" ]; then
-      write_json $layer RA ra_hoplimit $INFO $addr $ra_hoplimit $count
-    fi
-    ra_lifetime=$(echo "$ra_info" | get_ra_lifetime $addr)
-    if [ -n "$ra_lifetime" ]; then
-      write_json $layer RA ra_lifetime $INFO $addr $ra_lifetime $count
-    fi
-    ra_reachable=$(echo "$ra_info" | get_ra_reachable $addr)
-    if [ -n "$ra_reachable" ]; then
-      write_json $layer RA ra_reachable $INFO $addr $ra_reachable $count
-    fi
-    ra_retransmit=$(echo "$ra_info" | get_ra_retransmit $addr)
-    if [ -n "$ra_retransmit" ]; then
-      write_json $layer RA ra_retransmit $INFO $addr $ra_retransmit $count
-    fi
-
-    # Report phase 2 results (IPv6-RA)
-    if [ "$VERBOSE" = "yes" ]; then
-      echo "  IPv6 RA src addr: $addr"
-      echo "   IPv6 RA flags: $ra_flags"
-      echo "   IPv6 RA hoplimit: $ra_hoplimit"
-      echo "   IPv6 RA lifetime: $ra_lifetime"
-      echo "   IPv6 RA reachable: $ra_reachable"
-      echo "   IPv6 RA retransmit: $ra_retransmit"
-    fi
-
-    # Get IPv6 RA prefixes
-    ra_prefs=$(echo "$ra_info" | get_ra_prefs $addr)
-    if [ -n "$ra_prefs" ]; then
-      write_json $layer RA ra_prefs $INFO $addr $ra_prefs $count
-    fi
-
-    s_count=0
-    for pref in $(echo $ra_prefs | sed 's/,/ /g'); do
-      # Get IPv6 RA prefix flags
-      ra_pref_flags=$(echo "$ra_info" | get_ra_pref_flags $addr $pref)
-      if [ -n "$ra_pref_flags" ]; then
-        write_json $layer RA ra_pref_flags $INFO ${addr}-${pref} $ra_pref_flags $s_count
-      fi
-
-      # Get IPv6 RA prefix parameters
-      ra_pref_valid=$(echo "$ra_info" | get_ra_pref_valid $addr $pref)
-      if [ -n "$ra_pref_valid" ]; then
-        write_json $layer RA ra_pref_valid $INFO ${addr}-${pref} $ra_pref_valid $s_count
-      fi
-      ra_pref_preferred=$(echo "$ra_info" | get_ra_pref_preferred $addr $pref)
-      if [ -n "$ra_pref_preferred" ]; then
-        write_json $layer RA ra_pref_preferred $INFO ${addr}-${pref} $ra_pref_preferred $s_count
-      fi
-
-      # Get IPv6 prefix length
-      ra_pref_len=$(get_prefixlen $pref)
-      if [ -n "$ra_pref_len" ]; then
-        write_json $layer RA ra_pref_len $INFO ${addr}-${pref} $ra_pref_len $s_count
-      fi
-
-      # Report phase 2 results (IPv6-RA-Prefix)
-      if [ "$VERBOSE" = "yes" ]; then
-        echo "   IPv6 RA prefix: $pref"
-        echo "    flags: $ra_pref_flags"
-        echo "    valid time: $ra_pref_valid"
-        echo "    preferred time: $ra_pref_preferred"
-      fi
-
-      # Check IPv6 autoconf
-      result_phase2_2=$FAIL
-      rcount=0
-      while [ $rcount -lt "$MAX_RETRY" ]; do
-        # Get IPv6 address
-        v6addrs=$(get_v6addrs $devicename $pref)
-        v6autoconf=$(check_v6autoconf $devicename $v6ifconf $ra_flags $pref $ra_pref_flags)
-        if [ $? -eq 0 -a -n "$v6autoconf" ]; then
-          result_phase2_2=$SUCCESS
-          break
-        fi
-        sleep 5
-
-        rcount=$(( rcount + 1 ))
-      done
-      write_json $layer IPv6 v6addrs $INFO $pref "$v6addrs" $count
-      write_json $layer IPv6 v6autoconf $result_phase2_2 $pref "$v6autoconf" $count
-      if [ "$VERBOSE" = "yes" ]; then
-        for addr in $(echo $v6addrs | sed 's/,/ /g'); do
-          echo "   IPv6 addr: $addr"
-        done
-        echo "   intarface status (IPv6): $result_phase2_2"
-      fi
-
-      s_count=$(( s_count + 1 ))
-    done
-
-    # Get IPv6 RA routes
-    ra_routes=$(echo "$ra_info" | get_ra_routes $addr)
-    if [ -n "$ra_routes" ]; then
-      write_json $layer RA ra_routes $INFO $addr $ra_routes $count
-    fi
-
-    s_count=0
-    for route in $(echo $ra_routes | sed 's/,/ /g'); do
-      # Get IPv6 RA route flag
-      ra_route_flag=$(echo "$ra_info" | get_ra_route_flag $addr $route)
-      if [ -n "$ra_route_flag" ]; then
-        write_json $layer RA ra_route_flag $INFO ${addr}-${route} $ra_route_flag $s_count
-      fi
-
-      # Get IPv6 RA route parameters
-      ra_route_lifetime=$(echo "$ra_info" | get_ra_route_lifetime $addr $route)
-      if [ -n "$ra_route_lifetime" ]; then
-        write_json $layer RA ra_route_lifetime $INFO ${addr}-${route} $ra_route_lifetime $s_count
-      fi
-
-      # Report phase 2 results (IPv6-RA-Route)
-      if [ "$VERBOSE" = "yes" ]; then
-        echo "   IPv6 RA route: $route"
-        echo "    flag: $ra_route_flag"
-        echo "    lifetime: $ra_route_lifetime"
-      fi
-
-      s_count=$(( s_count + 1 ))
-    done
-
-    # Get IPv6 RA RDNSSes
-    ra_rdnsses=$(echo "$ra_info" | get_ra_rdnsses $addr)
-    if [ -n "$ra_rdnsses" ]; then
-      write_json $layer RA ra_rdnsses $INFO $addr $ra_rdnsses $count
-    fi
-
-    s_count=0
-    for rdnss in $(echo $ra_rdnsses | sed 's/,/ /g'); do
-      # Get IPv6 RA RDNSS lifetime
-      ra_rdnss_lifetime=$(echo "$ra_info" | get_ra_rdnss_lifetime $addr $rdnss)
-      if [ -n "$ra_rdnss_lifetime" ]; then
-        write_json $layer RA ra_rdnss_lifetime $INFO ${addr}-${rdnss} $ra_rdnss_lifetime $s_count
-      fi
-
-      # Report phase 2 results (IPv6-RA-RDNSS)
-      if [ "$VERBOSE" = "yes" ]; then
-        echo "   IPv6 RA rdnss: $rdnss"
-        echo "    lifetime: $ra_rdnss_lifetime"
-      fi
-
-      s_count=$(( s_count + 1 ))
-    done
-
-    count=$(( count + 1 ))
-  done
-
-  # Get IPv6 routers
-  v6routers=$(get_v6routers $devicename)
-  if [ -n "$v6routers" ]; then
-    write_json $layer IPv6 v6routers $INFO self "$v6routers" 0
+if [ "$EXCL_IPv6" != "yes" ]; then
+  # Get IPv6 I/F configurations
+  v6ifconf=$(get_v6ifconf $devicename)
+  if [ -n "$v6ifconf" ]; then
+    write_json $layer IPv6 v6ifconf $INFO self $v6ifconf 0
   fi
 
-  # Get IPv6 name servers
-  v6nameservers=$(get_v6nameservers)
-  if [ -n "$v6nameservers" ]; then
-    write_json $layer IPv6 v6nameservers $INFO self "$v6nameservers" 0
+  # Get IPv6 linklocal address
+  v6lladdr=$(get_v6lladdr $devicename)
+  if [ -n "$v6lladdr" ]; then
+    write_json $layer IPv6 v6lladdr $INFO self $v6lladdr 0
   fi
-
-  # Get IPv6 NTP servers
-  #TBD
 
   # Report phase 2 results (IPv6)
   if [ "$VERBOSE" = "yes" ]; then
-    echo "  IPv6 routers: $v6routers"
-    echo "  IPv6 nameservers: $v6nameservers"
+    echo "  IPv6 conf: $v6ifconf"
+    echo "  IPv6 lladdr: $v6lladdr"
+  fi
+
+  # Get IPv6 RA infomation
+  ra_info=$(get_ra_info $devicename)
+
+  # Get IPv6 RA source addresses
+  ra_addrs=$(echo "$ra_info" | get_ra_addrs)
+  if [ -n "$ra_addrs" ]; then
+    write_json $layer IPv6 ra_addrs $INFO self $ra_addrs 0
+  fi
+
+  if [ -z "$ra_addrs" ]; then
+    # Report phase 2 results (IPv6-RA)
+    if [ "$VERBOSE" = "yes" ]; then
+      echo "   RA does not exist."
+    fi
+  else
+    count=0
+    for addr in $(echo $ra_addrs | sed 's/,/ /g'); do
+      # Get IPv6 RA flags
+      ra_flags=$(echo "$ra_info" | get_ra_flags $addr)
+      if [ -z "$ra_flags" ]; then
+        ra_flags="none"
+      fi
+      if [ -n "$ra_flags" ]; then
+        write_json $layer RA ra_flags $INFO $addr $ra_flags $count
+      fi
+
+      # Get IPv6 RA parameters
+      ra_hoplimit=$(echo "$ra_info" | get_ra_hoplimit $addr)
+      if [ -n "$ra_hoplimit" ]; then
+        write_json $layer RA ra_hoplimit $INFO $addr $ra_hoplimit $count
+      fi
+      ra_lifetime=$(echo "$ra_info" | get_ra_lifetime $addr)
+      if [ -n "$ra_lifetime" ]; then
+        write_json $layer RA ra_lifetime $INFO $addr $ra_lifetime $count
+      fi
+      ra_reachable=$(echo "$ra_info" | get_ra_reachable $addr)
+      if [ -n "$ra_reachable" ]; then
+        write_json $layer RA ra_reachable $INFO $addr $ra_reachable $count
+      fi
+      ra_retransmit=$(echo "$ra_info" | get_ra_retransmit $addr)
+      if [ -n "$ra_retransmit" ]; then
+        write_json $layer RA ra_retransmit $INFO $addr $ra_retransmit $count
+      fi
+
+      # Report phase 2 results (IPv6-RA)
+      if [ "$VERBOSE" = "yes" ]; then
+        echo "  IPv6 RA src addr: $addr"
+        echo "   IPv6 RA flags: $ra_flags"
+        echo "   IPv6 RA hoplimit: $ra_hoplimit"
+        echo "   IPv6 RA lifetime: $ra_lifetime"
+        echo "   IPv6 RA reachable: $ra_reachable"
+        echo "   IPv6 RA retransmit: $ra_retransmit"
+      fi
+
+      # Get IPv6 RA prefixes
+      ra_prefs=$(echo "$ra_info" | get_ra_prefs $addr)
+      if [ -n "$ra_prefs" ]; then
+        write_json $layer RA ra_prefs $INFO $addr $ra_prefs $count
+      fi
+
+      s_count=0
+      for pref in $(echo $ra_prefs | sed 's/,/ /g'); do
+        # Get IPv6 RA prefix flags
+        ra_pref_flags=$(echo "$ra_info" | get_ra_pref_flags $addr $pref)
+        if [ -n "$ra_pref_flags" ]; then
+          write_json $layer RA ra_pref_flags $INFO ${addr}-${pref} $ra_pref_flags $s_count
+        fi
+
+        # Get IPv6 RA prefix parameters
+        ra_pref_valid=$(echo "$ra_info" | get_ra_pref_valid $addr $pref)
+        if [ -n "$ra_pref_valid" ]; then
+          write_json $layer RA ra_pref_valid $INFO ${addr}-${pref} $ra_pref_valid $s_count
+        fi
+        ra_pref_preferred=$(echo "$ra_info" | get_ra_pref_preferred $addr $pref)
+        if [ -n "$ra_pref_preferred" ]; then
+          write_json $layer RA ra_pref_preferred $INFO ${addr}-${pref} $ra_pref_preferred $s_count
+        fi
+
+        # Get IPv6 prefix length
+        ra_pref_len=$(get_prefixlen $pref)
+        if [ -n "$ra_pref_len" ]; then
+          write_json $layer RA ra_pref_len $INFO ${addr}-${pref} $ra_pref_len $s_count
+        fi
+
+        # Report phase 2 results (IPv6-RA-Prefix)
+        if [ "$VERBOSE" = "yes" ]; then
+          echo "   IPv6 RA prefix: $pref"
+          echo "    flags: $ra_pref_flags"
+          echo "    valid time: $ra_pref_valid"
+          echo "    preferred time: $ra_pref_preferred"
+        fi
+
+        # Check IPv6 autoconf
+        result_phase2_2=$FAIL
+        rcount=0
+        while [ $rcount -lt "$MAX_RETRY" ]; do
+          # Get IPv6 address
+          v6addrs=$(get_v6addrs $devicename $pref)
+          v6autoconf=$(check_v6autoconf $devicename $v6ifconf $ra_flags $pref $ra_pref_flags)
+          if [ $? -eq 0 -a -n "$v6autoconf" ]; then
+            result_phase2_2=$SUCCESS
+            break
+          fi
+          sleep 5
+
+          rcount=$(( rcount + 1 ))
+        done
+        write_json $layer IPv6 v6addrs $INFO $pref "$v6addrs" $count
+        write_json $layer IPv6 v6autoconf $result_phase2_2 $pref "$v6autoconf" $count
+        if [ "$VERBOSE" = "yes" ]; then
+          for addr in $(echo $v6addrs | sed 's/,/ /g'); do
+            echo "   IPv6 addr: $addr"
+          done
+          echo "   intarface status (IPv6): $result_phase2_2"
+        fi
+
+        s_count=$(( s_count + 1 ))
+      done
+
+      # Get IPv6 RA routes
+      ra_routes=$(echo "$ra_info" | get_ra_routes $addr)
+      if [ -n "$ra_routes" ]; then
+        write_json $layer RA ra_routes $INFO $addr $ra_routes $count
+      fi
+
+      s_count=0
+      for route in $(echo $ra_routes | sed 's/,/ /g'); do
+        # Get IPv6 RA route flag
+        ra_route_flag=$(echo "$ra_info" | get_ra_route_flag $addr $route)
+        if [ -n "$ra_route_flag" ]; then
+          write_json $layer RA ra_route_flag $INFO ${addr}-${route} $ra_route_flag $s_count
+        fi
+
+        # Get IPv6 RA route parameters
+        ra_route_lifetime=$(echo "$ra_info" | get_ra_route_lifetime $addr $route)
+        if [ -n "$ra_route_lifetime" ]; then
+          write_json $layer RA ra_route_lifetime $INFO ${addr}-${route} $ra_route_lifetime $s_count
+        fi
+
+        # Report phase 2 results (IPv6-RA-Route)
+        if [ "$VERBOSE" = "yes" ]; then
+          echo "   IPv6 RA route: $route"
+          echo "    flag: $ra_route_flag"
+          echo "    lifetime: $ra_route_lifetime"
+        fi
+
+        s_count=$(( s_count + 1 ))
+      done
+
+      # Get IPv6 RA RDNSSes
+      ra_rdnsses=$(echo "$ra_info" | get_ra_rdnsses $addr)
+      if [ -n "$ra_rdnsses" ]; then
+        write_json $layer RA ra_rdnsses $INFO $addr $ra_rdnsses $count
+      fi
+
+      s_count=0
+      for rdnss in $(echo $ra_rdnsses | sed 's/,/ /g'); do
+        # Get IPv6 RA RDNSS lifetime
+        ra_rdnss_lifetime=$(echo "$ra_info" | get_ra_rdnss_lifetime $addr $rdnss)
+        if [ -n "$ra_rdnss_lifetime" ]; then
+          write_json $layer RA ra_rdnss_lifetime $INFO ${addr}-${rdnss} $ra_rdnss_lifetime $s_count
+        fi
+
+        # Report phase 2 results (IPv6-RA-RDNSS)
+        if [ "$VERBOSE" = "yes" ]; then
+          echo "   IPv6 RA rdnss: $rdnss"
+          echo "    lifetime: $ra_rdnss_lifetime"
+        fi
+
+        s_count=$(( s_count + 1 ))
+      done
+
+      count=$(( count + 1 ))
+    done
+
+    # Get IPv6 routers
+    v6routers=$(get_v6routers $devicename)
+    if [ -n "$v6routers" ]; then
+      write_json $layer IPv6 v6routers $INFO self "$v6routers" 0
+    fi
+
+    # Get IPv6 name servers
+    v6nameservers=$(get_v6nameservers)
+    if [ -n "$v6nameservers" ]; then
+      write_json $layer IPv6 v6nameservers $INFO self "$v6nameservers" 0
+    fi
+
+    # Get IPv6 NTP servers
+    #TBD
+
+    # Report phase 2 results (IPv6)
+    if [ "$VERBOSE" = "yes" ]; then
+      echo "  IPv6 routers: $v6routers"
+      echo "  IPv6 nameservers: $v6nameservers"
+    fi
   fi
 fi
 
@@ -1926,7 +1930,11 @@ echo " done."
 echo "Phase 4: Globalnet Layer checking..."
 layer="globalnet"
 
-v4addr_type=$(check_v4addr $v4addr)
+if [ "$EXCL_IPv4" != "yes" ]; then
+  v4addr_type=$(check_v4addr $v4addr)
+else
+  v4addr_type="linklocal"
+fi
 if [ "$v4addr_type" = "private" -o "$v4addr_type" = "grobal" ]; then
   count=0
   for target in $(echo $PING_SRVS | sed 's/,/ /g'); do
