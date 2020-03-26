@@ -1,7 +1,7 @@
 #!/bin/bash
 # sindan.sh
-# version 2.2.3
-VERSION="2.2.3"
+# version 2.2.4
+VERSION="2.2.4"
 
 # read configurationfile
 . ./sindan.conf
@@ -277,6 +277,34 @@ get_v4ifconf() {
 }
 
 #
+get_v4addr() {
+  if [ $# -ne 1 ]; then
+    echo "ERROR: get_v4addr <devicename>." 1>&2
+    return 1
+  fi
+  ip -4 addr show $1							|
+  sed -n 's/^.*inet \([0-9.]*\)\/.*$/\1/p'
+  return $?
+}
+
+#
+get_netmask() {
+  if [ $# -ne 1 ]; then
+    echo "ERROR: get_netmask <devicename>." 1>&2
+    return 1
+  fi
+  local plen=$(ip -4 addr show $1					|
+             sed -n 's/^.*inet [0-9.]*\/\([0-9]*\) .*$/\1/p')
+  local dec=$(( 0xFFFFFFFF ^ ((2 ** (32-$plen))-1) ))
+  local o1=$(echo $(( $dec >> 24 )))
+  local o2=$(echo $(( ($dec >> 16) & 0xFF )))
+  local o3=$(echo $(( ($dec >> 8) & 0xFF )))
+  local o4=$(echo $(( $dec & 0xFF )))
+  echo $o1.$o2.$o3.$o4
+  return $?
+}
+
+#
 check_v4autoconf() {
   if [ $# -ne 2 ]; then
     echo "ERROR: check_v4autoconf <devicename> <v4ifconf>." 1>&2
@@ -308,34 +336,6 @@ check_v4autoconf() {
   fi
   echo "v4conf is $2"
   return 0
-}
-
-#
-get_v4addr() {
-  if [ $# -ne 1 ]; then
-    echo "ERROR: get_v4addr <devicename>." 1>&2
-    return 1
-  fi
-  ip -4 addr show $1							|
-  sed -n 's/^.*inet \([0-9.]*\)\/.*$/\1/p'
-  return $?
-}
-
-#
-get_netmask() {
-  if [ $# -ne 1 ]; then
-    echo "ERROR: get_netmask <devicename>." 1>&2
-    return 1
-  fi
-  local plen=$(ip -4 addr show $1					|
-             sed -n 's/^.*inet [0-9.]*\/\([0-9]*\) .*$/\1/p')
-  local dec=$(( 0xFFFFFFFF ^ ((2 ** (32-$plen))-1) ))
-  local o1=$(echo $(( $dec >> 24 )))
-  local o2=$(echo $(( ($dec >> 16) & 0xFF )))
-  local o3=$(echo $(( ($dec >> 8) & 0xFF )))
-  local o4=$(echo $(( $dec & 0xFF )))
-  echo $o1.$o2.$o3.$o4
-  return $?
 }
 
 #
@@ -1222,11 +1222,11 @@ cmdset_pmtud () {
   if [ "$pmtu_result" -eq 0 ]; then
     write_json $layer $ipv v${ver}pmtu_${type} $INFO $target		\
                unmeasurable $count
-    string=$(echo "  pmtu: unmeasurable")
+    string=$(echo "$string\n  pmtu: unmeasurable")
   else
     write_json $layer $ipv v${ver}pmtu_${type} $INFO $target		\
                $pmtu_result $count
-    string=$(echo "  pmtu: $pmtu_result MB")
+    string=$(echo "$string\n  pmtu: $pmtu_result MB")
   fi
   if [ "$VERBOSE" = "yes" ]; then
     echo -e "$string"
@@ -1705,11 +1705,13 @@ if [ "$EXCL_IPv6" != "yes" ]; then
       fi
       ra_reachable=$(echo "$ra_info" | get_ra_reachable $addr)
       if [ -n "$ra_reachable" ]; then
-        write_json $layer RA ra_reachable $INFO $addr $ra_reachable $count
+        write_json $layer RA ra_reachable $INFO $addr $ra_reachable	\
+                   $count
       fi
       ra_retransmit=$(echo "$ra_info" | get_ra_retransmit $addr)
       if [ -n "$ra_retransmit" ]; then
-        write_json $layer RA ra_retransmit $INFO $addr $ra_retransmit $count
+        write_json $layer RA ra_retransmit $INFO $addr $ra_retransmit	\
+                   $count
       fi
 
       # Report phase 2 results (IPv6-RA)
@@ -1733,23 +1735,28 @@ if [ "$EXCL_IPv6" != "yes" ]; then
         # Get IPv6 RA prefix flags
         ra_pref_flags=$(echo "$ra_info" | get_ra_pref_flags $addr $pref)
         if [ -n "$ra_pref_flags" ]; then
-          write_json $layer RA ra_pref_flags $INFO ${addr}-${pref} $ra_pref_flags $s_count
+          write_json $layer RA ra_pref_flags $INFO ${addr}-${pref}	\
+                     $ra_pref_flags $s_count
         fi
 
         # Get IPv6 RA prefix parameters
         ra_pref_valid=$(echo "$ra_info" | get_ra_pref_valid $addr $pref)
         if [ -n "$ra_pref_valid" ]; then
-          write_json $layer RA ra_pref_valid $INFO ${addr}-${pref} $ra_pref_valid $s_count
+          write_json $layer RA ra_pref_valid $INFO ${addr}-${pref}	\
+                     $ra_pref_valid $s_count
         fi
-        ra_pref_preferred=$(echo "$ra_info" | get_ra_pref_preferred $addr $pref)
+        ra_pref_preferred=$(echo "$ra_info"				|
+                          get_ra_pref_preferred $addr $pref)
         if [ -n "$ra_pref_preferred" ]; then
-          write_json $layer RA ra_pref_preferred $INFO ${addr}-${pref} $ra_pref_preferred $s_count
+          write_json $layer RA ra_pref_preferred $INFO ${addr}-${pref}	\
+                     $ra_pref_preferred $s_count
         fi
 
         # Get IPv6 prefix length
         ra_pref_len=$(get_prefixlen $pref)
         if [ -n "$ra_pref_len" ]; then
-          write_json $layer RA ra_pref_len $INFO ${addr}-${pref} $ra_pref_len $s_count
+          write_json $layer RA ra_pref_len $INFO ${addr}-${pref}	\
+                     $ra_pref_len $s_count
         fi
 
         # Report phase 2 results (IPv6-RA-Prefix)
@@ -1766,7 +1773,8 @@ if [ "$EXCL_IPv6" != "yes" ]; then
         while [ $rcount -lt "$MAX_RETRY" ]; do
           # Get IPv6 address
           v6addrs=$(get_v6addrs $devicename $pref)
-          v6autoconf=$(check_v6autoconf $devicename $v6ifconf $ra_flags $pref $ra_pref_flags)
+          v6autoconf=$(check_v6autoconf $devicename $v6ifconf $ra_flags	\
+                     $pref $ra_pref_flags)
           if [ $? -eq 0 -a -n "$v6autoconf" ]; then
             result_phase2_2=$SUCCESS
             break
@@ -1776,7 +1784,8 @@ if [ "$EXCL_IPv6" != "yes" ]; then
           rcount=$(( rcount + 1 ))
         done
         write_json $layer IPv6 v6addrs $INFO $pref "$v6addrs" $count
-        write_json $layer IPv6 v6autoconf $result_phase2_2 $pref "$v6autoconf" $count
+        write_json $layer IPv6 v6autoconf $result_phase2_2 $pref	\
+                   "$v6autoconf" $count
         if [ "$VERBOSE" = "yes" ]; then
           for addr in $(echo $v6addrs | sed 's/,/ /g'); do
             echo "   IPv6 addr: $addr"
@@ -1798,13 +1807,16 @@ if [ "$EXCL_IPv6" != "yes" ]; then
         # Get IPv6 RA route flag
         ra_route_flag=$(echo "$ra_info" | get_ra_route_flag $addr $route)
         if [ -n "$ra_route_flag" ]; then
-          write_json $layer RA ra_route_flag $INFO ${addr}-${route} $ra_route_flag $s_count
+          write_json $layer RA ra_route_flag $INFO ${addr}-${route}	\
+                     $ra_route_flag $s_count
         fi
 
         # Get IPv6 RA route parameters
-        ra_route_lifetime=$(echo "$ra_info" | get_ra_route_lifetime $addr $route)
+        ra_route_lifetime=$(echo "$ra_info"				|
+                          get_ra_route_lifetime $addr $route)
         if [ -n "$ra_route_lifetime" ]; then
-          write_json $layer RA ra_route_lifetime $INFO ${addr}-${route} $ra_route_lifetime $s_count
+          write_json $layer RA ra_route_lifetime $INFO ${addr}-${route}	\
+                     $ra_route_lifetime $s_count
         fi
 
         # Report phase 2 results (IPv6-RA-Route)
@@ -1826,9 +1838,11 @@ if [ "$EXCL_IPv6" != "yes" ]; then
       s_count=0
       for rdnss in $(echo $ra_rdnsses | sed 's/,/ /g'); do
         # Get IPv6 RA RDNSS lifetime
-        ra_rdnss_lifetime=$(echo "$ra_info" | get_ra_rdnss_lifetime $addr $rdnss)
+        ra_rdnss_lifetime=$(echo "$ra_info"				|
+                          get_ra_rdnss_lifetime $addr $rdnss)
         if [ -n "$ra_rdnss_lifetime" ]; then
-          write_json $layer RA ra_rdnss_lifetime $INFO ${addr}-${rdnss} $ra_rdnss_lifetime $s_count
+          write_json $layer RA ra_rdnss_lifetime $INFO ${addr}-${rdnss}	\
+                     $ra_rdnss_lifetime $s_count
         fi
 
         # Report phase 2 results (IPv6-RA-RDNSS)
@@ -1981,7 +1995,7 @@ layer="dns"
 
 if [ "$v4addr_type" = "private" -o "$v4addr_type" = "grobal" ]; then
   count=0
-  for target in $(echo "$v4nameservers" | sed 's/,/ /g'); do
+  for target in $(echo $v4nameservers | sed 's/,/ /g'); do
     if [ "$MODE" = "probe" ]; then
       # Do ping to IPv4 nameservers
       cmdset_ping $layer 4 namesrv $target $count &
@@ -2026,7 +2040,7 @@ fi
 exist_dns64="no"
 if [ -n "$v6addrs" ]; then
   count=0
-  for target in $(echo "$v6nameservers" | sed 's/,/ /g'); do
+  for target in $(echo $v6nameservers | sed 's/,/ /g'); do
     if [ "$MODE" = "probe" ]; then
       # Do ping to IPv6 nameservers
       cmdset_ping $layer 6 namesrv $target $count &
