@@ -1,7 +1,7 @@
 #!/bin/bash
 # sindan.sh
-# version 2.2.0
-VERSION="2.2.0"
+# version 2.2.1
+VERSION="2.2.1"
 
 # read configurationfile
 . ./sindan.conf
@@ -1113,7 +1113,7 @@ cmdset_ping() {
     local rtt_data=($(echo "$ping_result" | get_rtt))
     for i in 0 1 2 3; do
       write_json $layer $ipv "v${ver}rtt_${type}_${rtt_type[$i]}"	\
-                 $INFO $target "$rtt_data[$i]" $count
+                 $INFO $target "${rtt_data[$i]}" $count
     done
     local rtt_loss=$(echo "$ping_result" | get_loss)
     write_json $layer $ipv v${ver}loss_${type} $INFO $target		\
