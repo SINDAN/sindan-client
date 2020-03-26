@@ -1,7 +1,7 @@
 #!/bin/bash
 # sindan.sh
-# version 2.2.2
-VERSION="2.2.2"
+# version 2.2.3
+VERSION="2.2.3"
 
 # read configurationfile
 . ./sindan.conf
@@ -327,27 +327,14 @@ get_netmask() {
     echo "ERROR: get_netmask <devicename>." 1>&2
     return 1
   fi
-  local preflen=$(ip -4 addr show $1					|
-                sed -n 's/^.*inet [0-9.]*\/\([0-9]*\) .*$/\1/p')
-  case "$preflen" in
-    16) echo "255.255.0.0" ;;
-    17) echo "255.255.128.0" ;;
-    18) echo "255.255.192.0" ;;
-    19) echo "255.255.224.0" ;;
-    20) echo "255.255.240.0" ;;
-    21) echo "255.255.248.0" ;;
-    22) echo "255.255.252.0" ;;
-    23) echo "255.255.254.0" ;;
-    24) echo "255.255.255.0" ;;
-    25) echo "255.255.255.128" ;;
-    26) echo "255.255.255.192" ;;
-    27) echo "255.255.255.224" ;;
-    28) echo "255.255.255.240" ;;
-    29) echo "255.255.255.248" ;;
-    30) echo "255.255.255.252" ;;
-    31) echo "255.255.255.254" ;;
-    *) ;;
-  esac
+  local plen=$(ip -4 addr show $1					|
+             sed -n 's/^.*inet [0-9.]*\/\([0-9]*\) .*$/\1/p')
+  local dec=$(( 0xFFFFFFFF ^ ((2 ** (32-$plen))-1) ))
+  local o1=$(echo $(( $dec >> 24 )))
+  local o2=$(echo $(( ($dec >> 16) & 0xFF )))
+  local o3=$(echo $(( ($dec >> 8) & 0xFF )))
+  local o4=$(echo $(( $dec & 0xFF )))
+  echo $o1.$o2.$o3.$o4
   return $?
 }
 
@@ -376,16 +363,8 @@ ip2decimal() {
     echo "ERROR: ip2decimal <v4addr>." 1>&2
     return 1
   fi
-  echo $1 | tr . '\n' | awk '{s = s*256 + $1} END {print s}'
-}
-
-#
-decimal2ip() {
-  if [ $# -ne 1 ]; then
-    echo "ERROR: decimal2ip <32bit_num>." 1>&2
-    return 1
-  fi
-  printf "%d.%d.%d.%d\n" $(($n >> 24)) $(( ($n >> 16) & 0xFF)) $(( ($n >> 8) & 0xFF)) $(($n & 0xFF))
+  local o=($(echo $1 | sed 's/\./ /g'))
+  echo $(( (${o[0]} << 24) | (${o[1]} << 16) | (${o[2]} << 8) | ${o[3]} ))
 }
 
 #
