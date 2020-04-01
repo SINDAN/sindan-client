@@ -1,7 +1,7 @@
 #!/bin/bash
 # sindan.sh
-# version 2.2.5
-VERSION="2.2.5"
+# version 2.2.6
+VERSION="2.2.6"
 
 # read configurationfile
 . ./sindan.conf
@@ -23,13 +23,13 @@ write_json_campaign() {
     echo "DEBUG(input data): $1, $2, $3, $4" 1>&2
     return 1
   fi
-  local json="{ \"log_campaign_uuid\" : \"$1\",
-                \"mac_addr\" : \"$2\",
-                \"os\" : \"$3\",
-                \"ssid\" : \"$4\",
-                \"version\" : \"$VERSION\",
-                \"occurred_at\" : \"$(date -u '+%Y-%m-%d %T')\" }"
-  echo "$json" > log/campaign_"$(date -u '+%s')".json
+  echo "{ \"log_campaign_uuid\" : \"$1\","				\
+       "\"mac_addr\" : \"$2\","						\
+       "\"os\" : \"$3\","						\
+       "\"ssid\" : \"$4\","						\
+       "\"version\" : \"$VERSION\","					\
+       "\"occurred_at\" : \"$(date -u '+%Y-%m-%d %T')\" }"		\
+  > log/campaign_"$(date -u '+%s')".json
   return $?
 }
 
@@ -41,15 +41,15 @@ write_json() {
     echo "DEBUG(input data): $1, $2, $3, $4, $5, $6, $7" 1>&2
     return 1
   fi
-  local json="{ \"layer\" : \"$1\",
-                \"log_group\" : \"$2\",
-                \"log_type\" : \"$3\",
-                \"log_campaign_uuid\" : \"$UUID\",
-                \"result\" : \"$4\",
-                \"target\" : \"$5\",
-                \"detail\" : \"$6\",
-                \"occurred_at\" : \"$(date -u '+%Y-%m-%d %T')\" }"
-  echo "$json" > log/sindan_"$1"_"$3"_"$7"_"$(date -u '+%s')".json
+  echo "{ \"layer\" : \"$1\","						\
+       "\"log_group\" : \"$2\","					\
+       "\"log_type\" : \"$3\","						\
+       "\"log_campaign_uuid\" : \"$UUID\","				\
+       "\"result\" : \"$4\","						\
+       "\"target\" : \"$5\","						\
+       "\"detail\" : \"$6\","						\
+       "\"occurred_at\" : \"$(date -u '+%Y-%m-%d %T')\" }"		\
+  > log/sindan_"$1"_"$3"_"$7"_"$(date -u '+%s')".json
   return $?
 }
 
@@ -259,7 +259,7 @@ get_wifi_environment() {
 #
 get_v4ifconf() {
   if [ $# -ne 1 ]; then
-    echo "ERROR: get_v4ifconf <devicename>."
+    echo "ERROR: get_v4ifconf <devicename>." 1>&2
     return 1
   fi
   if [ -f /etc/dhcpcd.conf ]; then
@@ -452,6 +452,7 @@ get_ra_addrs() {
   # require get_ra_info() data from STDIN.
   grep '^ from'								|
   awk '{print $2}'							|
+  uniq									|
   awk -F\n -v ORS=',' '{print}'						|
   sed 's/,$//'
   return $?
@@ -1292,7 +1293,7 @@ check_dns64 () {
     return 1
   fi
   local dns_ans
-  dns_ans=$(do_dnslookup "$target" AAAA ipv4only.arpa		|
+  dns_ans=$(do_dnslookup "$target" AAAA ipv4only.arpa			|
           get_dnsans AAAA)
   if [ -n "$dns_ans" ]; then
     echo 'yes'
@@ -1621,7 +1622,7 @@ if [ "$EXCL_IPv4" != "yes" ]; then
   # Get IPv4 routers
   v4routers=$(get_v4routers "$devicename")
   if [ -n "$v4routers" ]; then
-    write_json "$layer" IPv4 "v4routers" "$INFO" self "$v4routers" 0
+    write_json "$layer" IPv4 v4routers "$INFO" self "$v4routers" 0
   fi
 
   # Get IPv4 name servers

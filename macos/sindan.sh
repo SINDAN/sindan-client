@@ -1,7 +1,7 @@
 #!/bin/bash
 # sindan.sh
-# version 2.2.1
-VERSION="2.2.1"
+# version 2.2.2
+VERSION="2.2.2"
 
 # read configurationfile
 source sindan.conf
@@ -23,13 +23,13 @@ write_json_campaign() {
     echo "DEBUG(input data): $1, $2, $3, $4" 1>&2
     return 1
   fi
-  local json="{ \"log_campaign_uuid\" : \"$1\",
-                \"mac_addr\" : \"$2\",
-                \"os\" : \"$3\",
-                \"ssid\" : \"$4\",
-                \"version\" : \"$VERSION\",
-                \"occurred_at\" : \"$(date -u '+%Y-%m-%d %T')\" }"
-  echo "$json" > log/campaign_"$(date -u '+%s')".json
+  echo "{ \"log_campaign_uuid\" : \"$1\","				\
+       "\"mac_addr\" : \"$2\","						\
+       "\"os\" : \"$3\","						\
+       "\"ssid\" : \"$4\","						\
+       "\"version\" : \"$VERSION\","					\
+       "\"occurred_at\" : \"$(date -u '+%Y-%m-%d %T')\" }"		\
+  > log/campaign_"$(date -u '+%s')".json
   return $?
 }
 
@@ -37,19 +37,19 @@ write_json_campaign() {
 write_json() {
   if [ $# -ne 7 ]; then
     echo "ERROR: write_json <layer> <group> <type> <result> <target>"	\
-         "<detail> <count>. ($3)" 1>&2
+         "<detail> <count>. ($4)" 1>&2
     echo "DEBUG(input data): $1, $2, $3, $4, $5, $6, $7" 1>&2
     return 1
   fi
-  local json="{ \"layer\" : \"$1\",
-                \"log_group\" : \"$2\",
-                \"log_type\" : \"$3\",
-                \"log_campaign_uuid\" : \"$UUID\",
-                \"result\" : \"$4\",
-                \"target\" : \"$5\",
-                \"detail\" : \"$6\",
-                \"occurred_at\" : \"$(date -u '+%Y-%m-%d %T')\" }"
-  echo "$json" > log/sindan_"$1"_"$3"_"$7"_"$(date -u '+%s')".json
+  echo "{ \"layer\" : \"$1\","						\
+       "\"log_group\" : \"$2\","					\
+       "\"log_type\" : \"$3\","						\
+       "\"log_campaign_uuid\" : \"$UUID\","				\
+       "\"result\" : \"$4\","						\
+       "\"target\" : \"$5\","						\
+       "\"detail\" : \"$6\","						\
+       "\"occurred_at\" : \"$(date -u '+%Y-%m-%d %T')\" }"		\
+  > log/sindan_"$1"_"$3"_"$7"_"$(date -u '+%s')".json
   return $?
 }
 
@@ -191,6 +191,7 @@ get_wifi_rate() {
   return $?
 }
 
+#
 get_wifi_environment() {
   $CMD_AIRPORT -s							|
   awk '{printf "%s,%s,%s,%s\n", $1, $2, $3, $4}'
@@ -340,11 +341,11 @@ check_v4addr() {
   elif echo "$1" | grep '^127\.' > /dev/null; then
     echo 'loopback'
     return 0
-  elif echo "$1" | grep '^169\.254'; then
+  elif echo "$1" | grep '^169\.254' > /dev/null; then
     echo 'linklocal'
     return 0
   elif echo "$1"							|
-   grep -e '^10\.' -e '^172\.\(1[6-9]\|2[0-9]\|3[01]\)\.' -e '^192\.168\.'; then
+   grep -e '^10\.' -e '^172\.\(1[6-9]\|2[0-9]\|3[01]\)\.' -e '^192\.168\.' > /dev/null; then
     echo 'private'
     return 0
   else
@@ -402,6 +403,7 @@ get_ra_addrs() {
   # require get_ra_info() data from STDIN.
   grep ' flags='							|
   awk -F% '{print $1}'							|
+  uniq									|
   awk -F\n -v ORS=',' '{print}'						|
   sed 's/,$//'
   return $?
@@ -752,6 +754,7 @@ do_ping() {
   esac
 }
 
+#
 get_rtt() {
   # require do_ping() data from STDIN.
   sed -n 's/^round-trip.* \([0-9\.\/]*\) .*$/\1/p'			|
@@ -1342,7 +1345,7 @@ if [ "$EXCL_IPv4" != "yes" ]; then
     echo " interface information:"
     echo "  intarface status (IPv4): $result_phase2_1"
     echo "  IPv4 conf: $v4ifconf"
-    echo "  IPv4 addr: $v4addr/$netmask"
+    echo "  IPv4 addr: {$v4addr}/{$netmask}"
     echo "  IPv4 router: $v4routers"
     echo "  IPv4 namesrv: $v4nameservers"
   fi
@@ -1415,7 +1418,6 @@ if [ "$EXCL_IPv6" != "yes" ]; then
 #                   "$ra_retrans" "$count"
 #      fi
 
-echo "$saddr $devicename"
       # Report phase 2 results (IPv6-RA)
       if [ "$VERBOSE" = "yes" ]; then
         echo "  IPv6 RA src addr: $saddr"
@@ -1526,6 +1528,7 @@ echo "$saddr $devicename"
     # Get IPv6 NTP servers
     #TBD
 
+    # Report phase 2 results (IPv6)
     if [ "$VERBOSE" = "yes" ]; then
       echo "  IPv6 routers: $v6routers"
       echo "  IPv6 nameservers: $v6nameservers"
