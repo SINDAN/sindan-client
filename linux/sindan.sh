@@ -1,7 +1,7 @@
 #!/bin/bash
 # sindan.sh
-# version 2.2.6
-VERSION="2.2.6"
+# version 2.2.7
+VERSION="2.2.7"
 
 # read configurationfile
 . ./sindan.conf
@@ -1360,7 +1360,7 @@ do_curl() {
     echo "ERROR: <version> must be 4 or 6." 1>&2
     return 9
   fi
-  curl -"$1" --connect-timeout 5 --write-out %{http_code} --silent	\
+  curl -"$1" -L --connect-timeout 5 --write-out %{http_code} --silent	\
        --output /dev/null "$2"
   return $?
 }
