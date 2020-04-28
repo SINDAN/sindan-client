@@ -402,6 +402,7 @@ get_ra_info() {
 get_ra_addrs() {
   # require get_ra_info() data from STDIN.
   grep ' flags='							|
+  awk '{print $1}'							|
   awk -F% '{print $1}'							|
   uniq									|
   awk -F\n -v ORS=',' '{print}'						|
@@ -706,7 +707,7 @@ get_v6routers() {
 #
 get_v6nameservers() {
   sed -n 's/^nameserver \([0-9a-f:]*\)$/\1/p' /etc/resolv.conf		|
-  awk -v ORS=',' '1; END{printf "\n"}'					|
+  awk -v ORS=',' '1; END {printf "\n"}'					|
   sed 's/,$//'
   return $?
 }
@@ -748,8 +749,8 @@ do_ping() {
     return 1
   fi
   case $1 in
-    "4" ) ping -i 0.5 -c 10 "$2"; return $? ;;
-    "6" ) ping6 -c 10 "$2"; return $? ;;
+    "4" ) ping -i 0.2 -c 10 "$2"; return $? ;;
+    "6" ) ping6 -i 0.2 -c 10 "$2"; return $? ;;
     * ) echo "ERROR: <version> must be 4 or 6." 1>&2; return 9 ;;
   esac
 }
@@ -843,8 +844,8 @@ do_pmtud() {
     return 1
   fi
   case $1 in
-    "4" ) command="ping -t 1"; dfopt="-D"; header=28 ;;
-    "6" ) command="ping6"; dfopt=""; header=48 ;;
+    "4" ) command="ping -i 0.2 -W 1"; dfopt="-D"; header=28 ;;
+    "6" ) command="ping6 -i 0.2 -W 1"; dfopt=""; header=48 ;;
     * ) echo "ERROR: <version> must be 4 or 6." 1>&2; return 9 ;;
   esac
   if $command -c 1 "$2" > /dev/null; then
@@ -1345,7 +1346,7 @@ if [ "$EXCL_IPv4" != "yes" ]; then
     echo " interface information:"
     echo "  intarface status (IPv4): $result_phase2_1"
     echo "  IPv4 conf: $v4ifconf"
-    echo "  IPv4 addr: {$v4addr}/{$netmask}"
+    echo "  IPv4 addr: ${v4addr}/${netmask}"
     echo "  IPv4 router: $v4routers"
     echo "  IPv4 namesrv: $v4nameservers"
   fi
