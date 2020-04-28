@@ -1,7 +1,7 @@
 #!/bin/bash
 # sindan.sh
-# version 2.2.8
-VERSION="2.2.8"
+# version 2.2.9
+VERSION="2.2.9"
 
 # read configurationfile
 . ./sindan.conf
@@ -17,16 +17,62 @@ cleate_uuid() {
 }
 
 #
+hash_result() {
+  if [ $# -ne 2 ]; then
+    echo "ERROR: hash_result <type> <src>." 1>&2
+    return 1
+  fi
+  type="$1"
+  src="$2"
+  case "$type" in
+    "ssid"|"bssid")
+      if [ "$LOCAL_NETWORK_PRIVACY" = "yes" ]; then
+        echo "$(echo "$src" | $CMD_HASH | cut -d' ' -f1):SHA1"
+      else
+        echo "$src"
+      fi
+      ;;
+    "environment")
+      # XXX do something if "$LOCAL_NETWORK_PRIVACY" = "yes".
+      if [ "$LOCAL_NETWORK_PRIVACY" = "yes" ] ; then
+        echo 'XXX'
+      else
+        echo "$src"
+      fi
+      ;;
+    "mac_addr")
+      if [ "$CLIENT_PRIVACY" = "yes" ] ; then
+        echo "$(echo "$src" | $CMD_HASH | cut -d' ' -f1):SHA1"
+      else
+        echo "$src"
+      fi
+      ;;
+    "v4autoconf"|"v6autoconf")
+      # XXX do something if "$CLIENT_PRIVACY" = "yes".
+      if [ "$CLIENT_PRIVACY" = "yes" ] ; then
+        echo 'XXX'
+      else
+        echo "$src"
+      fi
+      ;;
+    *) echo "$src" ;;
+  esac
+}
+
+#
 write_json_campaign() {
   if [ $# -ne 4 ]; then
     echo "ERROR: write_json_campaign <uuid> <mac_addr> <os> <ssid>." 1>&2
     echo "DEBUG(input data): $1, $2, $3, $4" 1>&2
     return 1
   fi
+  local mac_addr; local ssid
+  mac_addr=$(hash_result mac_addr "$2")
+  ssid=$(hash_result ssid "$4")
   echo "{ \"log_campaign_uuid\" : \"$1\","				\
-       "\"mac_addr\" : \"$2\","						\
+       "\"mac_addr\" : \"$mac_addr\","					\
        "\"os\" : \"$3\","						\
-       "\"ssid\" : \"$4\","						\
+       "\"ssid\" : \"$ssid\","						\
        "\"version\" : \"$VERSION\","					\
        "\"occurred_at\" : \"$(date -u '+%Y-%m-%d %T')\" }"		\
   > log/campaign_"$(date -u '+%s')".json
@@ -41,13 +87,15 @@ write_json() {
     echo "DEBUG(input data): $1, $2, $3, $4, $5, $6, $7" 1>&2
     return 1
   fi
+  local detail
+  detail=$(hash_result "$3" "$6")
   echo "{ \"layer\" : \"$1\","						\
        "\"log_group\" : \"$2\","					\
        "\"log_type\" : \"$3\","						\
        "\"log_campaign_uuid\" : \"$UUID\","				\
        "\"result\" : \"$4\","						\
        "\"target\" : \"$5\","						\
-       "\"detail\" : \"$6\","						\
+       "\"detail\" : \"$detail\","					\
        "\"occurred_at\" : \"$(date -u '+%Y-%m-%d %T')\" }"		\
   > log/sindan_"$1"_"$3"_"$7"_"$(date -u '+%s')".json
   return $?
@@ -156,6 +204,18 @@ get_wifi_bssid() {
     return 1
   fi
   iwgetid "$1" --raw --ap						|
+  tr "[:upper:]" "[:lower:]"
+  return $?
+}
+
+#
+get_wifi_apoui() {
+  if [ $# -ne 1 ]; then
+    echo "ERROR: get_wifi_bssid <devicename>." 1>&2
+    return 1
+  fi
+  iwgetid "$1" --raw --ap						|
+  cut -d: -f1-3								|
   tr "[:upper:]" "[:lower:]"
   return $?
 }
@@ -1532,6 +1592,11 @@ else
   bssid=$(get_wifi_bssid "$devicename")
   if [ -n "$bssid" ]; then
     write_json "$layer" "$IFTYPE" bssid "$INFO" self "$bssid" 0
+  fi
+  # Get Wi-Fi AP's OUI
+  wifiapoui=$(get_wifi_apoui "$devicename")
+  if [ -n "$wifiapoui" ]; then
+    write_json "$layer" "$IFTYPE" wifiapoui "$INFO" self "$wifiapoui" 0
   fi
   # Get Wi-Fi channel
   channel=$(get_wifi_channel "$devicename")
