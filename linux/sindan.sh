@@ -1,7 +1,7 @@
 #!/bin/bash
 # sindan.sh
-# version 2.2.9
-VERSION="2.2.9"
+# version 2.2.10
+VERSION="2.2.10"
 
 # read configurationfile
 . ./sindan.conf
@@ -1254,7 +1254,7 @@ cmdset_trace () {
   local target=$4
   local count=$5
   local result=$FAIL
-  local string=" traceroute to $ipv server: $target"
+  local string=" traceroute to $ipv $type: $target"
   local path_result; local path_data
 
   if path_result=$(do_traceroute "$ver" "$target" | sed 's/\*/-/g'); then
@@ -1422,7 +1422,7 @@ cmdset_dnslookup () {
   fi
 }
 
-## for web layer
+## for application layer
 #
 do_curl() {
   if [ $# -ne 2 ]; then
@@ -1472,6 +1472,52 @@ cmdset_http () {
   fi
 }
 
+#
+do_sshkeyscan() {
+  if [ $# -ne 3 ]; then
+    echo "ERROR: do_sshkeyscan <version> <target> <key_type>." 1>&2	\
+    return 1
+  fi
+  ssh-keyscan -"$1" -T 5 -t "$3" "$2" 2>/dev/null
+  return $?
+}
+
+#
+cmdset_ssh () {
+  if [ $# -ne 5 ]; then
+    echo "ERROR: cmdset_ssh <layer> <version> <target_type>"		\
+         "<target_str> <count>." 1>&2
+    return 1
+  fi
+  local layer=$1
+  local ver=$2
+  local ipv=IPv${ver}
+  local type=$3
+  local target; local key_type
+  target=$(echo "$4" | awk -F_ '{print $1}')
+  key_type=$(echo "$4" | awk -F_ '{print $2}')
+  local count=$5
+  local result=$FAIL
+  local string=" sshkeyscan to extarnal server: $target by $ipv"
+  local ssh_ans
+
+  if ssh_ans=$(do_sshkeyscan "$ver" "$target" "$key_type"); then
+    result=$SUCCESS
+  else
+    stat=$?
+  fi
+  write_json "$layer" "$ipv" "v${ver}ssh_${type}" "$result" "$target"  \
+             "$ssh_ans" "$count"
+  if [ "$result" = "$SUCCESS" ]; then
+    string="$string\n  status: ok"
+  else
+    string="$string\n  status: ng ($stat)"
+  fi
+  if [ "$VERBOSE" = "yes" ]; then
+    echo -e "$string"
+  fi
+}
+
 
 #
 # main
@@ -1481,7 +1527,7 @@ cmdset_http () {
 ## Preparation
 
 # Check parameters
-for param in LOCKFILE MAX_RETRY IFTYPE DEVNAME PING_SRVS PING6_SRVS FQDNS GPDNS4 GPDNS6 V4WEB_SRVS V6WEB_SRVS; do
+for param in LOCKFILE MAX_RETRY IFTYPE DEVNAME PING_SRVS PING6_SRVS FQDNS GPDNS4 GPDNS6 V4WEB_SRVS V6WEB_SRVS V4SSH_SRVS V6SSH_SRVS; do
   if [ -z $(eval echo '$'$param) ]; then
     echo "ERROR: $param is null in configration file." 1>&2
     exit 1
@@ -2201,8 +2247,8 @@ echo " done."
 
 ####################
 ## Phase 6
-echo "Phase 6: Web Layer checking..."
-layer="web"
+echo "Phase 6: Application Layer checking..."
+layer="app"
 
 if [ "$v4addr_type" = "private" ] || [ "$v4addr_type" = "grobal" ]; then
   count=0
@@ -2216,18 +2262,36 @@ if [ "$v4addr_type" = "private" ] || [ "$v4addr_type" = "grobal" ]; then
       done
 
       # Do ping to IPv4 web servers
-      cmdset_ping "$layer" 4 srv "$target" "$count" &
+      cmdset_ping "$layer" 4 websrv "$target" "$count" &
 
       # Do traceroute to IPv4 web servers
-      cmdset_trace "$layer" 4 srv "$target" "$count" &
+      cmdset_trace "$layer" 4 websrv "$target" "$count" &
     fi
 
     # Do curl to IPv4 web servers by IPv4
-    cmdset_http "$layer" 4 srv "$target" "$count" &
+    cmdset_http "$layer" 4 websrv "$target" "$count" &
 
     # Do measure http throuput by IPv4
     #TBD
     # v4http_throughput_srv
+
+    count=$(( count + 1 ))
+  done
+
+  count=0
+  for target in $(echo "$V4SSH_SRVS" | sed 's/,/ /g'); do
+    if [ "$MODE" = "probe" ]; then
+      target_fqdn=$(echo $target | awk -F_ '{print $1}')
+
+      # Do ping to IPv4 ssh servers
+      cmdset_ping "$layer" 4 sshsrv "$target_fqdn" "$count" &
+
+      # Do traceroute to IPv4 ssh servers
+      cmdset_trace "$layer" 4 sshsrv "$target_fqdn" "$count" &
+    fi
+
+    # Do ssh-keyscan to IPv4 ssh servers by IPv4
+    cmdset_ssh "$layer" 4 sshsrv "$target" "$count" &
 
     count=$(( count + 1 ))
   done
@@ -2244,18 +2308,36 @@ if [ -n "$v6addrs" ]; then
       done
 
       # Do ping to IPv6 web servers
-      cmdset_ping "$layer" 6 srv "$target" "$count" &
+      cmdset_ping "$layer" 6 websrv "$target" "$count" &
 
       # Do traceroute to IPv6 web servers
-      cmdset_trace "$layer" 6 srv "$target" "$count" &
+      cmdset_trace "$layer" 6 websrv "$target" "$count" &
     fi
 
     # Do curl to IPv6 web servers by IPv6
-    cmdset_http "$layer" 6 srv "$target" "$count" &
+    cmdset_http "$layer" 6 websrv "$target" "$count" &
 
     # Do measure http throuput by IPv6
     #TBD
     # v6http_throughput_srv
+
+    count=$(( count + 1 ))
+  done
+
+  count=0
+  for target in $(echo "$V6SSH_SRVS" | sed 's/,/ /g'); do
+    if [ "$MODE" = "probe" ]; then
+      target_fqdn=$(echo $target | awk -F_ '{print $1}')
+
+      # Do ping to IPv6 ssh servers
+      cmdset_ping "$layer" 6 sshsrv "$target_fqdn" "$count" &
+
+      # Do traceroute to IPv6 ssh servers
+      cmdset_trace "$layer" 6 sshsrv "$target_fqdn" "$count" &
+    fi
+
+    # Do ssh-keyscan to IPv6 ssh servers by IPv6
+    cmdset_ssh "$layer" 6 sshsrv "$target" "$count" &
 
     count=$(( count + 1 ))
   done
@@ -2274,18 +2356,36 @@ if [ -n "$v6addrs" ]; then
         done
 
         # Do ping to IPv4 web servers by IPv6
-        cmdset_ping "$layer" 6 srv "$target" "$count" &
+        cmdset_ping "$layer" 6 websrv "$target" "$count" &
 
         # Do traceroute to IPv4 web servers by IPv6
-        cmdset_trace "$layer" 6 srv "$target" "$count" &
+        cmdset_trace "$layer" 6 websrv "$target" "$count" &
       fi
 
       # Do curl to IPv4 web servers by IPv6
-      cmdset_http "$layer" 6 srv "$target" "$count" &
+      cmdset_http "$layer" 6 websrv "$target" "$count" &
 
       # Do measure http throuput by IPv6
       #TBD
       # v6http_throughput_srv
+
+      count=$(( count + 1 ))
+    done
+
+    count=0
+    for target in $(echo "$V4SSH_SRVS" | sed 's/,/ /g'); do
+      if [ "$MODE" = "probe" ]; then
+        target_fqdn=$(echo $target | awk -F_ '{print $1}')
+
+        # Do ping to IPv4 ssh servers by IPv6
+        cmdset_ping "$layer" 6 sshsrv "$target_fqdn" "$count" &
+
+        # Do traceroute to IPv4 ssh servers by IPv6
+        cmdset_trace "$layer" 6 sshsrv "$target_fqdn" "$count" &
+      fi
+
+      # Do ssh-keyscan to IPv4 ssh servers by IPv6
+      cmdset_ssh "$layer" 6 sshsrv "$target" "$count" &
 
       count=$(( count + 1 ))
     done
