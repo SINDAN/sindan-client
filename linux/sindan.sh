@@ -1518,6 +1518,55 @@ cmdset_ssh () {
   fi
 }
 
+#########
+# add
+do_portscan () {
+  if [ $# -ne 3 ]; then
+  echo "ERROR: cmdset_portscan <verson> <target> <ports>." 1>&2
+  return 1
+  fi
+  case $1 in
+    "4" ) nmap -4 "$2" -p "$3" 2>/dev/null; return $? ;;
+    "6" ) nmap -6 "$2" -p "$3" 2>/dev/null; return $? ;;
+    "*" ) echo "ERROR: <version> must be 4 or 6." 1>&2; return 9 ;;
+  esac
+}
+
+cmdset_portscan () {
+  if [ $# -ne 6 ]; then
+    echo "ERROR: cmdset_portscan <layer> <version> <target_type>"      \
+         "<target_addr> <target_port> <count>." 1>&2 
+    return 1
+  fi
+  local layer=$1
+  local ver=$2
+  local ipv="IPv${ver}"
+  local type=$3
+  local target=$4
+  local ports=$5
+  local count=$6
+  local string=" portscan to extarnal server: $target $ports by $ipv"
+  local ps_ans
+
+  if ps_ans=$(do_portscan "$ver" "$target" "$ports"); then
+    result=$SUCCESS
+  else
+    stat=$?
+  fi
+
+  write_json "$layer" "$ipv" "${ver}portscan_${type}" "$result"       \
+	     "$target" "$ps_ans" "$count"
+  if [ "$result" = "$SUCCESS" ]; then
+    string="$string\n status ok"
+  else
+    string="$string\n status ng ($stat)"
+  fi
+  if [ "$VERBOSE" = "yes" ]; then
+    echo -e "$string"
+  fi
+}
+
+###
 
 #
 # main
@@ -2394,6 +2443,35 @@ fi
 
 wait
 echo " done."
+
+
+###################
+## Add portscan
+echo "Phase portscan: portscan checking..."
+layer="portscan"
+
+count=0
+for target in $(echo "$PS_SRVS4" | sed 's/,/ /g'); do
+
+  # Do portscan by 4
+  cmdset_portscan "$layer" 4 pssrv "$target" "$PS_PORTS" "$count"
+
+  count=$(( count + 1 ))
+done
+
+count=0
+for target in $(echo "$PS_SRVS6" | sed 's/,/ /g'); do
+
+  # Do portscan by 6
+  cmdset_portscan "$layer" 6 pssrv "$target" "$PS_PORTS" "$count"
+
+  count=$(( count + 1 ))
+done
+
+wait
+echo " done."
+
+
 
 ####################
 ## Phase 7
