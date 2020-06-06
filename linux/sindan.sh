@@ -1522,12 +1522,12 @@ cmdset_ssh () {
 # add
 do_portscan () {
   if [ $# -ne 3 ]; then
-  echo "ERROR: cmdset_portscan <verson> <target> <ports>." 1>&2
-  return 1
+    echo "ERROR: do_portscan <verson> <target> <port>." 1>&2
+    return 1
   fi
   case $1 in
-    "4" ) nmap -4 "$2" -p "$3" 2>/dev/null; return $? ;;
-    "6" ) nmap -6 "$2" -p "$3" 2>/dev/null; return $? ;;
+    "4" ) nc -zv4 "$2" "$3" 2>&1 ; return $? ;;
+    "6" ) nc -zv6 "$2" "$3" 2>&1 ; return $? ;;
     "*" ) echo "ERROR: <version> must be 4 or 6." 1>&2; return 9 ;;
   esac
 }
@@ -1543,18 +1543,21 @@ cmdset_portscan () {
   local ipv="IPv${ver}"
   local type=$3
   local target=$4
-  local ports=$5
+  local port=$5
   local count=$6
-  local string=" portscan to extarnal server: $target $ports by $ipv"
+  local string=" portscan to extarnal server: $target $port by $ipv"
   local ps_ans
 
-  if ps_ans=$(do_portscan "$ver" "$target" "$ports"); then
+  if ps_ans=$(do_portscan "$ver" "$target" "$port"); then
     result=$SUCCESS
   else
     stat=$?
   fi
 
-  write_json "$layer" "$ipv" "${ver}portscan_${type}" "$result"       \
+  echo "check..."
+  echo "$ps_ans"
+
+  write_json "$layer" "$ipv" "v${ver}portscan_${port}" "$result"       \
 	     "$target" "$ps_ans" "$count"
   if [ "$result" = "$SUCCESS" ]; then
     string="$string\n status ok"
@@ -2453,19 +2456,29 @@ layer="portscan"
 count=0
 for target in $(echo "$PS_SRVS4" | sed 's/,/ /g'); do
 
-  # Do portscan by 4
-  cmdset_portscan "$layer" 4 pssrv "$target" "$PS_PORTS" "$count"
+  for port in $(echo "$PS_PORTS" | sed 's/,/ /g'); do
+    
+    # Do portscan by 4
+    cmdset_portscan "$layer" 4 pssrv "$target" "$port" "$count"
+    
+    count=$(( count + 1 ))
 
-  count=$(( count + 1 ))
+  done
+  
 done
 
 count=0
 for target in $(echo "$PS_SRVS6" | sed 's/,/ /g'); do
 
-  # Do portscan by 6
-  cmdset_portscan "$layer" 6 pssrv "$target" "$PS_PORTS" "$count"
+  for port in $(echo "$PS_PORTS" | sed 's/,/ /g'); do
+  
+    # Do portscan by 6
+    cmdset_portscan "$layer" 6 pssrv "$target" "$port" "$count"
 
-  count=$(( count + 1 ))
+    count=$(( count + 1 ))
+
+  done
+
 done
 
 wait
