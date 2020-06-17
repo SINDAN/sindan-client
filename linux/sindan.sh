@@ -1,7 +1,7 @@
 #!/bin/bash
 # sindan.sh
-# version 2.2.10
-VERSION="2.2.10"
+# version 2.2.11
+VERSION="2.2.11"
 
 # read configurationfile
 . ./sindan.conf
@@ -1518,6 +1518,7 @@ cmdset_ssh () {
   fi
 }
 
+#
 do_speedindex () {
   if [ $# -ne 1 ]; then
     echo "ERROR: do_speedindex <target_url>." 1>&2
@@ -1525,39 +1526,43 @@ do_speedindex () {
   fi
 
   tracejson=trace-json/$(echo "$1" | sed 's/[.:/]/_/g').json
-  node speedindex.js $1 ${tracejson}
+  node speedindex.js "$1" ${tracejson}
   return $?
 }
+
+#
 cmdset_speedindex () {
-  (
   if [ $# -ne 4 ]; then
-    echo "ERROR: cmdset_speedindex <layer> <target_type> <target_addr> <count>." 1>&2
+    echo "ERROR: cmdset_speedindex <layer> <version> <target_type>"	\
+         "<target_addr> <count>." 1>&2
     return 1
   fi
-  layer=$1
-  type=$2
-  target=$3
-  count=$4
-  result=${FAIL}
-  string=$(echo " speedindex to extarnal server: ${target} by ${ipv}")
-  speedindex_ans=$(do_speedindex ${target})
-  if [ $? -eq 0 ]; then
-    result=${SUCCESS}
+  local layer=$1
+  local ver=$2
+  local type=$3
+  local target=$4
+  local count=$5
+  local result=$FAIL
+  local string=" speedindex to extarnal server: $target by $ipv"
+  local speedindex_ans
+
+  if speedindex_ans=$(do_speedindex ${target}); then
+    result=$SUCCESS
   else
     stat=$?
   fi
-  write_json ${layer} ${ipv} UX speedindex ${result} ${target}	\
-             "${speedindex_ans}" ${count}
-  if [ "${result}" = "${SUCCESS}" ]; then
-    string=$(echo "${string}\n  status: ok, speed index value: ${speedindex_ans}")
+  write_json "$layer" "$ipv" "v@{ver}speedindex" "$result" "$target"	\
+             "$speedindex_ans" "$count"
+  if [ "$result" = "$SUCCESS" ]; then
+    string="$string\n  status: ok, speed index value: $speedindex_ans"
   else
-    string=$(echo "${string}\n  status: ng ($stat)")
+    string="$string\n  status: ng ($stat)"
   fi
-  if [ "${VERBOSE}" = "yes" ]; then
-    echo -e "${string}"
+  if [ "$VERBOSE" = "yes" ]; then
+    echo -e "$string"
   fi
-  )
 }
+
 
 #
 # main
@@ -2434,14 +2439,20 @@ if [ -n "$v6addrs" ]; then
 fi
 
 # SPEEDINDEX
-count=0
-for target in $(echo ${SI_SRVS} | sed 's/,/ /g'); do
+if [ "$DO_SPEEDINDEX" = "yes" ]; then
+  if [ "$v4addr_type" = "private" ] || [ "$v4addr_type" = "grobal" ] ||	\
+     [ -n "$v6addrs" ]; then
 
-  # Do speedindex
-  cmdset_speedindex ${layer} srv ${target} ${count} &
+    count=0
+    for target in $(echo "$SI_SRVS" | sed 's/,/ /g'); do
 
-  count=$(( count + 1 ))
-done
+      # Do speedindex
+      cmdset_speedindex "$layer" 46 speedidsrv "$target" "$count" &
+
+      count=$(( count + 1 ))
+    done
+  fi
+fi
 
 wait
 echo " done."
