@@ -3,8 +3,9 @@
 
 cd ~/sindan-client/linux
 mkdir -p trace-json
-sudo apt install chromium-browser
-sudo apt install npm
-npm i puppeteer
+sudo apt update -y
+sudo apt install -y chromium-browser
+sudo apt install -y npm
+npm i puppeteer-core
 npm i speedline
 

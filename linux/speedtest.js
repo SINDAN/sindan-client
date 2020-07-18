@@ -10,7 +10,7 @@
 
 // node speedtest.js
 
-const puppeteer = require('puppeteer');
+const puppeteer = require('puppeteer-core');
 
 var url = process.argv[2];
 
