@@ -1634,7 +1634,7 @@ cmdset_speedtest () {
     result=$SUCCESS
   fi
   if [ "$result" = "$SUCCESS" ]; then
-    write_json "$layer" "ipv6" "v6speedtest_ui" "$result" "$target"	\
+    write_json "$layer" "ipv6" "v6speedtest_ul" "$result" "$target"	\
                "$speedtest_ipv6_rtt" "$count"
 
   fi
