@@ -2599,7 +2599,7 @@ if [ "$v4addr_type" = "private" ] || [ "$v4addr_type" = "grobal" ] ||	\
   [ -n "$v6addrs" ]; then
 
   count=0
-  for target in $(echo "$SI_SRVS" | sed 's/,/ /g'); do
+  for target in $(echo "$ST_SRVS" | sed 's/,/ /g'); do
 
     # Do speedtest
     cmdset_speedtest "$layer" 46 speedtssrv "$target" "$count" &
