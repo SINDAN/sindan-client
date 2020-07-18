@@ -1706,7 +1706,7 @@ cmdset_speedindex () {
   else
     stat=$?
   fi
-  write_json "$layer" "$ipv" "v@{ver}speedindex" "$result" "$target"	\
+  write_json "$layer" "$ipv" "v${ver}speedindex" "$result" "$target"	\
              "$speedindex_ans" "$count"
   if [ "$result" = "$SUCCESS" ]; then
     string="$string\n  status: ok, speed index value: $speedindex_ans"
