@@ -11,7 +11,7 @@
 // node speedindex.js https://www.sindan-net.com/
 // OUTPUT [speedindex]
 
-const puppeteer = require('puppeteer-core');
+const puppeteer = require('puppeteer');
 const speedline = require('speedline');
 
 var url = process.argv[2];
