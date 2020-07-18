@@ -9,19 +9,17 @@
 // npm i speedline
 
 // node speedtest.js
-// OUTPUT speedtest/IPv[4/6]_[RTT/JIT/DL/UL]
 
 const puppeteer = require('puppeteer');
-const fs = require('fs');
+
+var url = process.argv[2];
 
 (async () => {
   const browser = await puppeteer.launch();
   const page = await browser.newPage();
 
   try {
-    await page.goto('https://inonius.net/speedtest/', {
-      waitUntil: 'networkidle0'
-    });
+    await page.goto(url, { waitUntil: 'networkidle0' });
 
     await page.waitFor(40000);
 
@@ -44,10 +42,10 @@ const fs = require('fs');
       const ipv6ulItem = await ipv6frame.$('#ulText');
       const ipv6ul = await (await ipv6ulItem.getProperty('textContent')).jsonValue();
 
-      fs.writeFile('speedtest/IPv6_RTT', ipv6rtt, (error) => { /* handle error */ });
-      fs.writeFile('speedtest/IPv6_JIT', ipv6jit, (error) => { /* handle error */ });
-      fs.writeFile('speedtest/IPv6_DL', ipv6dl, (error) => { /* handle error */ });
-      fs.writeFile('speedtest/IPv6_UL', ipv6ul, (error) => { /* handle error */ });
+      console.log('IPv6_RTT:' + ipv6rtt);
+      console.log('IPv6_JIT:' + ipv6jit);
+      console.log('IPv6_PDL:' + ipv6dl);
+      console.log('IPv6_UL:' + ipv6ul);
 
     }
 
@@ -68,10 +66,10 @@ const fs = require('fs');
       const ipv4ulItem = await ipv4frame.$('#ulText');
       const ipv4ul = await (await ipv4ulItem.getProperty('textContent')).jsonValue();
 
-      fs.writeFile('speedtest/IPv4_RTT', ipv4rtt, (error) => { /* handle error */ });
-      fs.writeFile('speedtest/IPv4_JIT', ipv4jit, (error) => { /* handle error */ });
-      fs.writeFile('speedtest/IPv4_DL', ipv4dl, (error) => { /* handle error */ });
-      fs.writeFile('speedtest/IPv4_UL', ipv4ul, (error) => { /* handle error */ });
+      console.log('IPv4_RTT:' + ipv4rtt);
+      console.log('IPv4_JIT:' + ipv4jit);
+      console.log('IPv4_DL:' + ipv4dl);
+      console.log('IPv4_UL:' + ipv4ul);
 
     }
 

@@ -1518,6 +1518,161 @@ cmdset_ssh () {
   fi
 }
 
+### ADD speedtest
+do_speedtest () {
+  if [ $# -ne 1 ]; then
+    echo "ERROR: do_speedtest <target_url>." 1>&2
+    return 1
+  fi
+
+  node speedtest.js "$1"
+  return $?
+}
+
+get_speedtest_ipv6_rtt () {
+  echo "$1" | grep 'IPv6_RTT:'| sed -n 's/IPv6_RTT://p'
+  return $?
+}
+
+get_speedtest_ipv6_jit () {
+  echo "$1"  | grep 'IPv6_JIT:'| sed -n 's/IPv6_JIT://p'
+  return $?
+}
+
+get_speedtest_ipv6_dl () {
+  echo "$1"  | grep 'IPv6_DL:'| sed -n 's/IPv6_DL://p'
+  return $?
+}
+
+get_speedtest_ipv6_ul () {
+  echo "$1"  | grep 'IPv6_UL:'| sed -n 's/IPv6_UL://p'
+  return $?
+}
+
+get_speedtest_ipv4_rtt () {
+  echo "$1" | grep 'IPv4_RTT:'| sed -n 's/IPv4_RTT://p'
+  return $?
+}
+
+get_speedtest_ipv4_jit () {
+  echo "$1" | grep 'IPv4_JIT:'| sed -n 's/IPv4_JIT://p'
+  return $?
+}
+
+get_speedtest_ipv4_dl () {
+  echo "$1" | grep 'IPv4_DL:'| sed -n 's/IPv4_DL://p'
+  return $?
+}
+
+get_speedtest_ipv4_ul () {
+  echo "$1" | grep 'IPv4_UL:'| sed -n 's/IPv4_UL://p'
+  return $?
+}
+
+cmdset_speedtest () {
+  if [ $# -ne 5 ]; then
+      echo "ERROR: cmdset_speedtest <layer> <version> <target_type>"	\
+           "<target_addr> <count>." 1>&2
+    return 1
+  fi
+  local layer=$1
+  local ver=$2
+  local type=$3
+  local target=$4
+  local count=$5
+  local result=$FAIL
+  local string=" speedtest to extarnal server: $target by $ipv"
+  local speedtest_ans
+  local speedtest_ipv6_rtt
+  local speedtest_ipv6_jit
+  local speedtest_ipv6_dl
+  local speedtest_ipv6_ul
+  local speedtest_ipv4_rtt
+  local speedtest_ipv4_jit
+  local speedtest_ipv4_dl
+  local speedtest_ipv4_ul
+
+  if speedtest_ans=$(do_speedtest ${target}); then
+    result=$SUCCESS
+  else
+    stat=$?
+  fi
+  if [ "$result" = "$SUCCESS" ]; then
+    string="$string\n  status: ok, speed test value: $speedtest_ans"
+  else
+    string="$string\n  status: ng ($stat)"
+  fi
+  if [ "$VERBOSE" = "yes" ]; then
+    echo -e "$string"
+  fi
+
+  if speedtest_ipv6_rtt=$(get_speedtest_ipv6_rtt "$speedtest_ans"); then
+    result=$SUCCESS
+  fi
+  if [ "$result" = "$SUCCESS" ]; then
+    write_json "$layer" "ipv6" "v6speedtest_rtt" "$result" "$target"	\
+               "$speedtest_ipv6_rtt" "$count"
+  fi
+
+  if speedtest_ipv6_jit=$(get_speedtest_ipv6_jit "$speedtest_ans"); then
+    result=$SUCCESS
+  fi
+  if [ "$result" = "$SUCCESS" ]; then
+    write_json "$layer" "ipv6" "v6speedtest_jit" "$result" "$target"	\
+               "$speedtest_ipv6_jit" "$count"
+  fi
+
+  if speedtest_ipv6_dl=$(get_speedtest_ipv6_dl "$speedtest_ans"); then
+    result=$SUCCESS
+  fi
+  if [ "$result" = "$SUCCESS" ]; then
+    write_json "$layer" "ipv6" "v6speedtest_dl" "$result" "$target"	\
+               "$speedtest_ipv6_dl" "$count"
+  fi
+
+  if speedtest_ipv6_ul=$(get_speedtest_ipv6_ul "$speedtest_ans"); then
+    result=$SUCCESS
+  fi
+  if [ "$result" = "$SUCCESS" ]; then
+    write_json "$layer" "ipv6" "v6speedtest_ui" "$result" "$target"	\
+               "$speedtest_ipv6_rtt" "$count"
+
+  fi
+
+  if speedtest_ipv4_rtt=$(get_speedtest_ipv4_rtt "$speedtest_ans"); then
+    result=$SUCCESS
+  fi
+  if [ "$result" = "$SUCCESS" ]; then
+    write_json "$layer" "ipv4" "v4speedtest_rtt" "$result" "$target"	\
+               "$speedtest_ipv4_rtt" "$count"
+  fi
+
+  if speedtest_ipv4_jit=$(get_speedtest_ipv4_jit "$speedtest_ans"); then
+    result=$SUCCESS
+  fi
+  if [ "$result" = "$SUCCESS" ]; then
+    write_json "$layer" "ipv4" "v4speedtest_jit" "$result" "$target"	\
+               "$speedtest_ipv4_jit" "$count"
+  fi
+
+  if speedtest_ipv4_dl=$(get_speedtest_ipv4_dl "$speedtest_ans"); then
+    result=$SUCCESS
+  fi
+  if [ "$result" = "$SUCCESS" ]; then
+    write_json "$layer" "ipv4" "v4speedtest_dl" "$result" "$target"	\
+               "$speedtest_ipv4_dl" "$count"
+  fi
+
+  if speedtest_ipv4_ul=$(get_speedtest_ipv4_ul "$speedtest_ans"); then
+    result=$SUCCESS
+  fi
+  if [ "$result" = "$SUCCESS" ]; then
+    write_json "$layer" "ipv4" "v4speedtest_ul" "$result" "$target"	\
+               "$speedtest_ipv4_ul" "$count"
+  fi
+}
+### ADD speedtesot
+
 #
 do_speedindex () {
   if [ $# -ne 1 ]; then
@@ -1532,7 +1687,7 @@ do_speedindex () {
 
 #
 cmdset_speedindex () {
-  if [ $# -ne 4 ]; then
+  if [ $# -ne 5 ]; then
     echo "ERROR: cmdset_speedindex <layer> <version> <target_type>"	\
          "<target_addr> <count>." 1>&2
     return 1
@@ -2437,6 +2592,22 @@ if [ -n "$v6addrs" ]; then
     done
   fi
 fi
+
+# SPEEDTEST
+# if [ "$DO_SPEEDTEST" = "yes" ]; then # Not Available yet...
+if [ "$v4addr_type" = "private" ] || [ "$v4addr_type" = "grobal" ] ||	\
+  [ -n "$v6addrs" ]; then
+
+  count=0
+  for target in $(echo "$SI_SRVS" | sed 's/,/ /g'); do
+
+    # Do speedtest
+    cmdset_speedtest "$layer" 46 speedtssrv "$target" "$count" &
+
+    count=$(( count + 1 ))
+  done
+fi
+# fi # Not Available yet...
 
 # SPEEDINDEX
 if [ "$DO_SPEEDINDEX" = "yes" ]; then
