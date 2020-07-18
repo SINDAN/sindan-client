@@ -44,7 +44,7 @@ var url = process.argv[2];
 
       console.log('IPv6_RTT:' + ipv6rtt);
       console.log('IPv6_JIT:' + ipv6jit);
-      console.log('IPv6_PDL:' + ipv6dl);
+      console.log('IPv6_DL:' + ipv6dl);
       console.log('IPv6_UL:' + ipv6ul);
 
     }
