@@ -1632,7 +1632,7 @@ get_speedtest_ipv6_ul() {
 }
 
 #
-cmdset_speedtest () {
+cmdset_speedtest() {
   if [ $# -ne 5 ]; then
       echo "ERROR: cmdset_speedtest <layer> <version> <target_type>"	\
            "<target_addr> <count>." 1>&2
@@ -1640,6 +1640,7 @@ cmdset_speedtest () {
   fi
   local layer=$1
   local ver=$2
+  local ipv=IPv${ver}
   local type=$3
   local target=$4
   local count=$5
