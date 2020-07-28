@@ -898,7 +898,7 @@ do_traceroute() {
 }
 
 #
-get_tracepath () {
+get_tracepath() {
   # require do_traceroute() data from STDIN.
   grep -v traceroute							|
   awk '{print $2}'							|
@@ -944,7 +944,7 @@ do_pmtud() {
 }
 
 #
-cmdset_trace () {
+cmdset_trace() {
   if [ $# -ne 5 ]; then
     echo "ERROR: cmdset_trace <layer> <version> <target_type>"		\
          "<target_addr> <count>." 1>&2
@@ -979,7 +979,7 @@ cmdset_trace () {
 }
 
 #
-cmdset_pmtud () {
+cmdset_pmtud() {
   if [ $# -ne 6 ]; then
     echo "ERROR: cmdset_pmtud <layer> <version> <target_type>"		\
          "<target_addr> <ifmtu> <count>." 1>&2
@@ -1057,7 +1057,7 @@ get_dnsrtt() {
 }
 
 #
-check_dns64 () {
+check_dns64() {
   if [ $# -ne 1 ]; then
     echo "ERROR: check_dns64 <target_addr>." 1>&2
     return 1
@@ -1073,7 +1073,7 @@ check_dns64 () {
 }
 
 #
-cmdset_dnslookup () {
+cmdset_dnslookup() {
   if [ $# -ne 5 ]; then
     echo "ERROR: cmdset_dnslookup <layer> <version> <target_type>"	\
          "<target_addr> <count>." 1>&2
@@ -1136,7 +1136,7 @@ do_curl() {
 }
 
 #
-cmdset_http () {
+cmdset_http() {
   if [ $# -ne 5 ]; then
     echo "ERROR: cmdset_http <layer> <version> <target_type>"		\
          "<target_addr> <count>." 1>&2
@@ -1180,7 +1180,7 @@ do_sshkeyscan() {
 }
 
 #
-cmdset_ssh () {
+cmdset_ssh() {
   if [ $# -ne 5 ]; then
     echo "ERROR: cmdset_ssh <layer> <version> <target_type>"		\
          "<target_str> <count>." 1>&2

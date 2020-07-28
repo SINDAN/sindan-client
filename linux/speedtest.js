@@ -2,26 +2,30 @@
 // author: bashow
 // 2020/07/18
 
-// sudo apt18nstall chromium-browser
+// Requirements:
+// sudo apt install chromium-browser
 // sudo apt install npm
-
 // npm i puppeteer
 // npm i speedline
 
-// node speedtest.js
+// Hot to use:
+// node speedtest.js <url>
 
 const puppeteer = require('puppeteer-core');
 
 var url = process.argv[2];
 
 (async () => {
-  const browser = await puppeteer.launch({executablePath: '/usr/bin/chromium-browser'});
+  const browser = await puppeteer.launch({
+                          executablePath: '/usr/bin/chromium-browser',
+                          args: ['--no-sandbox']});
   const page = await browser.newPage();
+  await page.setDefaultNavigationTimeout(60000);
 
   try {
     await page.goto(url, { waitUntil: 'networkidle0' });
 
-    await page.waitFor(40000);
+    await page.waitForSelector('#ranking-table', { timeout: 60000 });
 
     let frames = page.frames();
 
@@ -46,7 +50,6 @@ var url = process.argv[2];
       console.log('IPv6_JIT:' + ipv6jit);
       console.log('IPv6_DL:' + ipv6dl);
       console.log('IPv6_UL:' + ipv6ul);
-
     }
 
     if (frames.find( f => f.url().indexOf("test-ipv4") > 0) ) {
@@ -70,7 +73,6 @@ var url = process.argv[2];
       console.log('IPv4_JIT:' + ipv4jit);
       console.log('IPv4_DL:' + ipv4dl);
       console.log('IPv4_UL:' + ipv4ul);
-
     }
 
   } catch (e) {
