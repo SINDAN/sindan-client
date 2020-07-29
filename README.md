@@ -29,6 +29,8 @@ Parameters:
 - `RECONNECT`=\<yes or no\> - If yes, do reconnect at L2 measurement.
 - `VERBOSE`=\<yes or no\> - If yes, output detailed information from sindan.sh script.
 - `MAX_RETRY`=\<number\> - Specifies the maximum number to retry check at the datalink and the interface layer. Default is 10.
+- `EXCL_IPv4`=\<yes or no\> - If yes, do not perform measurement with IPv4.
+- `EXCL_IPv6`=\<yes or no\> - If yes, do not perform measurement with IPv6.
 - `IFTYPE`=\<Wi-Fi or others\> - Specifies the type of measurement interface.
 - `DEVNAME`=\<device\> - Specifies the name of measurement interface (e.g. ra0).
 - `SSID`=\<ssid\> - Specifies a SSID to be measured (not used in the current version).
@@ -40,8 +42,17 @@ Parameters:
 - `GPDNS6`=\<server,\[...\]\> - Specifies the external IPv6 DNS servers used for name resolution (separated by commas).
 - `V4WEB_SRVS`=\<server,\[...\]\> - Specifies the IPv4 web servers used for HTTP communication confirmation (separated by commas).
 - `V6WEB_SRVS`=\<server,\[...\]\> - Specifies the IPv6 web servers used for HTTP communication confirmation (separated by commas).
+- `V4SSH_SRVS`=\<server_keytype,\[...\]\> - Specifies the IPv4 SSH servers and key types used for SSH communication confirmation (separated by commas).
+- `V6SSH_SRVS`=\<server_keytype,\[...\]\> - Specifies the IPv6 SSH servers and key types used for SSH communication confirmation (separated by commas).
+- `DO_SPEEDTEST`=\<yes or no\> - If yes, do speedtest measurement (available on Linux version only).
+- `DO_SPEEDINDEX`=\<yes or no\> - If yes, do speedindex measurement (available on Linux version only).
+- `ST_SRVS`=\<url\> - Specifies the URL for the speedtest measurement (available on Linux version only).
+- `SI_SRVS`=\<url\> - Specifies the URL for the speedindex measurement (available on Linux version only).
 - `URL_CAMPAIGN`=\<url\> - Specifies the URL for sending the metadata (format is http://<server_name>:<port>/sindan.log_campaign).
 - `URL_SINDAN`=\<url\> - Specifies the URL for sending the measurement data (format is http://<server_name>:<port>/sindan.log).
+- `LOCAL_NETWORK_PRIVACY`=\<yes or no\> - If yes, hash or mask the privacy information (e.g., BSSID) in the wireless LAN environment information.
+- `CLIENT_PRIVACY`=\<yes or no\> - If yes, hash or mask the privacy information (e.g., MAC address of the interface) of the computer.
+- `CMD_HASH`=\<command path\> - Specifies a command path for hashing privacy data.
 
 Parameters for NFDF monitering (not include in the current version):
 - `COMMUNICATION_DEVICE`=\<device\> - Specifies the interface name for SINDAN measurement. Default is DEVNAME.
