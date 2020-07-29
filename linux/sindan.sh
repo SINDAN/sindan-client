@@ -1,7 +1,7 @@
 #!/bin/bash
 # sindan.sh
-# version 2.2.12
-VERSION="2.2.12"
+# version 2.2.13
+VERSION="2.2.13"
 
 # read configurationfile
 . ./sindan.conf
@@ -1519,6 +1519,52 @@ cmdset_ssh() {
 }
 
 #
+do_portscan () {
+  if [ $# -ne 3 ]; then
+    echo "ERROR: do_portscan <verson> <target> <port>." 1>&2
+    return 1
+  fi
+  case $1 in
+    "4" ) nc -zv4 "$2" "$3" 2>&1 ; return $? ;;
+    "6" ) nc -zv6 "$2" "$3" 2>&1 ; return $? ;;
+    "*" ) echo "ERROR: <version> must be 4 or 6." 1>&2; return 9 ;;
+  esac
+}
+
+cmdset_portscan () {
+  if [ $# -ne 6 ]; then
+    echo "ERROR: cmdset_portscan <layer> <version> <target_type>"    \
+         "<target_addr> <target_port> <count>." 1>&2
+    return 1
+  fi
+  local layer=$1
+  local ver=$2
+  local ipv="IPv${ver}"
+  local type=$3
+  local target=$4
+  local port=$5
+  local count=$6
+  local string=" portscan to extarnal server: $target $port by $ipv"
+  local ps_ans
+
+  if ps_ans=$(do_portscan "$ver" "$target" "$port"); then
+    result=$SUCCESS
+  else
+    stat=$?
+  fi
+  write_json "$layer" "$ipv" "v${ver}portscan_${port}" "$result"       \
+	     "$target" "$ps_ans" "$count"
+  if [ "$result" = "$SUCCESS" ]; then
+    string="$string\n status ok"
+  else
+    string="$string\n status ng ($stat)"
+  fi
+  if [ "$VERBOSE" = "yes" ]; then
+    echo -e "$string"
+  fi
+}
+
+#
 do_speedindex() {
   if [ $# -ne 1 ]; then
     echo "ERROR: do_speedindex <target_url>." 1>&2
@@ -2459,10 +2505,6 @@ if [ "$v4addr_type" = "private" ] || [ "$v4addr_type" = "grobal" ]; then
     # Do curl to IPv4 web servers by IPv4
     cmdset_http "$layer" 4 websrv "$target" "$count" &
 
-    # Do measure http throuput by IPv4
-    #TBD
-    # v4http_throughput_srv
-
     count=$(( count + 1 ))
   done
 
@@ -2481,6 +2523,17 @@ if [ "$v4addr_type" = "private" ] || [ "$v4addr_type" = "grobal" ]; then
     # Do ssh-keyscan to IPv4 ssh servers by IPv4
     cmdset_ssh "$layer" 4 sshsrv "$target" "$count" &
 
+    count=$(( count + 1 ))
+  done
+  
+  count=0
+  for target in $(echo "$PS_SRVS4" | sed 's/,/ /g'); do
+    for port in $(echo "$PS_PORTS" | sed 's/,/ /g'); do
+
+      # Do portscan by IPv4
+      cmdset_portscan "$layer" 4 pssrv "$target" "$port" "$count" &
+    
+    done
     count=$(( count + 1 ))
   done
 fi
@@ -2505,10 +2558,6 @@ if [ -n "$v6addrs" ]; then
     # Do curl to IPv6 web servers by IPv6
     cmdset_http "$layer" 6 websrv "$target" "$count" &
 
-    # Do measure http throuput by IPv6
-    #TBD
-    # v6http_throughput_srv
-
     count=$(( count + 1 ))
   done
 
@@ -2527,6 +2576,17 @@ if [ -n "$v6addrs" ]; then
     # Do ssh-keyscan to IPv6 ssh servers by IPv6
     cmdset_ssh "$layer" 6 sshsrv "$target" "$count" &
 
+    count=$(( count + 1 ))
+  done
+
+  count=0
+  for target in $(echo "$PS_SRVS6" | sed 's/,/ /g'); do
+    for port in $(echo "$PS_PORTS" | sed 's/,/ /g'); do
+  
+      # Do portscan by 6
+      cmdset_portscan "$layer" 6 pssrv "$target" "$port" "$count" &
+
+    done
     count=$(( count + 1 ))
   done
 
@@ -2577,6 +2637,17 @@ if [ -n "$v6addrs" ]; then
 
       count=$(( count + 1 ))
     done
+
+    count=0
+    for target in $(echo "$PS_SRVS4" | sed 's/,/ /g'); do
+      for port in $(echo "$PS_PORTS" | sed 's/,/ /g'); do
+
+        # Do portscan by IPv4
+        cmdset_portscan "$layer" 4 pssrv "$target" "$port" "$count" &
+    
+      done
+      count=$(( count + 1 ))
+    done
   fi
 fi
 
@@ -2613,6 +2684,7 @@ fi
 
 wait
 echo " done."
+
 
 ####################
 ## Phase 7
