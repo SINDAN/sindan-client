@@ -34,14 +34,14 @@ hash_result() {
       ;;
     "environment")
       # XXX do something if "$LOCAL_NETWORK_PRIVACY" = "yes".
-      if [ "$LOCAL_NETWORK_PRIVACY" = "yes" ] ; then
+      if [ "$LOCAL_NETWORK_PRIVACY" = "yes" ]; then
         echo 'XXX'
       else
         echo "$src"
       fi
       ;;
     "mac_addr")
-      if [ "$CLIENT_PRIVACY" = "yes" ] ; then
+      if [ "$CLIENT_PRIVACY" = "yes" ]; then
         echo "$(echo "$src" | $CMD_HASH | cut -d' ' -f1):SHA1"
       else
         echo "$src"
@@ -49,7 +49,7 @@ hash_result() {
       ;;
     "v4autoconf"|"v6autoconf")
       # XXX do something if "$CLIENT_PRIVACY" = "yes".
-      if [ "$CLIENT_PRIVACY" = "yes" ] ; then
+      if [ "$CLIENT_PRIVACY" = "yes" ]; then
         echo 'XXX'
       else
         echo "$src"
@@ -1525,15 +1525,15 @@ do_portscan () {
     return 1
   fi
   case $1 in
-    "4" ) nc -zv4 "$2" "$3" 2>&1 ; return $? ;;
-    "6" ) nc -zv6 "$2" "$3" 2>&1 ; return $? ;;
+    "4" ) nc -zv4 -w1 "$2" "$3" 2>&1 ; return $? ;;
+    "6" ) nc -zv6 -w1 "$2" "$3" 2>&1 ; return $? ;;
     "*" ) echo "ERROR: <version> must be 4 or 6." 1>&2; return 9 ;;
   esac
 }
 
 cmdset_portscan () {
   if [ $# -ne 6 ]; then
-    echo "ERROR: cmdset_portscan <layer> <version> <target_type>"    \
+    echo "ERROR: cmdset_portscan <layer> <version> <target_type>"	\
          "<target_addr> <target_port> <count>." 1>&2
     return 1
   fi
@@ -1544,7 +1544,7 @@ cmdset_portscan () {
   local target=$4
   local port=$5
   local count=$6
-  local string=" portscan to extarnal server: $target $port by $ipv"
+  local string=" portscan to extarnal server: $target:$port by $ipv"
   local ps_ans
 
   if ps_ans=$(do_portscan "$ver" "$target" "$port"); then
@@ -1552,12 +1552,12 @@ cmdset_portscan () {
   else
     stat=$?
   fi
-  write_json "$layer" "$ipv" "v${ver}portscan_${port}" "$result"       \
+  write_json "$layer" "$ipv" "v${ver}portscan_${port}" "$result"	\
 	     "$target" "$ps_ans" "$count"
   if [ "$result" = "$SUCCESS" ]; then
-    string="$string\n status ok"
+    string="$string\n  status ok"
   else
-    string="$string\n status ng ($stat)"
+    string="$string\n  status ng ($stat)"
   fi
   if [ "$VERBOSE" = "yes" ]; then
     echo -e "$string"

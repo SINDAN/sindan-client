@@ -34,14 +34,14 @@ hash_result() {
       ;;
     "environment")
       # XXX do something if "$LOCAL_NETWORK_PRIVACY" = "yes".
-      if [ "$LOCAL_NETWORK_PRIVACY" = "yes" ] ; then
+      if [ "$LOCAL_NETWORK_PRIVACY" = "yes" ]; then
         echo 'XXX'
       else
         echo "$src"
       fi
       ;;
     "mac_addr")
-      if [ "$CLIENT_PRIVACY" = "yes" ] ; then
+      if [ "$CLIENT_PRIVACY" = "yes" ]; then
         echo "$(echo "$src" | $CMD_HASH | cut -d' ' -f1):SHA1"
       else
         echo "$src"
@@ -49,7 +49,7 @@ hash_result() {
       ;;
     "v4autoconf"|"v6autoconf")
       # XXX do something if "$CLIENT_PRIVACY" = "yes".
-      if [ "$CLIENT_PRIVACY" = "yes" ] ; then
+      if [ "$CLIENT_PRIVACY" = "yes" ]; then
         echo 'XXX'
       else
         echo "$src"
