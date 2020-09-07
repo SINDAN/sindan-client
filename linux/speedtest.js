@@ -25,14 +25,14 @@ var url = process.argv[2];
   try {
     await page.goto(url, { waitUntil: 'networkidle0' });
 
-    await page.waitForSelector('#ranking-table', { timeout: 60000 });
+    await page.waitForSelector('#shareArea', { visible: true, timeout: 60000 });
 
     let frames = page.frames();
 
-    if (frames.find( f => f.url().indexOf("test-ipv6") > 0) ) {
+    if (frames.find( f => f.url().indexOf("ipv6") > 0) ) {
       var ipv6frame = frames.find(
           f =>
-            f.url().indexOf("test-ipv6") > 0);
+            f.url().indexOf("ipv6") > 0);
 
       const ipv6rttItem = await ipv6frame.$('#pingText');
       const ipv6rtt = await (await ipv6rttItem.getProperty('textContent')).jsonValue();
@@ -52,10 +52,10 @@ var url = process.argv[2];
       console.log('IPv6_UL:' + ipv6ul);
     }
 
-    if (frames.find( f => f.url().indexOf("test-ipv4") > 0) ) {
+    if (frames.find( f => f.url().indexOf("ipv4") > 0) ) {
       var ipv4frame = frames.find(
           f =>
-            f.url().indexOf("test-ipv4") > 0);
+            f.url().indexOf("ipv4") > 0);
 
       const ipv4rttItem = await ipv4frame.$('#pingText');
       const ipv4rtt = await (await ipv4rttItem.getProperty('textContent')).jsonValue();
