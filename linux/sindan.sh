@@ -1,7 +1,7 @@
 #!/bin/bash
 # sindan.sh
-# version 2.2.13
-VERSION="2.2.13"
+# version 2.2.14
+VERSION="2.2.14"
 
 # read configurationfile
 . ./sindan.conf
@@ -101,7 +101,7 @@ write_json() {
   return $?
 }
 
-## for datalink layer
+## for hardware layer
 #
 get_devicename() {
   echo "$DEVNAME"
@@ -139,6 +139,98 @@ get_os() {
   return $?
 }
 
+#
+get_hw_info() {
+  if [ -e /proc/device-tree/model ]; then
+    awk 1 /proc/device-tree/model
+  else
+    echo 'TBD'
+  fi
+  return $?
+}
+
+#
+get_cpu_freq() {
+  if [ $# -ne 1 ]; then
+    echo "ERROR: get_cpu_freq <os>." 1>&2
+    return 1
+  fi
+  if echo $1 | grep Raspbian > /dev/null 2>&1; then
+    vcgencmd measure_clock arm						|
+    awk -F= '{print $2}'
+  else
+    echo 'TBD'
+  fi
+  return $?
+}
+
+#
+get_cpu_volt() {
+  if [ $# -ne 1 ]; then
+    echo "ERROR: get_cpu_volt <os>." 1>&2
+    return 1
+  fi
+  if echo $1 | grep Raspbian > /dev/null 2>&1; then
+    vcgencmd measure_volts core						|
+    sed -n 's/^volt=\([0-9\.]*\).*$/\1/p'
+  else
+    echo 'TBD'
+  fi
+  return $?
+}
+
+#
+get_cpu_temp() {
+  if [ $# -ne 1 ]; then
+    echo "ERROR: get_cpu_temp <os>." 1>&2
+    return 1
+  fi
+  if echo $1 | grep Raspbian > /dev/null 2>&1; then
+    vcgencmd measure_temp						|
+    sed -n 's/^temp=\([0-9\.]*\).*$/\1/p'
+  else
+    echo 'TBD'
+  fi
+  return $?
+}
+
+#
+get_clock_state() {
+  if which timedatectl > /dev/null 2>&1; then
+    timedatectl								|
+    sed -n 's/.*System clock synchronized: \([a-z]*\).*$/\1/p'
+  else
+    echo 'TBD'
+  fi
+  return $?
+}
+
+#
+get_clock_src() {
+  if which timedatectl > /dev/null 2>&1; then
+    use_timesyncd=$(timedatectl |
+      grep -e "NTP service: active" \
+           -e "systemd-timesyncd.service active: yes")
+    if [ -n "$use_timesyncd" ]; then
+      systemctl status systemd-timesyncd				|
+      grep Status							|
+      sed 's/^[ \t]*//'
+    else
+      if [ -e /run/ntpd.pid ]; then
+        ntpq -p | grep -e ^o -e ^*
+      elif [ -e /run/chronyd.pid ]; then
+        chronyc sources | grep "\^\*"
+      else
+        echo 'using unknown time synclonization service.'
+      fi
+    fi
+  else
+    echo 'TBD'
+  fi
+  return $?
+}
+
+## for datalink layer
 #
 get_ifstatus() {
   if [ $# -ne 1 ]; then
@@ -1777,6 +1869,8 @@ done
 
 ####################
 ## Phase 0
+echo "Phase 0: Hardware Layer checking..."
+layer="hardware"
 
 # Set lock file
 trap 'rm -f $LOCKFILE; exit 0' INT
@@ -1808,6 +1902,55 @@ mac_addr=$(get_macaddr "$devicename")
 
 # Get OS version
 os=$(get_os)
+
+# Get hardware information
+hw_info=$(get_hw_info)
+if [ -n "$hw_info" ]; then
+  write_json "$layer" common hw_info "$INFO" self "$hw_info" 0
+fi
+
+# Get CPU frequency
+cpu_freq=$(get_cpu_freq "$os")
+if [ -n "$cpu_freq" ]; then
+  write_json "$layer" common cpu_freq "$INFO" self "$cpu_freq" 0
+fi
+
+# Get CPU voltage
+cpu_volt=$(get_cpu_volt "$os")
+if [ -n "$cpu_volt" ]; then
+  write_json "$layer" common cpu_volt "$INFO" self "$cpu_volt" 0
+fi
+
+# Get CPU temperature
+cpu_temp=$(get_cpu_temp "$os")
+if [ -n "$cpu_temp" ]; then
+  write_json "$layer" common cpu_temp "$INFO" self "$cpu_temp" 0
+fi
+
+# Get clock state
+clock_state="synchronized=$(get_clock_state)"
+if [ -n "$clock_state" ]; then
+  write_json "$layer" common clock_state "$INFO" self "$clock_state" 0
+fi
+
+# Get clock source
+clock_src=$(get_clock_src)
+if [ -n "$clock_src" ]; then
+  write_json "$layer" common clock_src "$INFO" self "$clock_src" 0
+fi
+
+# Report phase 0 results
+if [ "$VERBOSE" = "yes" ]; then
+  echo " hardware information:"
+  echo "  os: $os"
+  echo "  hw_info: $hw_info"
+  echo "  cpu(freq: $cpu_freq Hz, volt: $cpu_volt V, temp: $cpu_temp 'C"
+  echo "  clock_state: $clock_state"
+  echo "  clock_src: $clock_src"
+fi
+
+echo " done."
+
 
 ####################
 ## Phase 1
