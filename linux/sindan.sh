@@ -1,7 +1,7 @@
 #!/bin/bash
 # sindan.sh
-# version 2.2.14
-VERSION="2.2.14"
+# version 2.2.15
+VERSION="2.2.15"
 
 # read configurationfile
 . ./sindan.conf
@@ -114,7 +114,11 @@ do_ifdown() {
     echo "ERROR: do_ifdown <devicename>." 1>&2
     return 1
   fi
-  ifdown "$1"
+  if which ifconfig > /dev/null 2>&1; then
+    ifconfig "$1" down
+  else
+    ip link set "$1" down
+  fi
   return $?
 }
 
@@ -124,7 +128,11 @@ do_ifup() {
     echo "ERROR: do_ifup <devicename>." 1>&2
     return 1
   fi
-  ifup "$1"
+  if which ifconfig > /dev/null 2>&1; then
+    ifconfig "$1" up
+  else
+    ip link set "$1" up
+  fi
   return $?
 }
 
