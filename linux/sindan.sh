@@ -1,7 +1,7 @@
 #!/bin/bash
 # sindan.sh
-# version 2.2.15
-VERSION="2.2.15"
+# version 2.2.16
+VERSION="2.2.16"
 
 # read configurationfile
 . ./sindan.conf
@@ -428,9 +428,14 @@ get_v4ifconf() {
     else
       echo 'dhcp'
     fi
-  else
+  elif [ -f /etc/network/interfaces ]; then
     grep "^iface $1 inet" /etc/network/interfaces			|
     awk '{print $4}'
+  elif [ "$(nmcli networking)" = "enabled" ]; then
+    conpath=$(nmcli -g general.con-path device show $1)
+    nmcli -g ipv4.method connection show $conpath
+  else ## netplan
+    echo 'TBD'
   fi
   return $?
 }
@@ -468,19 +473,30 @@ check_v4autoconf() {
     echo "ERROR: check_v4autoconf <devicename> <v4ifconf>." 1>&2
     return 1
   fi
-  if [ "$2" = "dhcp" ]; then
+  if [ "$2" = "dhcp" ] || [ "$2" = "auto" ]; then
     local v4addr; local dhcp_data=""; local dhcpv4addr; local cmp
     v4addr=$(get_v4addr "$1")
     if which dhcpcd > /dev/null 2>&1; then
       dhcp_data=$(dhcpcd -4 -U "$1" | sed "s/'//g")
-    else
+    elif [ -f /var/lib/dhcp/dhclient."$1".leases ]; then
       dhcp_data=$(sed 's/"//g' /var/lib/dhcp/dhclient."$1".leases)
+    elif [ "$(nmcli networking)" = "enabled" ]; then
+      conpath=$(nmcli -g general.con-path device show $1)
+      dhcp_data=$(nmcli -g dhcp4 connection show $conpath)
+    else
+      dhcp_data="TBD"
     fi
     echo "$dhcp_data"
 
     # simple comparision
-    dhcpv4addr=$(echo "$dhcp_data"					|
-               sed -n 's/^ip_address=\([0-9.]*\)/\1/p')
+    if [ "$(nmcli networking)" = "enabled" ]; then
+      dhcpv4addr=$(echo "$dhcp_data"					|
+                 sed -n 's/^.*ip_address = \([0-9.]*\)/\1/p')
+    else
+      dhcpv4addr=$(echo "$dhcp_data"					|
+                 sed -n 's/^ip_address=\([0-9.]*\)/\1/p')
+    fi
+    echo "v4addr=$v4addr, dhcpv4addr=$dhcpv4addr"
     if [ -z "$dhcpv4addr" ] || [ -z "$v4addr" ]; then
       return 1
     fi
@@ -576,12 +592,19 @@ get_v6ifconf() {
   fi
   ## TODO: support netplan
   local v6ifconf
-  v6ifconf=$(grep "$1 inet6" /etc/network/interfaces			|	
-           awk '{print $4}')
-  if [ -n "$v6ifconf" ]; then
-    echo "$v6ifconf"
-  else
-    echo "automatic"
+  if [ -f /etc/network/interfaces ]; then
+    v6ifconf=$(grep "$1 inet6" /etc/network/interfaces			|	
+             awk '{print $4}')
+    if [ -n "$v6ifconf" ]; then
+      echo "$v6ifconf"
+    else
+      echo "automatic"
+    fi
+  elif [ "$(nmcli networking)" = "enabled" ]; then
+    conpath=$(nmcli -g general.con-path device show $1)
+    nmcli -g ipv6.method connection show $conpath
+  else ## netplan
+    echo 'TBD'
   fi
   return $?
 }
@@ -1083,7 +1106,7 @@ check_v6autoconf() {
     return 1
   fi
   local result=1
-  if [ "$2" = "automatic" ]; then
+  if [ "$2" = "automatic" ] || [ "$2" = "auto" ]; then
     local o_flag; local m_flag; local a_flag; local v6addrs
     local dhcp_data=""
     o_flag=$(echo "$3" | grep O)
@@ -1098,8 +1121,13 @@ check_v6autoconf() {
     if [ -n "$o_flag" ] || [ -n "$m_flag" ]; then
       if which dhcpcd > /dev/null 2>&1; then
         dhcp_data=$(dhcpcd -6 -U "$1" | sed "s/'//g")
-      else
+      elif [ -f /var/lib/dhcp/dhclient."$1".leases ]; then
         dhcp_data=$(sed 's/"//g' /var/lib/dhcp/dhclient."$1".leases)
+      elif [ "$(nmcli networking)" = "enabled" ]; then
+        conpath=$(nmcli -g general.con-path device show $1)
+        dhcp_data=$(nmcli -g dhcp6 connection show $conpath)
+      else
+        dhcp_data="TBD"
       fi
       echo "$dhcp_data"
     fi
@@ -1108,7 +1136,8 @@ check_v6autoconf() {
       for addr in $(echo "$v6addrs" | sed 's/,/ /g'); do
         # simple comparision
         if echo "$dhcp_data"						|
-         grep "dhcp6_ia_na1_ia_addr1=${addr}" > /dev/null 2>&1; then
+         grep -e "dhcp6_ia_na1_ia_addr1=${addr}"			\
+              -e "ip_address = ${addr}" > /dev/null 2>&1; then
           result=0
         fi
       done
@@ -2110,6 +2139,7 @@ if [ "$EXCL_IPv4" != "yes" ]; then
       result_phase2_1=$SUCCESS
       break
     fi
+echo "speep 5 min, v4autodonf=$v4autoconf"
     sleep 5
     rcount=$(( rcount + 1 ))
   done
