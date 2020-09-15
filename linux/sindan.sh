@@ -1,7 +1,7 @@
 #!/bin/bash
 # sindan.sh
-# version 2.2.16
-VERSION="2.2.16"
+# version 2.2.17
+VERSION="2.2.17"
 
 # read configurationfile
 . ./sindan.conf
@@ -380,7 +380,7 @@ get_wifi_environment() {
     echo "ERROR: get_wifi_environment <devicename>." 1>&2
     return 1
   fi
-  echo "BSSID,Protocol,SSID,Quality,RSSI,Noise,BitRates"
+  echo "BSSID,Protocol,SSID,Channel,Quality,RSSI,Noise,BitRates"
   iwlist "$1" scanning							|
   awk 'BEGIN {								#
     find=0								#
