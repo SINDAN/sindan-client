@@ -4,3 +4,7 @@
 /linux/log
 /linux/trace-json
 /linux/node_modules
+
+/macos/log
+/macos/trace-json
+/macos/node_modules
