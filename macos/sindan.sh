@@ -1,7 +1,7 @@
 #!/bin/bash
 # sindan.sh
-# version 2.2.10
-VERSION="2.2.10"
+# version 2.3.1
+VERSION="2.3.1"
 
 # read configurationfile
 source sindan.conf
@@ -61,18 +61,20 @@ hash_result() {
 
 #
 write_json_campaign() {
-  if [ $# -ne 4 ]; then
-    echo "ERROR: write_json_campaign <uuid> <mac_addr> <os> <ssid>." 1>&2
-    echo "DEBUG(input data): $1, $2, $3, $4" 1>&2
+  if [ $# -ne 5 ]; then
+    echo "ERROR: write_json_campaign <uuid> <mac_addr> <os>"            \
+         "<network_type> <network_id>." 1>&2
+    echo "DEBUG(input data): $1, $2, $3, $4, $5" 1>&2
     return 1
   fi
-  local mac_addr; local ssid
+  local mac_addr; local network_id
   mac_addr=$(hash_result mac_addr "$2")
-  ssid=$(hash_result ssid "$4")
+  network_id=$(hash_result ssid "$5")
   echo "{ \"log_campaign_uuid\" : \"$1\","				\
        "\"mac_addr\" : \"$mac_addr\","					\
        "\"os\" : \"$3\","						\
-       "\"ssid\" : \"$ssid\","						\
+       "\"network_type\" : \"$4\","                                     \
+       "\"ssid\" : \"$network_id\","                                    \
        "\"version\" : \"$VERSION\","					\
        "\"occurred_at\" : \"$(date -u '+%Y-%m-%d %T')\" }"		\
   > log/campaign_"$(date -u '+%s')".json
@@ -1571,13 +1573,6 @@ else
   fi
 fi
 
-## Write campaign log file (pre)
-#ssid=WIRED
-#if [ "$IFTYPE" = "Wi-Fi" ]; then
-#  ssid=$(get_wifi_ssid $devicename)
-#fi
-#write_json_campaign $UUID $mac_addr "$os" "$ssid"
-
 # Report phase 1 results
 if [ "$VERBOSE" = "yes" ]; then
   echo " datalink information:"
@@ -2277,12 +2272,12 @@ echo " done."
 ## Phase 7
 echo "Phase 7: Create campaign log..."
 
-# Write campaign log file (overwrite)
-ssid=WIRED
+# Write campaign log file
+ssid=none
 if [ "$IFTYPE" = "Wi-Fi" ]; then
   ssid=$(get_wifi_ssid "$devicename")
 fi
-write_json_campaign "$UUID" "$mac_addr" "$os" "$ssid"
+write_json_campaign "$UUID" "$mac_addr" "$os" "$IFTYPE" "$ssid"
 
 # remove lock file
 rm -f "$LOCKFILE"
