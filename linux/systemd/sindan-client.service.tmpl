@@ -1,0 +1,10 @@
+[Unit]
+Description=Start sindan-client scripts (See: https://github.com/SINDAN/sindan-client)
+
+[Service]
+Type=oneshot
+ExecStart=/bin/bash {{BASE_DIR}}/sindan.sh
+ExecStartPost=/bin/bash {{BASE_DIR}}/sendlog.sh
+
+[Install]
+WantedBy=multi-user.target
