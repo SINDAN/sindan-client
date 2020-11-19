@@ -1,7 +1,7 @@
 #!/bin/bash
 # sindan.sh
-# version 2.3.1
-VERSION="2.3.1"
+# version 2.3.2
+VERSION="2.3.2"
 
 # read configurationfile
 . ./sindan.conf
@@ -433,7 +433,8 @@ get_v4ifconf() {
   elif [ -f /etc/network/interfaces ]; then
     grep "^iface $1 inet" /etc/network/interfaces			|
     awk '{print $4}'
-  elif [ "$(nmcli networking)" = "enabled" ]; then
+  elif which nmcli > /dev/null 2>&1 &&
+       [ "$(nmcli networking)" = "enabled" ]; then
     conpath=$(nmcli -g general.con-path device show $1)
     nmcli -g ipv4.method connection show $conpath
   else ## netplan
@@ -482,7 +483,8 @@ check_v4autoconf() {
       dhcp_data=$(dhcpcd -4 -U "$1" | sed "s/'//g")
     elif [ -f /var/lib/dhcp/dhclient."$1".leases ]; then
       dhcp_data=$(sed 's/"//g' /var/lib/dhcp/dhclient."$1".leases)
-    elif [ "$(nmcli networking)" = "enabled" ]; then
+    elif which nmcli > /dev/null 2>&1 &&
+         [ "$(nmcli networking)" = "enabled" ]; then
       conpath=$(nmcli -g general.con-path device show $1)
       dhcp_data=$(nmcli -g dhcp4 connection show $conpath)
     else
@@ -491,7 +493,8 @@ check_v4autoconf() {
     echo "$dhcp_data"
 
     # simple comparision
-    if [ "$(nmcli networking)" = "enabled" ]; then
+    if which nmcli > /dev/null 2>&1 &&
+       [ "$(nmcli networking)" = "enabled" ]; then
       dhcpv4addr=$(echo "$dhcp_data"					|
                  sed -n 's/^.*ip_address = \([0-9.]*\)/\1/p')
     else
@@ -602,7 +605,8 @@ get_v6ifconf() {
     else
       echo "automatic"
     fi
-  elif [ "$(nmcli networking)" = "enabled" ]; then
+  elif which nmcli > /dev/null 2>&1 &&
+       [ "$(nmcli networking)" = "enabled" ]; then
     conpath=$(nmcli -g general.con-path device show $1)
     nmcli -g ipv6.method connection show $conpath
   else ## netplan
@@ -1125,7 +1129,8 @@ check_v6autoconf() {
         dhcp_data=$(dhcpcd -6 -U "$1" | sed "s/'//g")
       elif [ -f /var/lib/dhcp/dhclient."$1".leases ]; then
         dhcp_data=$(sed 's/"//g' /var/lib/dhcp/dhclient."$1".leases)
-      elif [ "$(nmcli networking)" = "enabled" ]; then
+      elif which nmcli > /dev/null 2>&1 &&
+           [ "$(nmcli networking)" = "enabled" ]; then
         conpath=$(nmcli -g general.con-path device show $1)
         dhcp_data=$(nmcli -g dhcp6 connection show $conpath)
       else
@@ -1686,9 +1691,9 @@ cmdset_portscan () {
   write_json "$layer" "$ipv" "v${ver}portscan_${port}" "$result"	\
 	     "$target" "$ps_ans" "$count"
   if [ "$result" = "$SUCCESS" ]; then
-    string="$string\n  status ok"
+    string="$string\n  status: ok"
   else
-    string="$string\n  status ng ($stat)"
+    string="$string\n  status: ng ($stat)"
   fi
   if [ "$VERBOSE" = "yes" ]; then
     echo -e "$string"

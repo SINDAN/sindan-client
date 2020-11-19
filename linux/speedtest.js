@@ -5,7 +5,7 @@
 // Requirements:
 // sudo apt install chromium-browser
 // sudo apt install npm
-// npm i puppeteer
+// npm i puppeteer-core
 // npm i speedline
 
 // Hot to use:
@@ -20,12 +20,12 @@ var url = process.argv[2];
                           executablePath: '/usr/bin/chromium-browser',
                           args: ['--no-sandbox']});
   const page = await browser.newPage();
-  await page.setDefaultNavigationTimeout(60000);
+  await page.setDefaultNavigationTimeout(100000);
 
   try {
     await page.goto(url, { waitUntil: 'networkidle0' });
 
-    await page.waitForSelector('#shareArea', { visible: true, timeout: 60000 });
+    await page.waitForSelector('#shareArea', { visible: true, timeout: 100000 });
 
     let frames = page.frames();
 

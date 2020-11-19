@@ -11,6 +11,6 @@ mkdir -p trace-json
 sudo apt install -y chromium-browser npm
 
 echo "installing required node packages using npm..."
-sudo npm install -g puppeteer-core speedline
+npm install puppeteer-core speedline
 
 exit 0
