@@ -1,9 +1,10 @@
 #!/bin/bash
 # sindan.sh
-# version 2.3.2
-VERSION="2.3.2"
+# version 2.3.3
+VERSION="2.3.3"
 
 # read configurationfile
+cd $(dirname $0)
 . ./sindan.conf
 
 #

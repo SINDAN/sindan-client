@@ -21,7 +21,7 @@ $ sudo apt install uuid-runtime wireless-tools ndisc6 dnsutils curl chromium-bro
 - **speedline**
 
 ```
-$ sudo npm install -g puppeteer-core speedline
+$ sudo npm install puppeteer-core speedline
 ```
 
 ## Scheduling
@@ -31,8 +31,8 @@ $ sudo npm install -g puppeteer-core speedline
 Suppose current directory is `/home/pi/sindan-client/linux`
 
 ```
-*/5 * * * * root cd /home/pi/sindan-client/linux && ./sindan.sh  1>/dev/null 2>/dev/null
-*/3 * * * * root cd /home/pi/sindan-client/linux && ./sendlog.sh 1>/dev/null 2>/dev/null
+*/5 * * * * root /home/pi/sindan-client/linux/sindan.sh  1>/dev/null 2>/dev/null
+*/3 * * * * root /home/pi/sindan-client/linux/sendlog.sh 1>/dev/null 2>/dev/null
 ```
 
 ### with systemd.timer (recommended)
