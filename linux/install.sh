@@ -10,4 +10,7 @@ echo "installing required packages for nodejs..."
 mkdir -p trace-json
 sudo apt install -y chromium-browser nodejs npm
 
+echo "installing required node packages using npm..."
+npm install
+
 exit 0
