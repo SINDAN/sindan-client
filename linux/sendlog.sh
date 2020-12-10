@@ -3,6 +3,7 @@
 # version 1.3
 
 # read configurationfile
+cd $(dirname $0)
 . ./sindan.conf
 
 # Check LOCKFILE_SENDLOG parameter
