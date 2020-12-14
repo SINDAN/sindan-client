@@ -1,5 +1,5 @@
 # SINDAN Configuration file
-# version 2.2.13
+# version 2.2.14
 
 # lock file
 readonly LOCKFILE=/tmp/sindan.isrunning
@@ -30,15 +30,6 @@ readonly EXCL_IPv6=no
 # target interface
 readonly IFTYPE=Wi-Fi
 readonly DEVNAME=wlan0
-
-# for nfdf monitor
-readonly COMMUNICATION_DEVICE=${DEVNAME}
-readonly MONITOR_DEVICE=ra1
-readonly MONITOR_REFRESH_TIME=300
-
-# set ssid
-#readonly SSID=sindan
-#readonly SSID_KEY=sindan00
 
 # target servers
 readonly PING_SRVS="8.8.8.8,203.178.139.60,1.1.1.1"
