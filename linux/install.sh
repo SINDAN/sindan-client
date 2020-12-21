@@ -8,9 +8,9 @@ sudo apt install -y uuid-runtime wireless-tools ndisc6 dnsutils curl
 ## for nodejs
 echo "installing required packages for nodejs..."
 mkdir -p trace-json
-sudo apt install -y chromium-browser npm
+sudo apt install -y chromium-browser nodejs npm
 
 echo "installing required node packages using npm..."
-npm install puppeteer-core speedline
+npm install
 
 exit 0
