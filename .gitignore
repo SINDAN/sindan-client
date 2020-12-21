@@ -1,10 +1,16 @@
+# tmp
 .DS_Store
 *~
 *.swp
-/linux/log
+
+# for linux
+/linux/log/*
+!/linux/log/.keep
 /linux/trace-json
 /linux/node_modules
 
-/macos/log
+# for macos
+/macos/log/*
+!/macos/log/.keep
 /macos/trace-json
 /macos/node_modules
