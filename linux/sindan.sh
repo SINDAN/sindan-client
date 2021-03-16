@@ -1681,6 +1681,7 @@ cmdset_portscan () {
   local target=$4
   local port=$5
   local count=$6
+  local result=$FAIL
   local string=" portscan to extarnal server: $target:$port by $ipv"
   local ps_ans
 
