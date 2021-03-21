@@ -6,6 +6,10 @@
 cd $(dirname $0)
 . ./sindan.conf
 
+if [ "${PROXY}" != "" ]; then
+  PROXY="--proxy ${PROXY}"
+fi
+
 # Check LOCKFILE_SENDLOG parameter
 if [ -z "$LOCKFILE_SENDLOG" ]; then
   echo "ERROR: LOCKFILE_SENDLOG is null at configration file." 1>&2
@@ -36,7 +40,7 @@ for file in `find log/ -name "campaign_*.json"`; do
   if [ "$VERBOSE" = "yes" ]; then
     echo " send $file to $URL_CAMPAIGN"
   fi
-  status=`curl --max-time 5 -s -w %{http_code} -F json=@$file $URL_CAMPAIGN`
+  status=`curl --max-time 5 -s -w %{http_code} ${PROXY} -F json=@$file $URL_CAMPAIGN`
   if [ "$VERBOSE" = "yes" ]; then
     echo " status:$status"
   fi
@@ -50,7 +54,7 @@ for file in `find log/ -name "sindan_*.json"`; do
   if [ "$VERBOSE" = "yes" ]; then
     echo " send $file to $URL_SINDAN"
   fi
-  status=`curl --max-time 15 -s -w %{http_code} -F json=@$file $URL_SINDAN`
+  status=`curl --max-time 15 -s -w %{http_code} ${PROXY} -F json=@$file $URL_SINDAN`
   if [ "$VERBOSE" = "yes" ]; then
     echo " status:$status"
   fi

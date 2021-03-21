@@ -31,6 +31,9 @@ readonly EXCL_IPv6=no
 readonly IFTYPE=Wi-Fi
 readonly DEVNAME=wlan0
 
+# proxy support
+#PROXY=http://proxy.example.com:8080/
+
 # target servers
 readonly PING_SRVS="8.8.8.8,203.178.139.60,1.1.1.1"
 readonly PING6_SRVS="2001:4860:4860::8888,2001:200:0:180c::6,2606:4700:4700::1111"
