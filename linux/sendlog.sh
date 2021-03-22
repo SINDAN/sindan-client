@@ -1,6 +1,6 @@
 #!/bin/bash
 # sendlog.sh
-# version 1.4
+# version 1.5
 
 # read configurationfile
 cd $(dirname $0)
@@ -31,12 +31,17 @@ fi
 # main
 #
 
+curl_proxy=""
+if [ -n "$PROXY_URL" ]; then
+  curl_proxy="--proxy $PROXY_URL"
+fi
+
 # upload campaign log
 for file in `find log/ -name "campaign_*.json"`; do
   if [ "$VERBOSE" = "yes" ]; then
     echo " send $file to $URL_CAMPAIGN"
   fi
-  status=`curl --max-time 5 -s -w %{http_code} -F json=@$file $URL_CAMPAIGN`
+  status=`curl --max-time 5 -s -w %{http_code} $curl_proxy -F json=@$file $URL_CAMPAIGN`
   if [ "$VERBOSE" = "yes" ]; then
     echo " status:$status"
   fi
@@ -50,7 +55,7 @@ for file in `find log/ -name "sindan_*.json"`; do
   if [ "$VERBOSE" = "yes" ]; then
     echo " send $file to $URL_SINDAN"
   fi
-  status=`curl --max-time 15 -s -w %{http_code} -F json=@$file $URL_SINDAN`
+  status=`curl --max-time 15 -s -w %{http_code} $curl_proxy json=@$file $URL_SINDAN`
   if [ "$VERBOSE" = "yes" ]; then
     echo " status:$status"
   fi
@@ -63,4 +68,3 @@ done
 rm -f $LOCKFILE_SENDLOG
 
 exit 0
-
