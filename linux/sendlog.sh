@@ -55,7 +55,7 @@ for file in `find log/ -name "sindan_*.json"`; do
   if [ "$VERBOSE" = "yes" ]; then
     echo " send $file to $URL_SINDAN"
   fi
-  status=`curl --max-time 15 -s -w %{http_code} $curl_proxy json=@$file $URL_SINDAN`
+  status=`curl --max-time 15 -s -w %{http_code} $curl_proxy -F json=@$file $URL_SINDAN`
   if [ "$VERBOSE" = "yes" ]; then
     echo " status:$status"
   fi
