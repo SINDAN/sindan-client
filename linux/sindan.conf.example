@@ -1,5 +1,5 @@
 # SINDAN Configuration file
-# version 2.2.14
+# version 2.2.15
 
 # lock file
 readonly LOCKFILE=/tmp/sindan.isrunning
@@ -31,8 +31,8 @@ readonly EXCL_IPv6=no
 readonly IFTYPE=Wi-Fi
 readonly DEVNAME=wlan0
 
-# proxy support
-#PROXY=http://proxy.example.com:8080/
+# proxy url (e.g., http://192.0.2.1:8080)
+readonly PROXY_URL=""
 
 # target servers
 readonly PING_SRVS="8.8.8.8,203.178.139.60,1.1.1.1"
