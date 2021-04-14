@@ -1,7 +1,7 @@
 #!/bin/bash
 # sindan.sh
-# version 2.3.3
-VERSION="2.3.3"
+# version 2.3.4
+VERSION="2.3.4"
 
 # read configurationfile
 cd $(dirname $0)
@@ -427,9 +427,11 @@ get_v4ifconf() {
   fi
   if [ -f /etc/dhcpcd.conf ]; then
     if grep "^interface $1" /etc/dhcpcd.conf > /dev/null 2>&1; then
-      echo 'manual'
-    else
-      echo 'dhcp'
+      if grep "^static ip_address" /etc/dhcpcd.conf > /dev/null 2>&1; then
+        echo 'manual'
+      else
+        echo 'dhcp'
+      fi
     fi
   elif [ -f /etc/network/interfaces ]; then
     grep "^iface $1 inet" /etc/network/interfaces			|
@@ -596,9 +598,16 @@ get_v6ifconf() {
     echo "ERROR: get_v6ifconf <devicename>." 1>&2
     return 1
   fi
-  ## TODO: support netplan
   local v6ifconf
-  if [ -f /etc/network/interfaces ]; then
+  if [ -f /etc/dhcpcd.conf ]; then
+    if grep "^interface $1" /etc/dhcpcd.conf > /dev/null 2>&1; then
+      if grep "^static ip6_address" /etc/dhcpcd.conf > /dev/null 2>&1; then
+        echo 'manual'
+      else
+        echo 'dhcp'
+      fi
+    fi
+  elif [ -f /etc/network/interfaces ]; then
     v6ifconf=$(grep "$1 inet6" /etc/network/interfaces			|	
              awk '{print $4}')
     if [ -n "$v6ifconf" ]; then
@@ -2825,8 +2834,8 @@ if [ -n "$v6addrs" ]; then
     for target in $(echo "$PS_SRVS4" | sed 's/,/ /g'); do
       for port in $(echo "$PS_PORTS" | sed 's/,/ /g'); do
 
-        # Do portscan by IPv4
-        cmdset_portscan "$layer" 4 pssrv "$target" "$port" "$count" &
+        # Do portscan by IPv6
+        cmdset_portscan "$layer" 6 pssrv "$target" "$port" "$count" &
     
       done
       count=$(( count + 1 ))
