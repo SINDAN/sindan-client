@@ -1,7 +1,7 @@
 #!/bin/bash
 # sindan.sh
-# version 2.3.4
-VERSION="2.3.4"
+# version 2.3.5
+VERSION="2.3.5"
 
 # read configurationfile
 cd $(dirname $0)
@@ -1211,7 +1211,8 @@ get_v6routers() {
     return 1
   fi
   ip -6 route show dev "$1"						|
-  sed -n "s/^default via \([0-9a-f:]*\).*$/\1%$1/p"			|
+  sed -n "s/^default via \([0-9a-f:]*\).*$/\1/p"			|
+  sed "/fe80/s/$/%$1/g"							|
   uniq									|
   awk -v ORS=',' '1; END{printf "\n"}'					|
   sed 's/,$//'
