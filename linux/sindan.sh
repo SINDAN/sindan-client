@@ -1,7 +1,7 @@
 #!/bin/bash
 # sindan.sh
-# version 2.3.5
-VERSION="2.3.5"
+# version 2.3.6
+VERSION="2.3.6"
 
 # read configurationfile
 cd $(dirname $0)
@@ -1335,8 +1335,8 @@ do_traceroute() {
     return 1
   fi
   case $1 in
-    "4" ) traceroute -n -I -w 2 -q 1 -m 20 "$2"; return $? ;;
-    "6" ) traceroute6 -n -I -w 2 -q 1 -m 20 "$2"; return $? ;;
+    "4" ) timeout -sKILL 30 traceroute -n -I -w 2 -q 1 -m 20 "$2"; return $? ;;
+    "6" ) timeout -sKILL 30 traceroute6 -n -I -w 2 -q 1 -m 20 "$2"; return $? ;;
     * ) echo "ERROR: <version> must be 4 or 6." 1>&2; return 9 ;;
   esac
 }
