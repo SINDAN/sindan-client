@@ -1,7 +1,7 @@
 #!/bin/bash
 # sindan.sh
-# version 2.3.6
-VERSION="2.3.6"
+# version 2.4.0
+VERSION="2.4.0"
 
 # read configurationfile
 cd $(dirname $0)
@@ -106,40 +106,6 @@ write_json() {
 
 ## for hardware layer
 #
-get_devicename() {
-  echo "$DEVNAME"
-  return $?
-}
-
-#
-do_ifdown() {
-  if [ $# -ne 1 ]; then
-    echo "ERROR: do_ifdown <devicename>." 1>&2
-    return 1
-  fi
-  if which ifconfig > /dev/null 2>&1; then
-    ifconfig "$1" down
-  else
-    ip link set "$1" down
-  fi
-  return $?
-}
-
-#
-do_ifup() {
-  if [ $# -ne 1 ]; then
-    echo "ERROR: do_ifup <devicename>." 1>&2
-    return 1
-  fi
-  if which ifconfig > /dev/null 2>&1; then
-    ifconfig "$1" up
-  else
-    ip link set "$1" up
-  fi
-  return $?
-}
-
-#
 get_os() {
   if which lsb_release > /dev/null 2>&1; then
     lsb_release -ds
@@ -243,14 +209,88 @@ get_clock_src() {
 
 ## for datalink layer
 #
-get_ifstatus() {
-  if [ $# -ne 1 ]; then
-    echo "ERROR: get_ifstatus <devicename>." 1>&2
+get_devicename() {
+  echo "$DEVNAME"
+  return $?
+}
+
+#
+do_ifdown() {
+  if [ $# -ne 2 ]; then
+    echo "ERROR: do_ifdown <devicename> <iftype>." 1>&2
     return 1
   fi
-  local status
-  status=$(cat /sys/class/net/"$1"/operstate)
-  if [ "$status" = "up" ]; then
+  if [ "$(nmcli networking)" = "enabled" ]; then
+    local wwan_dev
+    if [ "$2" = "WWAN" ]; then
+      wwan_dev=$(get_wwan_port "$1")
+      nmcli device disconnect "$wwan_dev"
+    else
+      nmcli device disconnect "$1"
+    fi
+  elif which ifconfig > /dev/null 2>&1; then
+    ifconfig "$1" down
+  else
+    ip link set "$1" down
+  fi
+  return $?
+}
+
+#
+do_ifup() {
+  if [ $# -ne 2 ]; then
+    echo "ERROR: do_ifup <devicename> <iftype>." 1>&2
+    return 1
+  fi
+  if [ "$(nmcli networking)" = "enabled" ]; then
+    local wwan_dev
+    if [ "$2" = "WWAN" ]; then
+      wwan_dev=$(get_wwan_port "$1")
+      nmcli device connect "$wwan_dev"
+    else
+      nmcli device connect "$1"
+    fi
+  elif which ifconfig > /dev/null 2>&1; then
+    ifconfig "$1" up
+  else
+    ip link set "$1" up
+  fi
+  return $?
+}
+
+#
+get_ifstatus() {
+  if [ $# -ne 2 ]; then
+    echo "ERROR: get_ifstatus <devicename> <iftype>." 1>&2
+    return 1
+  fi
+  local status; local path; local modem_info
+  if [ "$2" = "WWAN" ]; then
+    for path in $(mmcli -L | awk '{print $1}' | tr '\n' ' '); do
+      modem_info=$(mmcli -m $path)
+      if echo $modem_info | grep "$1" > /dev/null 2>&1; then
+        status=$(echo "$modem_info"					| 
+                 awk 'BEGIN {						#
+                   find=0						#
+                 } {							#
+                   while (getline line) {				#
+                     if (find==1 && match(line,/.*state:.*/)) {		#
+                       split(line,s," ")				#
+                       printf "%s", s[3]				#
+                       exit						#
+                     } else if (match(line,/^  Status.*/)) {		#
+                       find=1						#
+                     }							#
+                   }							#
+                 }'							|
+                 sed 's/\x1b\[[0-9;]*m//g')
+        break
+      fi
+    done
+  else
+    status=$(cat /sys/class/net/"$1"/operstate)
+  fi
+  if [ "$status" = "up" ] || [ "$status" = "connected" ]; then
     echo "$status"; return 0
   else
     echo "$status"; return 1
@@ -418,11 +458,229 @@ get_wifi_environment() {
   return $?
 }
 
+#
+get_wwan_port() {
+  if [ $# -ne 1 ]; then
+    echo "ERROR: get_wwan_port <devicename>." 1>&2
+    return 1
+  fi
+  for path in $(mmcli -L | awk '{print $1}' | tr '\n' ' '); do
+    modem_info=$(mmcli -m $path)
+    if echo $modem_info | grep "$1" > /dev/null 2>&1; then
+      echo "$modem_info"						|
+      awk 'BEGIN {							#
+        find=0								#
+      } {								#
+        while (getline line) {						#
+          if (find==1 && match(line,/.*primary port:.*/)) {		#
+            split(line,s," ")						#
+            printf "%s", s[4]						#
+            exit							#
+          } else if (match(line,/^  System.*/)) {			#
+            find=1							#
+          }								#
+        }								#
+      }'
+      break
+    fi
+  done
+}
+
+#
+get_wwan_info() {
+  if [ $# -ne 1 ]; then
+    echo "ERROR: get_wwan_info <devicename>." 1>&2
+    return 1
+  fi
+  local modem_info; local bearer_info; local signal_info
+  local threegpp_info
+  for path in $(mmcli -L | awk '{print $1}' | tr '\n' ' '); do
+    modem_info=$(mmcli -m $path)
+    if echo $modem_info | grep "$1" > /dev/null 2>&1; then
+      echo 'CELLULER INFO:'
+      echo 'MODEM INFO:'
+      echo "$modem_info"
+
+      for bearer in $(echo "$modem_info"				|
+                      sed -n 's/^.*Bearer\/\([0-9]*\).*$/\1/p'		|
+                      tr '\n' ' '); do
+        bearer_info=$(mmcli -b $bearer)
+        if echo $bearer_info | grep "$1" > /dev/null 2>&1; then
+          echo 'BEARER INFO:'
+          echo "$bearer_info"
+        fi
+      done
+
+      signal_info=$(mmcli -m $path --signal-get)
+      if echo "$signal_info"						|
+              grep "refresh rate: 0 seconds" > /dev/null 2>&1; then
+        mmcli -m $path --signal-setup=10 > /dev/null 2>&1
+        signal_info=$(mmcli -m $path --signal-get)
+      fi
+      echo 'SIGNAL INFO:'
+      echo "$signal_info"
+
+      threegpp_info=$(mmcli -m $path --location-get)
+      echo '3GPP INFO:'
+      echo "$threegpp_info"
+
+      break
+    fi
+  done
+}
+
+#
+get_wwan_value() {
+  if [ $# -ne 4 ]; then
+    echo "ERROR: get_wwan_value <type> <cat> <name> <pos>." 1>&2
+    return 1
+  fi
+  # require get_wwan_info() data from STDIN.
+  awk -v type="$1" -v cat="$2" -v name="$3" -v pos="$4" 'BEGIN {	#
+    find=0								#
+  } {									#
+    while (getline line) {						#
+      if (find==1 || find==2) {						#
+        if (find==2 && line ~ name) {					#
+          split(line,s," ")						#
+          printf "%s", s[pos]						#
+          exit								#
+        } else if (line ~ cat) {					#
+          if (line ~ name) {						#
+            split(line,s," ")						#
+            printf "%s", s[pos+1]					#
+            exit							#
+          }								#
+          find=2							#
+        }								#
+      } else if (line ~ type) {						#
+        find=1								#
+      }									#
+    }									#
+  }'
+  return $?
+}
+
+#
+get_wwan_modemid() {
+  get_wwan_value 'MODEM INFO:' General 'dbus path:' 4
+  return $?
+}
+
+#
+get_wwan_apn() {
+  get_wwan_value 'BEARER INFO:' Properties 'apn:' 3
+  return $?
+}
+
+#
+get_wwan_iptype() {
+  get_wwan_value 'BEARER INFO:' Properties 'ip type:' 4
+  return $?
+}
+
+#
+get_wwan_ifmtu() {
+  get_wwan_value 'BEARER INFO:' 'IPv4 configuration' mtu: 3
+  return $?
+}
+
+#
+get_wwan_iftype() {
+  get_wwan_value 'MODEM INFO:' Status 'access tech:' 4
+  return $?
+}
+
+#
+get_wwan_quality() {
+  get_wwan_value 'MODEM INFO:' Status 'signal quality:' 4		|
+  sed 's/%//'
+  return $?
+}
+
+#
+get_wwan_imei() {
+  get_wwan_value 'MODEM INFO:' 3GPP imei: 3
+  return $?
+}
+
+#
+get_wwan_operator() {
+  get_wwan_value 'MODEM INFO:' 3GPP 'operator name:' 4
+  return $?
+}
+
+#
+get_wwan_mmcmnc() {
+  get_wwan_value 'MODEM INFO:' 3GPP 'operator id:' 4
+  return $?
+}
+
+#
+get_wwan_rssi() {
+  get_wwan_value 'SIGNAL INFO:' LTE 'rssi:' 3
+  return $?
+}
+
+#
+get_wwan_rsrq() {
+  get_wwan_value 'SIGNAL INFO:' LTE 'rsrq:' 3
+  return $?
+}
+
+#
+get_wwan_rsrp() {
+  get_wwan_value 'SIGNAL INFO:' LTE 'rsrp:' 3
+  return $?
+}
+
+#
+get_wwan_snir() {
+  get_wwan_value 'SIGNAL INFO:' LTE 's/n:' 3
+  return $?
+}
+
+#
+get_wwan_band() {
+  :
+  #TBD
+}
+
+#
+get_wwan_cid() {
+  get_wwan_value '3GPP INFO:' 3GPP 'cell id:' 4
+  return $?
+}
+
+#
+get_wwan_lac() {
+  get_wwan_value '3GPP INFO:' 3GPP 'location area code:' 5
+  return $?
+}
+
+#
+get_wwan_tac() {
+  get_wwan_value '3GPP INFO:' 3GPP 'tracking area code:' 5
+  return $?
+}
+
+#
+get_wwan_environment() {
+  if [ $# -ne 1 ]; then
+    echo "ERROR: get_wwan_environment <modemid>." 1>&2
+    return 1
+  fi
+  echo "MMC,MNC,Name,Tech,Status"
+  mmcli -m "$1" --3gpp-scan --timeout=60				|
+  sed -n 's/.*\([0-9]\{3\}\)\([0-9]\{2\}\) - \(.*\) (\(.*\), \(.*\))/\1,\2,\3,\4,\5/p'
+  return $?
+}
+
 ## for interface layer
 #
 get_v4ifconf() {
-  if [ $# -ne 1 ]; then
-    echo "ERROR: get_v4ifconf <devicename>." 1>&2
+  if [ $# -ne 2 ]; then
+    echo "ERROR: get_v4ifconf <devicename> <iftype>." 1>&2
     return 1
   fi
   if [ -f /etc/dhcpcd.conf ]; then
@@ -438,8 +696,14 @@ get_v4ifconf() {
     awk '{print $4}'
   elif which nmcli > /dev/null 2>&1 &&
        [ "$(nmcli networking)" = "enabled" ]; then
-    conpath=$(nmcli -g general.con-path device show $1)
-    nmcli -g ipv4.method connection show $conpath
+    local wwan_dev; local conpath
+    if [ "$2" = "WWAN" ]; then
+      wwan_dev=$(get_wwan_port "$1")
+      conpath=$(nmcli -g general.con-path device show "$wwan_dev")
+    else
+      conpath=$(nmcli -g general.con-path device show "$1")
+    fi
+    nmcli -g ipv4.method connection show "$conpath"
   else ## netplan
     echo 'TBD'
   fi
@@ -481,6 +745,7 @@ check_v4autoconf() {
   fi
   if [ "$2" = "dhcp" ] || [ "$2" = "auto" ]; then
     local v4addr; local dhcp_data=""; local dhcpv4addr; local cmp
+    local conpath
     v4addr=$(get_v4addr "$1")
     if which dhcpcd > /dev/null 2>&1; then
       dhcp_data=$(dhcpcd -4 -U "$1" | sed "s/'//g")
@@ -491,7 +756,7 @@ check_v4autoconf() {
       conpath=$(nmcli -g general.con-path device show $1)
       dhcp_data=$(nmcli -g dhcp4 connection show $conpath)
     else
-      dhcp_data="TBD"
+      dhcp_data='TBD'
     fi
     echo "$dhcp_data"
 
@@ -608,7 +873,7 @@ get_v6ifconf() {
       fi
     fi
   elif [ -f /etc/network/interfaces ]; then
-    v6ifconf=$(grep "$1 inet6" /etc/network/interfaces			|	
+    v6ifconf=$(grep "$1 inet6" /etc/network/interfaces			|
              awk '{print $4}')
     if [ -n "$v6ifconf" ]; then
       echo "$v6ifconf"
@@ -617,8 +882,14 @@ get_v6ifconf() {
     fi
   elif which nmcli > /dev/null 2>&1 &&
        [ "$(nmcli networking)" = "enabled" ]; then
-    conpath=$(nmcli -g general.con-path device show $1)
-    nmcli -g ipv6.method connection show $conpath
+    local wwan_dev; local conpath
+    if [ "$2" = "WWAN" ]; then
+      wwan_dev=$(get_wwan_port "$1")
+      conpath=$(nmcli -g general.con-path device show "$wwan_dev")
+    else
+      conpath=$(nmcli -g general.con-path device show "$1")
+    fi
+    nmcli -g ipv6.method connection show "$conpath"
   else ## netplan
     echo 'TBD'
   fi
@@ -1135,16 +1406,17 @@ check_v6autoconf() {
       result=0
     fi
     if [ -n "$o_flag" ] || [ -n "$m_flag" ]; then
+      local conpath
       if which dhcpcd > /dev/null 2>&1; then
         dhcp_data=$(dhcpcd -6 -U "$1" | sed "s/'//g")
       elif [ -f /var/lib/dhcp/dhclient."$1".leases ]; then
         dhcp_data=$(sed 's/"//g' /var/lib/dhcp/dhclient."$1".leases)
       elif which nmcli > /dev/null 2>&1 &&
            [ "$(nmcli networking)" = "enabled" ]; then
-        conpath=$(nmcli -g general.con-path device show $1)
-        dhcp_data=$(nmcli -g dhcp6 connection show $conpath)
+        conpath=$(nmcli -g general.con-path device show "$1")
+        dhcp_data=$(nmcli -g dhcp6 connection show "$conpath")
       else
-        dhcp_data="TBD"
+        dhcp_data='TBD'
       fi
       echo "$dhcp_data"
     fi
@@ -1939,7 +2211,7 @@ else
     exit 0
   else
     echo $$ >"$LOCKFILE"
-    echo "Warning: previous check appears to have not finished correctly"
+    echo "Warning: previous check appears to have not finished correctly."
   fi
 fi
 
@@ -1949,12 +2221,6 @@ mkdir -p trace-json
 
 # Cleate UUID
 UUID=$(cleate_uuid)
-
-# Get devicename
-devicename=$(get_devicename "$IFTYPE")
-
-# Get MAC address
-mac_addr=$(get_macaddr "$devicename")
 
 # Get OS version
 os=$(get_os)
@@ -2013,28 +2279,34 @@ echo " done."
 echo "Phase 1: Datalink Layer checking..."
 layer="datalink"
 
+# Get devicename
+devicename=$(get_devicename "$IFTYPE")
+
 # Down, Up interface
 if [ "$RECONNECT" = "yes" ]; then
   # Down target interface
   if [ "$VERBOSE" = "yes" ]; then
     echo " interface:$devicename down"
   fi
-  do_ifdown "$devicename"
+  do_ifdown "$devicename" "$IFTYPE"
   sleep 2
 
   # Start target interface
   if [ "$VERBOSE" = "yes" ]; then
     echo " interface:$devicename up"
   fi
-  do_ifup "$devicename"
+  do_ifup "$devicename" "$IFTYPE"
   sleep 5
 fi
+
+# Get iftype
+write_json "$layer" common iftype "$INFO" self "$IFTYPE" 0
 
 # Check I/F status
 result_phase1=$FAIL
 rcount=0
 while [ "$rcount" -lt "$MAX_RETRY" ]; do
-  if ifstatus=$(get_ifstatus "$devicename"); then
+  if ifstatus=$(get_ifstatus "$devicename" "$IFTYPE"); then
     result_phase1=$SUCCESS
     break
   fi
@@ -2042,26 +2314,23 @@ while [ "$rcount" -lt "$MAX_RETRY" ]; do
   rcount=$(( rcount + 1 ))
 done
 if [ -n "$ifstatus" ]; then
-  write_json "$layer" common ifstatus "$result_phase1" self "$ifstatus" 0
+  write_json "$layer" "$IFTYPE" ifstatus "$result_phase1" self		\
+             "$ifstatus" 0
 fi
 
-# Get iftype
-write_json "$layer" common iftype "$INFO" self "$IFTYPE" 0
+if [ "$IFTYPE" != "WWAN" ]; then
+  # Get MAC address
+  mac_addr=$(get_macaddr "$devicename")
 
-# Get ifmtu
-ifmtu=$(get_ifmtu "$devicename")
-if [ -n "$ifmtu" ]; then
-  write_json "$layer" common ifmtu "$INFO" self "$ifmtu" 0
+  # Get ifmtu
+  ifmtu=$(get_ifmtu "$devicename")
+  if [ -n "$ifmtu" ]; then
+    write_json "$layer" "$IFTYPE" ifmtu "$INFO" self "$ifmtu" 0
+  fi
 fi
 
 #
-if [ "$IFTYPE" != "Wi-Fi" ]; then
-  # Get media type
-  media=$(get_mediatype "$devicename")
-  if [ -n "$media" ]; then
-    write_json "$layer" "$IFTYPE" media "$INFO" self "$media" 0
-  fi
-else
+if [ "$IFTYPE" = "Wi-Fi" ]; then
   # Get Wi-Fi SSID
   ssid=$(get_wifi_ssid "$devicename")
   if [ -n "$ssid" ]; then
@@ -2093,9 +2362,9 @@ else
     write_json "$layer" "$IFTYPE" noise "$INFO" self "$noise" 0
   fi
   # Get Wi-Fi quality
-  quarity=$(get_wifi_quality "$devicename")
-  if [ -n "$quarity" ]; then
-    write_json "$layer" "$IFTYPE" quarity "$INFO" self "$quarity" 0
+  quality=$(get_wifi_quality "$devicename")
+  if [ -n "$quality" ]; then
+    write_json "$layer" "$IFTYPE" quality "$INFO" self "$quality" 0
   fi
   # Get Wi-Fi rate
   rate=$(get_wifi_rate "$devicename")
@@ -2108,6 +2377,106 @@ else
     write_json "$layer" "$IFTYPE" environment "$INFO" self		\
                "$environment" 0
   fi
+elif [ "$IFTYPE" = "WWAN" ]; then
+  # Get WWAN infomation
+  wwan_info=$(get_wwan_info "$devicename")
+  if [ -n "$wwan_info" ]; then
+    write_json "$layer" "$IFTYPE" info "$INFO" self "$wwan_info" 0
+
+    # Get IMEI
+    wwan_imei=$(echo "$wwan_info" | get_wwan_imei)
+    # Get WWAN environment
+    wwan_modemid=$(echo "$wwan_info" | get_wwan_modemid)
+    wwan_environment=$(get_wwan_environment "$wwan_modemid")
+    if [ -n "$wwan_environment" ]; then
+      write_json "$layer" "$IFTYPE" environment "$INFO" self		\
+                 "$wwan_environment" 0
+    fi
+
+    # Get ifmtu
+    ifmtu=$(echo "$wwan_info" | get_wwan_ifmtu)
+    if [ -n "$ifmtu" ]; then
+      write_json "$layer" "$IFTYPE" ifmtu "$INFO" self "$ifmtu" 0
+    else
+      ifmtu=$(get_ifmtu "$devicename")
+      if [ -n "$ifmtu" ]; then
+        write_json "$layer" "$IFTYPE" ifmtu "$INFO" self "$ifmtu" 0
+      fi
+    fi
+
+    # Get WWAN apn
+    wwan_apn=$(echo "$wwan_info" | get_wwan_apn)
+    if [ -n "$wwan_apn" ]; then
+      write_json "$layer" "$IFTYPE" apn "$INFO" self "$wwan_apn" 0
+    fi
+    # Get WWAN iftype
+    wwan_iftype=$(echo "$wwan_info" | get_wwan_iftype)
+    if [ -n "$wwan_iftype" ]; then
+      write_json "$layer" "$IFTYPE" iftype "$INFO" self "$wwan_iftype" 0
+    fi
+    # Get WWAN quality
+    wwan_quality=$(echo "$wwan_info" | get_wwan_quality)
+    if [ -n "$wwan_quality" ]; then
+      write_json "$layer" "$IFTYPE" quality "$INFO" self "$wwan_quality" 0
+    fi
+    # Get WWAN operator
+    wwan_operator=$(echo "$wwan_info" | get_wwan_operator)
+    if [ -n "$wwan_operator" ]; then
+      write_json "$layer" "$IFTYPE" operator "$INFO" self		\
+                 "$wwan_operator" 0
+    fi
+    # Get WWAN mmcmnc
+    wwan_mmcmnc=$(echo "$wwan_info" | get_wwan_mmcmnc)
+    if [ -n "$wwan_mmcmnc" ]; then
+      write_json "$layer" "$IFTYPE" mmcmnc "$INFO" self "$wwan_mmcmnc" 0
+    fi
+    # Get WWAN iptype
+    wwan_iptype=$(echo "$wwan_info" | get_wwan_iptype)
+    if [ -n "$wwan_iptype" ]; then
+      write_json "$layer" "$IFTYPE" iptype "$INFO" self "$wwan_iptype" 0
+    fi
+    # Get WWAN rssi
+    wwan_rssi=$(echo "$wwan_info" | get_wwan_rssi)
+    if [ -n "$wwan_rssi" ]; then
+      write_json "$layer" "$IFTYPE" rssi "$INFO" self "$wwan_rssi" 0
+    fi
+    # Get WWAN rsrq
+    wwan_rsrq=$(echo "$wwan_info" | get_wwan_rsrq)
+    if [ -n "$wwan_rsrq" ]; then
+      write_json "$layer" "$IFTYPE" rsrq "$INFO" self "$wwan_rsrq" 0
+    fi
+    # Get WWAN rsrp
+    wwan_rsrp=$(echo "$wwan_info" | get_wwan_rsrp)
+    if [ -n "$wwan_rsrp" ]; then
+      write_json "$layer" "$IFTYPE" rsrp "$INFO" self "$wwan_rsrp" 0
+    fi
+    # Get WWAN snir
+    wwan_snir=$(echo "$wwan_info" | get_wwan_snir)
+    if [ -n "$wwan_snir" ]; then
+      write_json "$layer" "$IFTYPE" snir "$INFO" self "$wwan_snir" 0
+    fi
+    # Get WWAN cid
+    wwan_cid=$(echo "$wwan_info" | get_wwan_cid)
+    if [ -n "$wwan_cid" ]; then
+      write_json "$layer" "$IFTYPE" cid "$INFO" self "$wwan_cid" 0
+    fi
+    # Get WWAN lac
+    wwan_lac=$(echo "$wwan_info" | get_wwan_lac)
+    if [ -n "$wwan_lac" ]; then
+      write_json "$layer" "$IFTYPE" lac "$INFO" self "$wwan_lac" 0
+    fi
+    # Get WWAN tac
+    wwan_tac=$(echo "$wwan_info" | get_wwan_tac)
+    if [ -n "$wwan_tac" ]; then
+      write_json "$layer" "$IFTYPE" tac "$INFO" self "$wwan_tac" 0
+    fi
+  fi
+else
+  # Get media type
+  media=$(get_mediatype "$devicename")
+  if [ -n "$media" ]; then
+    write_json "$layer" "$IFTYPE" media "$INFO" self "$media" 0
+  fi
 fi
 
 # Report phase 1 results
@@ -2116,15 +2485,24 @@ if [ "$VERBOSE" = "yes" ]; then
   echo "  datalink status: $result_phase1"
   echo "  type: $IFTYPE, dev: $devicename"
   echo "  status: $ifstatus, mtu: $ifmtu MB"
-  if [ "$IFTYPE" != "Wi-Fi" ]; then
-    echo "  media: $media"
-  else
+  if [ "$IFTYPE" = "Wi-Fi" ]; then
     echo "  ssid: $ssid, ch: $channel, rate: $rate Mbps"
     echo "  bssid: $bssid"
-    echo "  rssi: $rssi dB, noise: $noise dB"
-    echo "  quarity: $quarity"
+    echo "  rssi: $rssi dBm, noise: $noise dBm"
+    echo "  quality: $quality"
     echo "  environment:"
     echo "$environment"
+  elif [ "$IFTYPE" = "WWAN" ]; then
+    echo "  apn: $wwan_apn, iftype: $wwan_iftype, iptype: $wwan_iptype"
+    echo "  operator: $wwan_operator, mmc/mnc: $wwan_mmcmnc"
+    echo "  cid: $wwan_cid, lac: $wwan_lac, tac: $wwan_tac"
+    echo "  rssi: $wwan_rssi dBm, rsrq: $wwan_rsrq dB, rsrp:"		\
+         "$wwan_rsrp dBm, s/n: $wwan_snir dB"
+    echo "  quality: $wwan_quality %"
+    echo "  environment:"
+    echo "$wwan_environment"
+  else
+    echo "  media: $media"
   fi
 fi
 
@@ -2138,23 +2516,27 @@ layer="interface"
 ## IPv4
 if [ "$EXCL_IPv4" != "yes" ]; then
   # Get IPv4 I/F configurations
-  v4ifconf=$(get_v4ifconf "$devicename")
+  v4ifconf=$(get_v4ifconf "$devicename" "$IFTYPE")
   if [ -n "$v4ifconf" ]; then
     write_json "$layer" IPv4 v4ifconf "$INFO" self "$v4ifconf" 0
   fi
 
   # Check IPv4 autoconf
-  result_phase2_1=$FAIL
-  rcount=0
-  while [ $rcount -lt "$MAX_RETRY" ]; do
-    if v4autoconf=$(check_v4autoconf "$devicename" "$v4ifconf"); then
-      result_phase2_1=$SUCCESS
-      break
-    fi
-echo "speep 5 min, v4autodonf=$v4autoconf"
-    sleep 5
-    rcount=$(( rcount + 1 ))
-  done
+  if [ "$IFTYPE" = "WWAN" ]; then
+    result_phase2_1=$SUCCESS
+    v4autoconf="$v4ifconf"
+  else 
+    result_phase2_1=$FAIL
+    rcount=0
+    while [ $rcount -lt "$MAX_RETRY" ]; do
+      if v4autoconf=$(check_v4autoconf "$devicename" "$v4ifconf"); then
+        result_phase2_1=$SUCCESS
+        break
+      fi
+      sleep 5
+      rcount=$(( rcount + 1 ))
+    done
+  fi
   write_json "$layer" IPv4 v4autoconf "$result_phase2_1" self		\
              "$v4autoconf" 0
 
@@ -2884,11 +3266,13 @@ echo " done."
 echo "Phase 7: Create campaign log..."
 
 # Write campaign log file
-ssid=none
 if [ "$IFTYPE" = "Wi-Fi" ]; then
-  ssid=$(get_wifi_ssid "$devicename")
+  write_json_campaign "$UUID" "$mac_addr" "$os" "$IFTYPE" "$ssid"
+elif [ "$IFTYPE" = "WWAN" ]; then
+  write_json_campaign "$UUID" "$wwan_imei" "$os" "$IFTYPE" "$wwan_apn"
+else
+  write_json_campaign "$UUID" "$mac_addr" "$os" "$IFTYPE" none
 fi
-write_json_campaign "$UUID" "$mac_addr" "$os" "$IFTYPE" "$ssid"
 
 # remove lock file
 rm -f "$LOCKFILE"
