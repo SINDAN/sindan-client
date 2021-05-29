@@ -1,7 +1,7 @@
 #!/bin/bash
 # sindan.sh
-# version 2.4.0
-VERSION="2.4.0"
+# version 2.4.1
+VERSION="2.4.1"
 
 # read configurationfile
 cd $(dirname $0)
@@ -220,7 +220,8 @@ do_ifdown() {
     echo "ERROR: do_ifdown <devicename> <iftype>." 1>&2
     return 1
   fi
-  if [ "$(nmcli networking)" = "enabled" ]; then
+  if which nmcli > /dev/null 2>&1 &&
+     [ "$(nmcli networking)" = "enabled" ]; then
     local wwan_dev
     if [ "$2" = "WWAN" ]; then
       wwan_dev=$(get_wwan_port "$1")
@@ -242,7 +243,8 @@ do_ifup() {
     echo "ERROR: do_ifup <devicename> <iftype>." 1>&2
     return 1
   fi
-  if [ "$(nmcli networking)" = "enabled" ]; then
+  if which nmcli > /dev/null 2>&1 &&
+     [ "$(nmcli networking)" = "enabled" ]; then
     local wwan_dev
     if [ "$2" = "WWAN" ]; then
       wwan_dev=$(get_wwan_port "$1")
@@ -380,7 +382,8 @@ get_wifi_rssi() {
     return 1
   fi
   grep "$1" /proc/net/wireless						|
-  awk '{print $4}'
+  awk '{print $4}'							|
+  sed 's/.$//'
   return $?
 }
 
@@ -391,7 +394,8 @@ get_wifi_noise() {
     return 1
   fi
   grep "$1" /proc/net/wireless						|
-  awk '{print $5}'
+  awk '{print $5}'							|
+  sed 's/.$//'
   return $?
 }
 
