@@ -1,5 +1,5 @@
 # SINDAN Configuration file
-# version 2.2.15
+# version 2.4.0
 
 # lock file
 readonly LOCKFILE=/tmp/sindan.isrunning
@@ -28,6 +28,7 @@ readonly EXCL_IPv4=no
 readonly EXCL_IPv6=no
 
 # target interface
+# IFTYPE: Wi-Fi, WWAN (for Cellular), Ethernet
 readonly IFTYPE=Wi-Fi
 readonly DEVNAME=wlan0
 
@@ -65,7 +66,7 @@ readonly DO_SPEEDTEST=yes
 readonly DO_SPEEDINDEX=yes
 
 # urls for speedtest
-readonly ST_SRVS="https://inonius.net/speedtest/"
+readonly ST_SRVS="https://inonius.net/speedtest/?ispInfo=false"
 
 # urls for speedindex
 readonly SI_SRVS="http://www.wide.ad.jp/,https://yahoo.co.jp/,https://google.co.jp/"
