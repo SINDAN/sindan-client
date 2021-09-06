@@ -1639,7 +1639,7 @@ do_pmtud() {
     "6" ) command="ping6 -i 0.2 -W 1"; dfopt=""; header=48 ;;
     * ) echo "ERROR: <version> must be 4 or 6." 1>&2; return 9 ;;
   esac
-  if $command -c 1 "$2" > /dev/null; then
+  if ! $command -c 1 "$2" > /dev/null; then
     echo 0
     return 1
   fi
