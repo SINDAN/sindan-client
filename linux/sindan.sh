@@ -1727,7 +1727,7 @@ cmdset_pmtud() {
   else
     write_json "$layer" "$ipv" "v${ver}pmtu_${type}" "$INFO" "$target"	\
                "$pmtu_result" "$count"
-    string="$string\n  pmtu: $pmtu_result MB"
+    string="$string\n  pmtu: $pmtu_result bytes"
   fi
   if [ "$VERBOSE" = "yes" ]; then
     echo -e "$string"
@@ -2491,7 +2491,7 @@ if [ "$VERBOSE" = "yes" ]; then
   echo " datalink information:"
   echo "  datalink status: $result_phase1"
   echo "  type: $IFTYPE, dev: $devicename"
-  echo "  status: $ifstatus, mtu: $ifmtu MB"
+  echo "  status: $ifstatus, mtu: $ifmtu bytes"
   if [ "$IFTYPE" = "Wi-Fi" ]; then
     echo "  ssid: $ssid, ch: $channel, rate: $rate Mbps"
     echo "  bssid: $bssid"
