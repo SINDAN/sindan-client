@@ -119,7 +119,7 @@ get_os() {
 #
 get_hw_info() {
   if [ -e /proc/device-tree/model ]; then
-    awk 1 /proc/device-tree/model
+    awk 1 /proc/device-tree/model | tr -d '\0'
   else
     echo 'TBD'
   fi
@@ -165,6 +165,9 @@ get_cpu_temp() {
   if echo $1 | grep Raspbian > /dev/null 2>&1; then
     vcgencmd measure_temp						|
     sed -n 's/^temp=\([0-9\.]*\).*$/\1/p'
+  elif [ -f /sys/class/thermal/thermal_zone0/temp ]; then
+    echo "scale=3; $(cat /sys/class/thermal/thermal_zone0/temp) / 1000" |
+    bc
   else
     echo 'TBD'
   fi
@@ -1710,7 +1713,7 @@ cmdset_pmtud() {
   local ipv=IPv${ver}
   local type=$3
   local target=$4
-  local min_mtu=1200
+  local min_mtu=56
   local max_mtu=$5
   local count=$6
   local string=" pmtud to $ipv server: $target"
