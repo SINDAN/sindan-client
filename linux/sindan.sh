@@ -1639,10 +1639,10 @@ do_pmtud() {
   fi
   case $1 in
     "4" ) command="ping -i 0.2 -W 1"; dfopt="-M do"; header=28 ;;
-    "6" ) command="ping6 -i 0.2 -W 1"; dfopt=""; header=48 ;;
+    "6" ) command="ping6 -i 0.2 -W 1"; dfopt="-M do"; header=48 ;;
     * ) echo "ERROR: <version> must be 4 or 6." 1>&2; return 9 ;;
   esac
-  if ! $command -c 1 "$2" > /dev/null; then
+  if ! $command -c 1 $2 > /dev/null; then
     echo 0
     return 1
   fi
@@ -1657,7 +1657,7 @@ do_pmtud() {
     echo "$(( min + header ))"
     return 0
   fi
-  if $command -c 1 -s "$mid" "$dfopt" "$target" >/dev/null 2>/dev/null
+  if $command -c 1 -s $mid $dfopt $target >/dev/null 2>/dev/null
   then
     result=$(do_pmtud "$version" "$target" "$mid" "$max")
   else
@@ -1727,7 +1727,7 @@ cmdset_pmtud() {
   else
     write_json "$layer" "$ipv" "v${ver}pmtu_${type}" "$INFO" "$target"	\
                "$pmtu_result" "$count"
-    string="$string\n  pmtu: $pmtu_result bytes"
+    string="$string\n  pmtu: $pmtu_result byte"
   fi
   if [ "$VERBOSE" = "yes" ]; then
     echo -e "$string"
@@ -2491,7 +2491,7 @@ if [ "$VERBOSE" = "yes" ]; then
   echo " datalink information:"
   echo "  datalink status: $result_phase1"
   echo "  type: $IFTYPE, dev: $devicename"
-  echo "  status: $ifstatus, mtu: $ifmtu bytes"
+  echo "  status: $ifstatus, mtu: $ifmtu byte"
   if [ "$IFTYPE" = "Wi-Fi" ]; then
     echo "  ssid: $ssid, ch: $channel, rate: $rate Mbps"
     echo "  bssid: $bssid"
