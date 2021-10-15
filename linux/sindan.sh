@@ -858,7 +858,7 @@ check_v4addr() {
     echo 'private'
     return 0
   else
-    echo 'grobal'
+    echo 'global'
     return 0
   fi
   return 1
@@ -2903,7 +2903,7 @@ if [ "$EXCL_IPv4" != "yes" ]; then
 else
   v4addr_type="linklocal"
 fi
-if [ "$v4addr_type" = "private" ] || [ "$v4addr_type" = "grobal" ]; then
+if [ "$v4addr_type" = "private" ] || [ "$v4addr_type" = "global" ]; then
   count=0
   for target in $(echo "$PING_SRVS" | sed 's/,/ /g'); do
     if [ "$MODE" = "probe" ]; then
@@ -2974,7 +2974,7 @@ layer="dns"
 # Clear dns local cache
 #TBD
 
-if [ "$v4addr_type" = "private" ] || [ "$v4addr_type" = "grobal" ]; then
+if [ "$v4addr_type" = "private" ] || [ "$v4addr_type" = "global" ]; then
   count=0
   for target in $(echo "$v4nameservers" | sed 's/,/ /g'); do
     if [ "$MODE" = "probe" ]; then
@@ -3074,7 +3074,7 @@ echo " done."
 echo "Phase 6: Application Layer checking..."
 layer="app"
 
-if [ "$v4addr_type" = "private" ] || [ "$v4addr_type" = "grobal" ]; then
+if [ "$v4addr_type" = "private" ] || [ "$v4addr_type" = "global" ]; then
   count=0
   for target in $(echo "$V4WEB_SRVS" | sed 's/,/ /g'); do
     if [ "$MODE" = "probe" ]; then
@@ -3242,7 +3242,7 @@ if [ -n "$v6addrs" ]; then
 fi
 
 # dualstack performance measurements
-if [ "$v4addr_type" = "private" ] || [ "$v4addr_type" = "grobal" ] ||	\
+if [ "$v4addr_type" = "private" ] || [ "$v4addr_type" = "global" ] ||	\
    [ -n "$v6addrs" ]; then
 
   # SPEEDINDEX
