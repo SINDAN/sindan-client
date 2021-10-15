@@ -2948,16 +2948,12 @@ if [ -n "$v6addrs" ]; then
     # Do traceroute to extarnal IPv6 servers
     cmdset_trace "$layer" 6 srv "$target" "$count" &
   
-    oIFS="$IFS"
-    IFS=','
-    for v6addr in $v6addrs; do
+    for addr in $(echo "$v6addrs" | sed 's/,/ /g'); do
       if [ "$MODE" = "client" ]; then
         # Check path MTU to extarnal IPv6 servers
-        cmdset_pmtud "$layer" 6 srv "$target" "$ifmtu" "$count" "$v6addr" &
+        cmdset_pmtud "$layer" 6 srv "$target" "$ifmtu" "$count" "$addr" &
       fi
     done
-    IFS="$oIFS"
-    unset oIFS
 
     count=$(( count + 1 ))
   done
