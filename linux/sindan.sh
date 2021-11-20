@@ -1724,11 +1724,11 @@ cmdset_pmtud() {
   pmtu_result=$(do_pmtud "$ver" "$target" "$min_mtu" "$max_mtu" "$src_addr")
   if [ "$pmtu_result" -eq 0 ]; then
     write_json "$layer" "$ipv" "v${ver}pmtu_${type}" "$INFO" "$target"	\
-               unmeasurable "$count"
+               "unmeasurable,$src_addr" "$count"
     string="$string\n  pmtu: unmeasurable"
   else
     write_json "$layer" "$ipv" "v${ver}pmtu_${type}" "$INFO" "$target"	\
-               "$pmtu_result" "$count"
+               "$pmtu_result,$src_addr" "$count"
     string="$string\n  pmtu: $pmtu_result byte"
   fi
   if [ "$VERBOSE" = "yes" ]; then
