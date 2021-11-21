@@ -1652,19 +1652,18 @@ do_pmtud() {
   local max=$4
   local src_addr=$5
   local mid=$(( ( min + max ) / 2 ))
-  local result=0
 
-  if [ "$min" -eq "$mid" ] || [ "$max" -eq "$mid" ]; then
-    echo "$(( min + header ))"
-    return 0
-  fi
-  if eval $command -c 1 -s $mid $dfopt $target -I $src_addr >/dev/null 2>/dev/null
-  then
-    result=$(do_pmtud "$version" "$target" "$mid" "$max" "$src_addr")
-  else
-    result=$(do_pmtud "$version" "$target" "$min" "$mid" "$src_addr")
-  fi
-  echo "$result"
+  while [ "$min" -ne "$mid" ] && [ "$max" -ne "$mid" ]; do
+    if eval $command -c 1 -s $mid $dfopt $target -I $src_addr >/dev/null 2>/dev/null
+    then
+      min=$mid
+    else
+      max=$mid
+    fi
+    mid=$((( min + max ) / 2))
+  done
+  echo "$(( min + header ))"
+  return 0
 }
 
 #
