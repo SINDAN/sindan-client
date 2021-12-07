@@ -858,7 +858,7 @@ check_v4addr() {
     echo 'private'
     return 0
   else
-    echo 'grobal'
+    echo 'global'
     return 0
   fi
   return 1
@@ -1632,8 +1632,8 @@ get_tracepath() {
 
 #
 do_pmtud() {
-  if [ $# -ne 4 ]; then
-    echo "ERROR: do_pmtud <version> <target_addr> <min_mtu>"		\
+  if [ $# -ne 5 ]; then
+    echo "ERROR: do_pmtud <version> <target_addr> <min_mtu> <src_addr>"		\
          "<max_mtu>." 1>&2
     return 1
   fi
@@ -1642,7 +1642,7 @@ do_pmtud() {
     "6" ) command="ping6 -i 0.2 -W 1"; dfopt="-M do"; header=48 ;;
     * ) echo "ERROR: <version> must be 4 or 6." 1>&2; return 9 ;;
   esac
-  if ! $command -c 1 $2 > /dev/null; then
+  if ! eval $command -c 1 $2 -I $5 > /dev/null; then
     echo 0
     return 1
   fi
@@ -1650,20 +1650,20 @@ do_pmtud() {
   local target=$2
   local min=$3
   local max=$4
+  local src_addr=$5
   local mid=$(( ( min + max ) / 2 ))
-  local result=0
 
-  if [ "$min" -eq "$mid" ] || [ "$max" -eq "$mid" ]; then
-    echo "$(( min + header ))"
-    return 0
-  fi
-  if $command -c 1 -s $mid $dfopt $target >/dev/null 2>/dev/null
-  then
-    result=$(do_pmtud "$version" "$target" "$mid" "$max")
-  else
-    result=$(do_pmtud "$version" "$target" "$min" "$mid")
-  fi
-  echo "$result"
+  while [ "$min" -ne "$mid" ] && [ "$max" -ne "$mid" ]; do
+    if eval $command -c 1 -s $mid $dfopt $target -I $src_addr >/dev/null 2>/dev/null
+    then
+      min=$mid
+    else
+      max=$mid
+    fi
+    mid=$((( min + max ) / 2))
+  done
+  echo "$(( min + header ))"
+  return 0
 }
 
 #
@@ -1703,9 +1703,9 @@ cmdset_trace() {
 
 #
 cmdset_pmtud() {
-  if [ $# -ne 6 ]; then
+  if [ $# -ne 7 ]; then
     echo "ERROR: cmdset_pmtud <layer> <version> <target_type>"		\
-         "<target_addr> <ifmtu> <count>." 1>&2
+         "<target_addr> <ifmtu> <count> <src_addr>." 1>&2
     return 1
   fi
   local layer=$1
@@ -1716,17 +1716,18 @@ cmdset_pmtud() {
   local min_mtu=56
   local max_mtu=$5
   local count=$6
-  local string=" pmtud to $ipv server: $target"
+  local src_addr=$7
+  local string=" pmtud to $ipv server: $target, from: $src_addr"
   local pmtu_result
 
-  pmtu_result=$(do_pmtud "$ver" "$target" "$min_mtu" "$max_mtu")
+  pmtu_result=$(do_pmtud "$ver" "$target" "$min_mtu" "$max_mtu" "$src_addr")
   if [ "$pmtu_result" -eq 0 ]; then
     write_json "$layer" "$ipv" "v${ver}pmtu_${type}" "$INFO" "$target"	\
-               unmeasurable "$count"
+               "unmeasurable,$src_addr" "$count"
     string="$string\n  pmtu: unmeasurable"
   else
     write_json "$layer" "$ipv" "v${ver}pmtu_${type}" "$INFO" "$target"	\
-               "$pmtu_result" "$count"
+               "$pmtu_result,$src_addr" "$count"
     string="$string\n  pmtu: $pmtu_result byte"
   fi
   if [ "$VERBOSE" = "yes" ]; then
@@ -2901,7 +2902,7 @@ if [ "$EXCL_IPv4" != "yes" ]; then
 else
   v4addr_type="linklocal"
 fi
-if [ "$v4addr_type" = "private" ] || [ "$v4addr_type" = "grobal" ]; then
+if [ "$v4addr_type" = "private" ] || [ "$v4addr_type" = "global" ]; then
   count=0
   for target in $(echo "$PING_SRVS" | sed 's/,/ /g'); do
     if [ "$MODE" = "probe" ]; then
@@ -2921,7 +2922,7 @@ if [ "$v4addr_type" = "private" ] || [ "$v4addr_type" = "grobal" ]; then
 
     if [ "$MODE" = "client" ]; then
       # Check path MTU to extarnal IPv4 servers
-      cmdset_pmtud "$layer" 4 srv "$target" "$ifmtu" "$count" &
+      cmdset_pmtud "$layer" 4 srv "$target" "$ifmtu" "$count" "$v4addr" &
     fi
 
     count=$(( count + 1 ))
@@ -2946,10 +2947,12 @@ if [ -n "$v6addrs" ]; then
     # Do traceroute to extarnal IPv6 servers
     cmdset_trace "$layer" 6 srv "$target" "$count" &
   
-    if [ "$MODE" = "client" ]; then
-      # Check path MTU to extarnal IPv6 servers
-      cmdset_pmtud "$layer" 6 srv "$target" "$ifmtu" "$count" &
-    fi
+    for addr in $(echo "$v6addrs" | sed 's/,/ /g'); do
+      if [ "$MODE" = "client" ]; then
+        # Check path MTU to extarnal IPv6 servers
+        cmdset_pmtud "$layer" 6 srv "$target" "$ifmtu" "$count" "$addr" &
+      fi
+    done
 
     count=$(( count + 1 ))
   done
@@ -2966,7 +2969,7 @@ layer="dns"
 # Clear dns local cache
 #TBD
 
-if [ "$v4addr_type" = "private" ] || [ "$v4addr_type" = "grobal" ]; then
+if [ "$v4addr_type" = "private" ] || [ "$v4addr_type" = "global" ]; then
   count=0
   for target in $(echo "$v4nameservers" | sed 's/,/ /g'); do
     if [ "$MODE" = "probe" ]; then
@@ -3066,7 +3069,7 @@ echo " done."
 echo "Phase 6: Application Layer checking..."
 layer="app"
 
-if [ "$v4addr_type" = "private" ] || [ "$v4addr_type" = "grobal" ]; then
+if [ "$v4addr_type" = "private" ] || [ "$v4addr_type" = "global" ]; then
   count=0
   for target in $(echo "$V4WEB_SRVS" | sed 's/,/ /g'); do
     if [ "$MODE" = "probe" ]; then
@@ -3234,7 +3237,7 @@ if [ -n "$v6addrs" ]; then
 fi
 
 # dualstack performance measurements
-if [ "$v4addr_type" = "private" ] || [ "$v4addr_type" = "grobal" ] ||	\
+if [ "$v4addr_type" = "private" ] || [ "$v4addr_type" = "global" ] ||	\
    [ -n "$v6addrs" ]; then
 
   # SPEEDINDEX
