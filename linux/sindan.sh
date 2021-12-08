@@ -1994,33 +1994,34 @@ cmdset_portscan () {
 
 #
 do_speedindex() {
-  if [ $# -ne 1 ]; then
+  if [ $# -ne 2 ]; then
     echo "ERROR: do_speedindex <target_url>." 1>&2
     return 1
   fi
 
   tracejson=trace-json/$(echo "$1" | sed 's/[.:/]/_/g').json
-  node speedindex.js "$1" ${tracejson}
+  node speedindex.js "$1" "$2" ${tracejson}
   return $?
 }
 
 #
 cmdset_speedindex() {
-  if [ $# -ne 5 ]; then
+  if [ $# -ne 6 ]; then
     echo "ERROR: cmdset_speedindex <layer> <version> <target_type>"	\
-         "<target_addr> <count>." 1>&2
+         "<SI_TIMEOUT> <target_addr> <count>." 1>&2
     return 1
   fi
   local layer=$1
   local ver=$2
   local type=$3
-  local target=$4
-  local count=$5
+  local timeout=$4
+  local target=$5
+  local count=$6
   local result=$FAIL
-  local string=" speedindex to extarnal server: $target by $ver"
+  local string=" speedindex to extarnal server: $target by $ver (timeout: $timeout)"
   local speedindex_ans
 
-  if speedindex_ans=$(do_speedindex ${target}); then
+  if speedindex_ans=$(do_speedindex ${target} ${timeout}); then
     result=$SUCCESS
   else
     stat=$?
@@ -3247,7 +3248,7 @@ if [ "$v4addr_type" = "private" ] || [ "$v4addr_type" = "global" ] ||	\
     for target in $(echo "$SI_SRVS" | sed 's/,/ /g'); do
 
       # Do speedindex
-      cmdset_speedindex "$layer" Dualstack speedidsrv "$target" "$count"
+      cmdset_speedindex "$layer" Dualstack speedidsrv "$SI_TIMEOUT" "$target" "$count"
 
       count=$(( count + 1 ))
     done

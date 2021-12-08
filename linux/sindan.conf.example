@@ -70,6 +70,7 @@ readonly ST_SRVS="https://inonius.net/speedtest/?ispInfo=false"
 
 # urls for speedindex
 readonly SI_SRVS="http://www.wide.ad.jp/,https://yahoo.co.jp/,https://google.co.jp/"
+readonly SI_TIMEOUT="0"
 
 # upload urls
 readonly URL_CAMPAIGN="http://fluentd.sindan-net.com:8888/sindan.log_campaign"
