@@ -1,16 +1,15 @@
 {
   "name": "linux",
-  "version": "1.0.0",
+  "version": "2.0.0",
   "description": "sindan-client-linux",
   "main": "speedindex.js",
   "dependencies": {
     "log": "^6.0.0",
     "npm": "^6.14.9",
     "npm-check-updates": "^10.2.3",
-    "puppeteer-core": "^5.5.0",
+    "puppeteer-core": "^1.11.0",
     "speedline": "^1.4.3"
   },
-  "devDependencies": {},
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
   },
@@ -24,5 +23,6 @@
   "bugs": {
     "url": "https://github.com/SINDAN/sindan-client/issues"
   },
-  "homepage": "https://github.com/SINDAN/sindan-client#readme"
+  "homepage": "https://github.com/SINDAN/sindan-client#readme",
+  "devDependencies": {}
 }
