@@ -3,7 +3,7 @@
 ## apt install
 echo "installing required packages..."
 sudo apt update -y
-sudo apt install -y uuid-runtime wireless-tools ndisc6 dnsutils curl
+sudo apt install -y uuid-runtime wireless-tools ndisc6 dnsutils curl traceroute
 
 ## for nodejs
 echo "installing required packages for nodejs..."
