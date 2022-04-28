@@ -1,8 +1,10 @@
 # SINDAN Configuration file
-# version 2.4.0
+# version 3.0.0
+
+# PID file
+readonly PIDFILE=/tmp/sindan.pid
 
 # lock file
-readonly LOCKFILE=/tmp/sindan.isrunning
 readonly LOCKFILE_SENDLOG=/tmp/sendlog.isrunning
 
 # result parameters
@@ -49,8 +51,8 @@ readonly V4WEB_SRVS="www.wide.ad.jp,www.yahoo.co.jp"
 readonly V6WEB_SRVS="www.wide.ad.jp,www.google.co.jp"
 
 # servers for ssh servers (format: <FQDN>_<keytype>)
-readonly V4SSH_SRVS="fluentd.sindan-net.com_ed25519,www.wide.ad.jp_rsa"
-readonly V6SSH_SRVS="fluentd.sindan-net.com_ed25519,www.wide.ad.jp_rsa"
+readonly V4SSH_SRVS="fluentd.sindan-net.com_ed25519"
+readonly V6SSH_SRVS="fluentd.sindan-net.com_ed25519"
 
 # servers for portscan
 readonly PS_SRVS4="target.sindan-net.com"
