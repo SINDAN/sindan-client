@@ -26,7 +26,7 @@ cd $(dirname $0)
 ## Preparation
 
 # Check parameters
-for param in PIDFILE MAX_RETRY IFTYPE IFNAME PING_SRVS PING6_SRVS FQDNS GPDNS4 GPDNS6 V4WEB_SRVS V6WEB_SRVS V4SSH_SRVS V6SSH_SRVS; do
+for param in PIDFILE MAX_RETRY IFTYPE DEVNAME PING_SRVS PING6_SRVS FQDNS GPDNS4 GPDNS6 V4WEB_SRVS V6WEB_SRVS V4SSH_SRVS V6SSH_SRVS; do
   if [ -z $(eval echo '$'$param) ]; then
     echo "ERROR: $param is null in configration file." 1>&2
     exit 1

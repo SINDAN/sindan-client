@@ -5,7 +5,7 @@
 
 # Get the interface name.
 function get_ifname() {
-  echo "$IFNAME"
+  echo "$DEVNAME"
   return $?
 }
 
