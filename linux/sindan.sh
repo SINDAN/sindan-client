@@ -63,6 +63,7 @@ mkdir -p trace-json
 
 # Generate UUID
 uuid=$(generate_uuid)
+UUID=$uuid
 
 ####################
 ## Phase 0
