@@ -22,6 +22,7 @@ var traceJson = process.argv[4];
 (async () => {
   const browser = await puppeteer.launch({
                           executablePath: '/usr/bin/chromium-browser',
+                          userDataDir: '/dev/null',
                           args: ['--no-sandbox']});
   const page = await browser.newPage();
   try {
