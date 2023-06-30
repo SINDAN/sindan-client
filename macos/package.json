@@ -1,6 +1,6 @@
 {
   "dependencies": {
-    "puppeteer": "^20.7.3",
+    "puppeteer": "^20.7.4",
     "speedline": "^1.4.3"
   }
 }
