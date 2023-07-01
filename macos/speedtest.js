@@ -15,7 +15,10 @@ const puppeteer = require('puppeteer');
 var url = process.argv[2];
 
 (async () => {
-  const browser = await puppeteer.launch();
+  const browser = await puppeteer.launch({
+    headless: 'true',
+    userDataDir: '/dev/null'
+  });
   const page = await browser.newPage();
   await page.setDefaultNavigationTimeout(60000);
 

@@ -18,7 +18,10 @@ var url = process.argv[2];
 var traceJson = process.argv[3];
 
 (async () => {
-  const browser = await puppeteer.launch();
+  const browser = await puppeteer.launch({
+    headless: 'true',
+    userDataDir: '/dev/null'
+  });
   const page = await browser.newPage();
   await page.setDefaultNavigationTimeout(60000);
   await page.tracing.start({

@@ -2,7 +2,9 @@
 Description=Automatically start sindan-client scripts every 5 minutes (See: https://github.com/SINDAN/sindan-client)
 
 [Timer]
+OnBootSec=5m
 OnUnitActiveSec=5m
 
 [Install]
 WantedBy=timers.target
+:wq

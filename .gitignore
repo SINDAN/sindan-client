@@ -6,11 +6,13 @@
 # for linux
 /linux/log/*
 !/linux/log/.keep
+/linux/sindan.conf
 /linux/trace-json
 /linux/node_modules
 
 # for macos
 /macos/log/*
 !/macos/log/.keep
+/macos/sindan.conf
 /macos/trace-json
 /macos/node_modules
