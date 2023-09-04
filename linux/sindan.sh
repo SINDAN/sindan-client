@@ -1,7 +1,7 @@
 #!/bin/bash
 # sindan.sh
-# version 3.0.0
-VERSION="3.0.0"
+# version 3.0.1
+VERSION="3.0.1"
 
 # read configuration file
 cd $(dirname $0)
@@ -26,7 +26,7 @@ cd $(dirname $0)
 ## Preparation
 
 # Check parameters
-for param in PIDFILE MAX_RETRY IFTYPE DEVNAME PING_SRVS PING6_SRVS FQDNS GPDNS4 GPDNS6 V4WEB_SRVS V6WEB_SRVS V4SSH_SRVS V6SSH_SRVS; do
+for param in PIDFILE MAX_RETRY IFTYPE PING_SRVS PING6_SRVS FQDNS GPDNS4 GPDNS6 V4WEB_SRVS V6WEB_SRVS V4SSH_SRVS V6SSH_SRVS DEVNAME; do
   if [ -z $(eval echo '$'$param) ]; then
     echo "ERROR: $param is null in configration file." 1>&2
     exit 1
@@ -372,7 +372,7 @@ if [ "$EXCL_IPv4" != "yes" ]; then
   if [ "$IFTYPE" = "WWAN" ]; then
     result_phase2_1=$SUCCESS
     v4autoconf="$v4ifconf"
-  else 
+  else
     result_phase2_1=$FAIL
     rcount=0
     while [ $rcount -lt "$MAX_RETRY" ]; do
@@ -421,7 +421,7 @@ if [ "$EXCL_IPv4" != "yes" ]; then
     echo "  intarface status (IPv4): $result_phase2_1"
     echo "  IPv4 conf: $v4ifconf"
     echo "  IPv4 addr: ${v4addr}/${netmask}"
-    echo "  IPv4 router: $v4routers"
+    echo "  IPv4 routers: $v4routers"
     echo "  IPv4 namesrv: $v4nameservers"
   fi
 fi
@@ -464,7 +464,7 @@ if [ "$EXCL_IPv6" != "yes" ]; then
     if [ "$v6ifconf" = "manual" ]; then
       result_phase2_2=$SUCCESS
       v6autoconf="v6conf is $v6ifconf"
-      write_json "$layer" IPv6 v6autoconf "$result_phase2_2" self       \
+      write_json "$layer" IPv6 v6autoconf "$result_phase2_2" self	\
                  "$v6autoconf" 0
       # Get IPv6 address
       v6addrs=$(get_v6addrs "$ifname" "")
@@ -476,7 +476,7 @@ if [ "$EXCL_IPv6" != "yes" ]; then
         # Get IPv6 prefix length
         pref_len=$(get_prefixlen_from_ifinfo "$ifname" "$addr")
         if [ -n "$pref_len" ]; then
-          write_json "$layer" IPv6 pref_len "$INFO" "$addr" "$pref_len" \
+          write_json "$layer" IPv6 pref_len "$INFO" "$addr" "$pref_len"	\
                      "$s_count"
         fi
         if [ "$VERBOSE" = "yes" ]; then
@@ -688,7 +688,7 @@ if [ "$EXCL_IPv6" != "yes" ]; then
     # Report phase 2 results (IPv6)
     if [ "$VERBOSE" = "yes" ]; then
       echo "  IPv6 routers: $v6routers"
-      echo "  IPv6 nameserv: $v6nameservers"
+      echo "  IPv6 namesrv: $v6nameservers"
     fi
   fi
 fi
@@ -949,14 +949,14 @@ if [ "$v4addr_type" = "private" ] || [ "$v4addr_type" = "global" ]; then
 
     count=$(( count + 1 ))
   done
-  
+
   count=0
   for target in $(echo "$PS_SRVS4" | sed 's/,/ /g'); do
     for port in $(echo "$PS_PORTS" | sed 's/,/ /g'); do
 
       # Do portscan by IPv4
       cmdset_portscan "$layer" 4 pssrv "$target" "$port" "$count" &
-    
+
     done
     count=$(( count + 1 ))
   done
@@ -1006,7 +1006,7 @@ if [ -n "$v6addrs" ]; then
   count=0
   for target in $(echo "$PS_SRVS6" | sed 's/,/ /g'); do
     for port in $(echo "$PS_PORTS" | sed 's/,/ /g'); do
-  
+
       # Do portscan by 6
       cmdset_portscan "$layer" 6 pssrv "$target" "$port" "$count" &
 
@@ -1068,7 +1068,7 @@ if [ -n "$v6addrs" ]; then
 
         # Do portscan by IPv6
         cmdset_portscan "$layer" 6 pssrv "$target" "$port" "$count" &
-    
+
       done
       count=$(( count + 1 ))
     done

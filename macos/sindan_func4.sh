@@ -11,8 +11,8 @@ function do_traceroute() {
     return 1
   fi
   case $1 in
-    "4" ) timeout -sKILL 30 traceroute -n -I -w 2 -q 1 -m 20 "$2"; return $? ;;
-    "6" ) timeout -sKILL 30 traceroute6 -n -I -w 2 -q 1 -m 20 "$2"; return $? ;;
+    "4" ) traceroute -n -I -w 2 -q 1 -m 20 "$2" 2>/dev/null; return $? ;;
+    "6" ) traceroute6 -n -I -w 2 -q 1 -m 20 "$2" 2>/dev/null; return $? ;;
     * ) echo "ERROR: <version> must be 4 or 6." 1>&2; return 9 ;;
   esac
 }
@@ -31,16 +31,16 @@ function get_tracepath() {
 # do_pmtud <version> <target_addr> <min_mtu> <max_mtu> <src_addr>
 function do_pmtud() {
   if [ $# -ne 5 ]; then
-    echo "ERROR: do_pmtud <version> <target_addr> <min_mtu> <src_addr>"	\
-         "<max_mtu>." 1>&2
+    echo "ERROR: do_pmtud <version> <target_addr> <min_mtu> <max_mtu>"	\
+         "<src_addr>." 1>&2
     return 1
   fi
   case $1 in
-    "4" ) command="ping -W 1"; dfopt="-M do"; header=28 ;;
-    "6" ) command="ping6 -W 1"; dfopt="-M do"; header=48 ;;
+    "4" ) command="ping -t 1"; dfopt="-D"; header=28 ;;
+    "6" ) command="gtimeout 3 ping6"; dfopt=""; header=48 ;;
     * ) echo "ERROR: <version> must be 4 or 6." 1>&2; return 9 ;;
   esac
-  if ! eval $command -c 1 $2 -I $5 > /dev/null; then
+  if ! $command -c 1 $2 > /dev/null; then
     echo 0
     return 1
   fi
@@ -52,7 +52,7 @@ function do_pmtud() {
   local mid=$(( ( min + max ) / 2 ))
 
   while [ "$min" -ne "$mid" ] && [ "$max" -ne "$mid" ]; do
-    if eval $command -c 1 -s $mid $dfopt $target -I $src_addr >/dev/null 2>/dev/null
+    if eval "$command -c 1 -s $mid $dfopt $target -S $src_addr >/dev/null 2>/dev/null"
     then
       min=$mid
     else
@@ -106,7 +106,7 @@ function cmdset_trace() {
 function cmdset_pmtud() {
   if [ $# -ne 7 ]; then
     echo "ERROR: cmdset_pmtud <layer> <version> <target_type>"		\
-         "<target_addr> <ifmtu> <count> <src_addr>." 1>&2
+         "<target_addr> <ifmtu> <count>." 1>&2
     return 1
   fi
   local layer=$1
@@ -114,7 +114,7 @@ function cmdset_pmtud() {
   local ipv=IPv${ver}
   local type=$3
   local target=$4
-  local min_mtu=56
+  local min_mtu=1200
   local max_mtu=$5
   local count=$6
   local src_addr=$7

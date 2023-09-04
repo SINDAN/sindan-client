@@ -4,6 +4,10 @@
 echo "updating required packages..."
 brew update
 
+## for gtimeout
+echo "installing required packages..."
+brew install coreutils
+
 ## for nodejs
 echo "installing required packages for nodejs..."
 mkdir -p trace-json

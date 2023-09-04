@@ -1,8 +1,10 @@
 # SINDAN Configuration file
-# version 2.2.10
+# version 3.0.0
+
+# PID file
+readonly PIDFILE=/tmp/sindan.pid
 
 # lock file
-readonly LOCKFILE=/tmp/sindan.isrunning
 readonly LOCKFILE_SENDLOG=/tmp/sendlog.isrunning
 
 # result parameters
@@ -11,10 +13,10 @@ readonly SUCCESS=1
 readonly INFO=10
 
 # operation mode (client or probe)
-readonly MODE=probe
+readonly MODE=client
 
 # reconnect flag (yes or no)
-readonly RECONNECT=yes
+readonly RECONNECT=no
 
 # verbose flag (yes or no)
 readonly VERBOSE=yes
@@ -28,6 +30,7 @@ readonly EXCL_IPv4=no
 readonly EXCL_IPv6=no
 
 # target interface
+# IFTYPE: Wi-Fi, WWAN (for Cellular), Ethernet
 readonly IFTYPE=Wi-Fi
 
 # set ssid
@@ -51,8 +54,28 @@ readonly V4WEB_SRVS="www.wide.ad.jp,www.yahoo.co.jp"
 readonly V6WEB_SRVS="www.wide.ad.jp,www.google.co.jp"
 
 # servers for ssh servers (format: <FQDN>_<keytype>)
-readonly V4SSH_SRVS="fluentd.sindan-net.com_ed25519,www.wide.ad.jp_rsa"
-readonly V6SSH_SRVS="fluentd.sindan-net.com_ed25519,www.wide.ad.jp_rsa"
+readonly V4SSH_SRVS="fluentd.sindan-net.com_ed25519"
+readonly V6SSH_SRVS="fluentd.sindan-net.com_ed25519"
+
+# servers for portscan
+readonly PS_SRVS4="target.sindan-net.com"
+readonly PS_SRVS6="target.sindan-net.com"
+
+# ports for portscan
+readonly PS_PORTS="22,80,443"
+
+# speedtest setting (yes or no)
+readonly DO_SPEEDTEST=yes
+
+# speedindex setting (yes or no)
+readonly DO_SPEEDINDEX=yes
+
+# urls for speedtest
+readonly ST_SRVS="https://inonius.net/speedtest/?ispInfo=false"
+
+# urls for speedindex
+readonly SI_SRVS="http://www.wide.ad.jp/,https://yahoo.co.jp/,https://google.co.jp/"
+readonly SI_TIMEOUT="0"
 
 # upload urls
 readonly URL_CAMPAIGN="http://fluentd.sindan-net.com:8888/sindan.log_campaign"
@@ -63,18 +86,3 @@ readonly LOCAL_NETWORK_PRIVACY=no
 readonly CLIENT_PRIVACY=no
 #readonly CMD_HASH="/usr/bin/shasum -a 256"
 readonly CMD_HASH="/usr/bin/shasum"
-
-
-### Add speedindex and speedtest
-
-# speedtest setting (yes or no)
-readonly DO_SPEEDTEST=yes
-
-# speedindex setting (yes or no)
-readonly DO_SPEEDINDEX=yes
-
-# urls for speedtest
-readonly ST_SRVS="https://inonius.net/speedtest/"
-
-# urls for speedindex
-readonly SI_SRVS="http://www.wide.ad.jp/,https://yahoo.co.jp/,https://google.co.jp/"
