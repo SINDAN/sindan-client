@@ -28,7 +28,6 @@ function get_rtt() {
 # Get paket loss rate of ping command.
 # require do_ping() data from STDIN.
 function get_loss() {
-  # require do_ping() data from STDIN.
   sed -n 's/^.* \([0-9.]*\)\% packet loss.*$/\1/p'
   return $?
 }

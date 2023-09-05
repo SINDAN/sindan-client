@@ -51,6 +51,7 @@ function get_dnsttl() {
 
 # Get query time of the DNS request.
 # require do_dnslookup() data from STDIN.
+# get_dnsrtt
 function get_dnsrtt() {
   sed -n 's/^;; Query time: \([0-9]*\) msec$/\1/p'
   return $?

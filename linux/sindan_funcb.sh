@@ -97,3 +97,4 @@ function write_json() {
   > log/sindan_"$1"_"$3"_"$7"_"$(date -u '+%s')".json
   return $?
 }
+

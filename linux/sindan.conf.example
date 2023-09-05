@@ -1,5 +1,5 @@
 # SINDAN Configuration file
-# version 3.0.0
+# version 3
 
 # PID file
 readonly PIDFILE=/tmp/sindan.pid

@@ -1,6 +1,6 @@
 #!/bin/bash
 # sindan.sh
-# version 3.0.1
+# version 3
 VERSION="3.0.1"
 
 # read configuration file

@@ -24,7 +24,7 @@ function do_curl() {
 function cmdset_http() {
   if [ $# -ne 5 ]; then
     echo "ERROR: cmdset_http <layer> <version> <target_type>"		\
-         "<target_addr> <count>." 1>&2
+         "<target_url> <count>." 1>&2
     return 1
   fi
   local layer=$1
@@ -105,16 +105,52 @@ function cmdset_ssh() {
 # Do port scan to the target server.
 # do_portscan <verson> <target> <port>
 function do_portscan() {
-  :
-  #TBD
+  if [ $# -ne 3 ]; then
+    echo "ERROR: do_portscan <verson> <target> <port>." 1>&2
+    return 1
+  fi
+  case $1 in
+    "4" ) nc -zv4 -w1 "$2" "$3" 2>&1 ; return $? ;;
+    "6" ) nc -zv6 -w1 "$2" "$3" 2>&1 ; return $? ;;
+    "*" ) echo "ERROR: <version> must be 4 or 6." 1>&2; return 9 ;;
+  esac
 }
 
 # Check the state of the port scan result to the target server.
 # cmdset_portscan <layer> <version> <target_type> <target_addr> \
 #                 <target_port> <count>
 function cmdset_portscan() {
-  :
-  #TBD
+  if [ $# -ne 6 ]; then
+    echo "ERROR: cmdset_portscan <layer> <version> <target_type>"	\
+         "<target_addr> <target_port> <count>." 1>&2
+    return 1
+  fi
+  local layer=$1
+  local ver=$2
+  local ipv="IPv${ver}"
+  local type=$3
+  local target=$4
+  local port=$5
+  local count=$6
+  local result=$FAIL
+  local string=" portscan to extarnal server: $target:$port by $ipv"
+  local ps_ans
+
+  if ps_ans=$(do_portscan "$ver" "$target" "$port"); then
+    result=$SUCCESS
+  else
+    stat=$?
+  fi
+  write_json "$layer" "$ipv" "v${ver}portscan_${port}" "$result"	\
+             "$target" "$ps_ans" "$count"
+  if [ "$result" = "$SUCCESS" ]; then
+    string="$string\n  status: ok"
+  else
+    string="$string\n  status: ng ($stat)"
+  fi
+  if [ "$VERBOSE" = "yes" ]; then
+    echo -e "$string"
+  fi
 }
 
 # Do measure speed index to the target URL.
@@ -126,7 +162,7 @@ function do_speedindex() {
   fi
 
   tracejson=trace-json/$(echo "$1" | sed 's/[.:/]/_/g').json
-  node speedindex.js "$1" ${tracejson}
+  node speedindex.js "$1" "$SI_TIMEOUT" ${tracejson}
   return $?
 }
 
@@ -136,7 +172,7 @@ function do_speedindex() {
 function cmdset_speedindex() {
   if [ $# -ne 5 ]; then
     echo "ERROR: cmdset_speedindex <layer> <version> <target_type>"	\
-         "<target_addr> <count>." 1>&2
+         "<target_url> <count>." 1>&2
     return 1
   fi
   local layer=$1
@@ -145,7 +181,7 @@ function cmdset_speedindex() {
   local target=$4
   local count=$5
   local result=$FAIL
-  local string=" speedindex to extarnal server: $target by $ver"
+  local string=" speedindex to extarnal server: $target by $ver (timeout: $SI_TIMEOUT)"
   local speedindex_ans
 
   if speedindex_ans=$(do_speedindex ${target}); then
@@ -201,7 +237,6 @@ function get_speedtest_ipv4_dl() {
 # Get IPv4 upload speed from the result of iNonius speedtest.
 # require do_speedtest() data from STDIN.
 function get_speedtest_ipv4_ul() {
-  # require do_speedtest() data from STDIN.
   sed -n 's/IPv4_UL://p'
   return $?
 }
@@ -240,7 +275,7 @@ function get_speedtest_ipv6_ul() {
 function cmdset_speedtest() {
   if [ $# -ne 5 ]; then
       echo "ERROR: cmdset_speedtest <layer> <version> <target_type>"	\
-           "<target_addr> <count>." 1>&2
+           "<target_url> <count>." 1>&2
     return 1
   fi
   local layer=$1

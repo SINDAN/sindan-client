@@ -31,8 +31,8 @@ function get_tracepath() {
 # do_pmtud <version> <target_addr> <min_mtu> <max_mtu> <src_addr>
 function do_pmtud() {
   if [ $# -ne 5 ]; then
-    echo "ERROR: do_pmtud <version> <target_addr> <min_mtu> <src_addr>"	\
-         "<max_mtu>." 1>&2
+    echo "ERROR: do_pmtud <version> <target_addr> <min_mtu> <max_mtu>"	\
+         "<src_addr>." 1>&2
     return 1
   fi
   case $1 in

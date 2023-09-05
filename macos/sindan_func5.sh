@@ -12,6 +12,12 @@ function do_dnslookup() {
     return 1
   fi
   dig @"$1" "$3" "$2" +time=1
+  # Dig return codes are:
+  # 0: Everything went well, including things like NXDOMAIN
+  # 1: Usage error
+  # 8: Couldn't open batch file
+  # 9: No reply from server
+  # 10: Internal error
   return $?
 }
 
@@ -44,8 +50,8 @@ function get_dnsttl() {
 }
 
 # Get query time of the DNS request.
-# get_dnsrtt
 # require do_dnslookup() data from STDIN.
+# get_dnsrtt
 function get_dnsrtt() {
   sed -n 's/^;; Query time: \([0-9]*\) msec$/\1/p'
   return $?
@@ -55,11 +61,11 @@ function get_dnsrtt() {
 # check_dns64 <nameserver>
 function check_dns64() {
   if [ $# -ne 1 ]; then
-    echo "ERROR: check_dns64 <target_addr>." 1>&2
+    echo "ERROR: check_dns64 <nameserver>." 1>&2
     return 1
   fi
   local dns_ans
-  dns_ans=$(do_dnslookup "$target" AAAA ipv4only.arpa			|
+  dns_ans=$(do_dnslookup "$1" AAAA ipv4only.arpa			|
           get_dnsans AAAA)
   if [ -n "$dns_ans" ]; then
     echo 'yes'

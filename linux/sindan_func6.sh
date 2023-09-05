@@ -142,7 +142,7 @@ function cmdset_portscan() {
     stat=$?
   fi
   write_json "$layer" "$ipv" "v${ver}portscan_${port}" "$result"	\
-	     "$target" "$ps_ans" "$count"
+             "$target" "$ps_ans" "$count"
   if [ "$result" = "$SUCCESS" ]; then
     string="$string\n  status: ok"
   else
