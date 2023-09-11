@@ -80,27 +80,12 @@ function get_clock_state() {
   return $?
 }
 
-# Get the time souece of the system clock.		yet
+# Get the time souece of the system clock.
 function get_clock_src() {
-  if which timedatectl > /dev/null 2>&1; then
-    use_timesyncd=$(timedatectl |
-      grep -e "NTP service: active" \
-           -e "systemd-timesyncd.service active: yes")
-    if [ -n "$use_timesyncd" ]; then
-      systemctl status systemd-timesyncd				|
-      grep Status							|
-      sed 's/^[ \t]*//'
-    else
-      if [ -e /run/ntpd.pid ]; then
-        ntpq -p | grep -e ^o -e ^*
-      elif [ -e /run/chronyd.pid ]; then
-        chronyc sources | grep "\^\*"
-      else
-        echo 'using unknown time synclonization service.'
-      fi
-    fi
+  if [ -e /etc/ntp.conf ]; then
+    cat /etc/ntp.conf | grep server | awk '{print $2}'
   else
-    echo 'TBD'
+    echo 'using unknown time synclonization service.'
   fi
   return $?
 }
