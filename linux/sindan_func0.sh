@@ -2,7 +2,6 @@
 # sindan_func0.sh
 
 ## Hardware Layer functions
- 
 
 # Get OS information.
 function get_os() {
@@ -31,7 +30,7 @@ function get_cpu_freq() {
     echo "ERROR: get_cpu_freq <os>." 1>&2
     return 1
   fi
-  if echo $1 | grep Raspbian > /dev/null 2>&1; then
+  if which vcgencmd > /dev/null 2>&1; then
     vcgencmd measure_clock arm						|
     awk -F= '{print $2}'
   else
@@ -46,7 +45,7 @@ function get_cpu_volt() {
     echo "ERROR: get_cpu_volt <os>." 1>&2
     return 1
   fi
-  if echo $1 | grep Raspbian > /dev/null 2>&1; then
+  if which vcgencmd > /dev/null 2>&1; then
     vcgencmd measure_volts core						|
     sed -n 's/^volt=\([0-9\.]*\).*$/\1/p'
   else
@@ -61,7 +60,7 @@ function get_cpu_temp() {
     echo "ERROR: get_cpu_temp <os>." 1>&2
     return 1
   fi
-  if echo $1 | grep Raspbian > /dev/null 2>&1; then
+  if which vcgencmd > /dev/null 2>&1; then
     vcgencmd measure_temp						|
     sed -n 's/^temp=\([0-9\.]*\).*$/\1/p'
   elif [ -f /sys/class/thermal/thermal_zone0/temp ]; then
