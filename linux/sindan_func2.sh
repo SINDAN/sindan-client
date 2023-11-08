@@ -10,7 +10,17 @@ function get_v4ifconf() {
     echo "ERROR: get_v4ifconf <ifname> <iftype>." 1>&2
     return 1
   fi
-  if [ -f /etc/dhcpcd.conf ]; then
+  if which nmcli > /dev/null 2>&1 &&
+       [ "$(nmcli networking)" = "enabled" ]; then
+    local wwan_dev; local conpath
+    if [ "$2" = "WWAN" ]; then
+      wwan_dev=$(get_wwan_port "$1")
+      conpath=$(nmcli -g general.con-path device show "$wwan_dev")
+    else
+      conpath=$(nmcli -g general.con-path device show "$1")
+    fi
+    nmcli -g ipv4.method connection show "$conpath"
+  elif [ -f /etc/dhcpcd.conf ]; then
     if grep "^interface $1" /etc/dhcpcd.conf > /dev/null 2>&1; then
       if grep "^static ip_address" /etc/dhcpcd.conf > /dev/null 2>&1; then
         echo 'manual'
@@ -21,16 +31,6 @@ function get_v4ifconf() {
   elif [ -f /etc/network/interfaces ]; then
     grep "^iface $1 inet" /etc/network/interfaces			|
     awk '{print $4}'
-  elif which nmcli > /dev/null 2>&1 &&
-       [ "$(nmcli networking)" = "enabled" ]; then
-    local wwan_dev; local conpath
-    if [ "$2" = "WWAN" ]; then
-      wwan_dev=$(get_wwan_port "$1")
-      conpath=$(nmcli -g general.con-path device show "$wwan_dev")
-    else
-      conpath=$(nmcli -g general.con-path device show "$1")
-    fi
-    nmcli -g ipv4.method connection show "$conpath"
   else ## netplan
     echo 'TBD'
   fi
@@ -205,7 +205,17 @@ function get_v6ifconf() {
     return 1
   fi
   local v6ifconf
-  if [ -f /etc/dhcpcd.conf ]; then
+  if which nmcli > /dev/null 2>&1 &&
+       [ "$(nmcli networking)" = "enabled" ]; then
+    local wwan_dev; local conpath
+    if [ "$2" = "WWAN" ]; then
+      wwan_dev=$(get_wwan_port "$1")
+      conpath=$(nmcli -g general.con-path device show "$wwan_dev")
+    else
+      conpath=$(nmcli -g general.con-path device show "$1")
+    fi
+    nmcli -g ipv6.method connection show "$conpath"
+  elif [ -f /etc/dhcpcd.conf ]; then
     if grep "^interface $1" /etc/dhcpcd.conf > /dev/null 2>&1; then
       if grep "^static ip6_address" /etc/dhcpcd.conf > /dev/null 2>&1; then
         echo 'manual'
@@ -221,16 +231,6 @@ function get_v6ifconf() {
     else
       echo "automatic"
     fi
-  elif which nmcli > /dev/null 2>&1 &&
-       [ "$(nmcli networking)" = "enabled" ]; then
-    local wwan_dev; local conpath
-    if [ "$2" = "WWAN" ]; then
-      wwan_dev=$(get_wwan_port "$1")
-      conpath=$(nmcli -g general.con-path device show "$wwan_dev")
-    else
-      conpath=$(nmcli -g general.con-path device show "$1")
-    fi
-    nmcli -g ipv6.method connection show "$conpath"
   else ## netplan
     echo 'TBD'
   fi
