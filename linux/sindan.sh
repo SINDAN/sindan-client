@@ -972,6 +972,7 @@ if [ "$v4addr_type" = "private" ] || [ "$v4addr_type" = "global" ]; then
 
       count=$(( count + 1 ))
     done
+  fi
 fi
 
 if [ -n "$v6addrs" ]; then
@@ -1084,6 +1085,7 @@ if [ -n "$v6addrs" ]; then
       done
       count=$(( count + 1 ))
     done
+  fi
 
   # SPEEDTEST
   if [ "$DO_SPEEDTEST" = "yes" ]; then
