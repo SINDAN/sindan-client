@@ -960,25 +960,13 @@ if [ "$v4addr_type" = "private" ] || [ "$v4addr_type" = "global" ]; then
     done
     count=$(( count + 1 ))
   done
-
-  # SPEEDTEST
-  if [ "$DO_SPEEDTEST" = "yes" ]; then
-
-    count=0
-    for target in $(echo "$ST_SRVS" | sed 's/,/ /g'); do
-
-      # Do speedtest
-      cmdset_speedtest "$layer" 4 speedtssrv "$target" "$count"
-
-      count=$(( count + 1 ))
-    done
-  fi
 fi
 
 if [ -n "$v6addrs" ]; then
   count=0
   for target in $(echo "$V6WEB_SRVS" | sed 's/,/ /g'); do
     if [ "$MODE" = "probe" ]; then
+      # Do ping to IPv6 routers
       count_r=0
       for target_r in $(echo "$v6routers" | sed 's/,/ /g'); do
         cmdset_ping "$layer" 6 router "$target_r" "$count_r" &
@@ -1020,7 +1008,7 @@ if [ -n "$v6addrs" ]; then
   for target in $(echo "$PS_SRVS6" | sed 's/,/ /g'); do
     for port in $(echo "$PS_PORTS" | sed 's/,/ /g'); do
 
-      # Do portscan by 6
+      # Do portscan by IPv6
       cmdset_portscan "$layer" 6 pssrv "$target" "$port" "$count" &
 
     done
@@ -1086,19 +1074,36 @@ if [ -n "$v6addrs" ]; then
       count=$(( count + 1 ))
     done
   fi
+fi
 
-  # SPEEDTEST
-  if [ "$DO_SPEEDTEST" = "yes" ]; then
+# SPEEDTEST
+if [ "$DO_SPEEDTEST" = "yes" ]; then
+  count=0
+  for srv_id in $(echo "$ST_SRVS" | sed 's/,/ /g'); do
+    target=$(cat ./server-inonius.json | jq -r --arg srv "$srv_id" '.[] | select(.id == ($srv | tonumber)) | .name')
 
-    count=0
-    for target in $(echo "$ST_SRVS" | sed 's/,/ /g'); do
+    # IPv4
+    if [ "$v4addr_type" = "private" ] || [ "$v4addr_type" = "global" ]; then
+      if [ "$MODE" = "probe" ]; then
+        # Do traceroute to IPv4 speedtest server by IPv4
+        cmdset_trace "$layer" 4 speedtssrv "$target" "$count" &
+      fi
+      # Do speedtest by IPv4
+      cmdset_speedtest "$layer" 4 speedtssrv "$srv_id" "$target" "$count"
+    fi
+    sleep 2
 
-      # Do speedtest
-      cmdset_speedtest "$layer" 6 speedtssrv "$target" "$count"
-
-      count=$(( count + 1 ))
-    done
-  fi
+    # IPv6
+    if [ -n "$v6addrs" ]; then
+      if [ "$MODE" = "probe" ]; then
+        # Do traceroute to IPv6 speedtest server by IPv6
+        cmdset_trace "$layer" 6 speedtssrv "$target" "$count" &
+      fi
+      # Do speedtest by IPv6
+      cmdset_speedtest "$layer" 6 speedtssrv "$srv_id" "$target" "$count"
+    fi
+    count=$(( count + 1 ))
+  done
 fi
 
 wait

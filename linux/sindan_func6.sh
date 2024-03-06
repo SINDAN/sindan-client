@@ -153,54 +153,6 @@ function cmdset_portscan() {
   fi
 }
 
-# Do measure speed index to the target URL.
-# do_speedindex <target_url>
-function do_speedindex() {
-  if [ $# -ne 1 ]; then
-    echo "ERROR: do_speedindex <target_url>." 1>&2
-    return 1
-  fi
-
-  tracejson=trace-json/$(echo "$1" | sed 's/[.:/]/_/g').json
-  node speedindex.js "$1" "$SI_TIMEOUT" ${tracejson}
-  return $?
-}
-
-# Check the state of the speed index to the target URL.
-# cmdset_speedindex <layer> <version> <target_type> \
-#                   <target_url> <count>
-function cmdset_speedindex() {
-  if [ $# -ne 5 ]; then
-    echo "ERROR: cmdset_speedindex <layer> <version> <target_type>"	\
-         "<target_url> <count>." 1>&2
-    return 1
-  fi
-  local layer=$1
-  local ver=$2
-  local type=$3
-  local target=$4
-  local count=$5
-  local result=$FAIL
-  local string=" speedindex to extarnal server: $target by $ver (timeout: $SI_TIMEOUT)"
-  local speedindex_ans
-
-  if speedindex_ans=$(do_speedindex ${target}); then
-    result=$SUCCESS
-  else
-    stat=$?
-  fi
-  write_json "$layer" "$ver" speedindex "$result" "$target"	\
-             "$speedindex_ans" "$count"
-  if [ "$result" = "$SUCCESS" ]; then
-    string="$string\n  status: ok, speed index value: $speedindex_ans"
-  else
-    string="$string\n  status: ng ($stat)"
-  fi
-  if [ "$VERBOSE" = "yes" ]; then
-    echo -e "$string"
-  fi
-}
-
 # Do iNonius speedtest to the target URL.
 # do_speedtest <version> <server_id>
 function do_speedtest() {
@@ -244,25 +196,26 @@ function get_speedtest_upload() {
 
 # Check the state of iNonius speedtest result to the target URL.
 # cmdset_speedtest <layer> <version> <target_type> \
-#                  <server_id> <count>
+#                  <server_id> <target> <count>
 function cmdset_speedtest() {
-  if [ $# -ne 5 ]; then
+  if [ $# -ne 6 ]; then
       echo "ERROR: cmdset_speedtest <layer> <version> <target_type>"	\
-           "<server_id> <count>." 1>&2
+           "<server_id> <target> <count>." 1>&2
     return 1
   fi
   local layer=$1
   local ver=$2
   local ipv=IPv${ver}
   local type=$3
-  local target=$4
-  local count=$5
+  local srv_id=$4
+  local target=$5
+  local count=$6
   local result=$FAIL
-  local string=" speedtest to extarnal server: $target by $ver"
+  local string=" speedtest to extarnal server: $target by $ipv"
   local speedtest_ans
   local rtt; local jitter; local download; local upload
 
-  if speedtest_ans=$(do_speedtest "$ver" "$target"); then
+  if speedtest_ans=$(do_speedtest "$ver" "$srv_id"); then
     result=$SUCCESS
   else
     stat=$?
