@@ -153,7 +153,7 @@ function cmdset_portscan() {
   fi
 }
 
-# Do iNonius speedtest to the target URL.
+# Do iNonius speedtest to the target server.
 # do_speedtest <version> <server_id>
 function do_speedtest() {
   if [ $# -ne 2 ]; then
@@ -194,7 +194,7 @@ function get_speedtest_upload() {
   return $?
 }
 
-# Check the state of iNonius speedtest result to the target URL.
+# Check the state of iNonius speedtest result to the target server.
 # cmdset_speedtest <layer> <version> <target_type> \
 #                  <server_id> <target> <count>
 function cmdset_speedtest() {
@@ -222,8 +222,8 @@ function cmdset_speedtest() {
   fi
   if [ "$result" = "$SUCCESS" ]; then
     string="$string\n  status: ok"
-    write_json "$layer" "$ipv" speedtest "$result" "$target"		\
-               "$speedtest_ans" "$count"
+    write_json "$layer" "$ipv" speedtest "$result" "$target" "$speedtest_ans"	\
+               "$count"
     if rtt=$(echo "$speedtest_ans" | get_speedtest_rtt); then
       write_json "$layer" "$ipv" "v${ver}speedtest_rtt" "$INFO" "$target"	\
                  "$rtt" "$count"

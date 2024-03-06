@@ -153,190 +153,96 @@ function cmdset_portscan() {
   fi
 }
 
-# Do measure speed index to the target URL.
-# do_speedindex <target_url>
-function do_speedindex() {
-  if [ $# -ne 1 ]; then
-    echo "ERROR: do_speedindex <target_url>." 1>&2
-    return 1
-  fi
-
-  tracejson=trace-json/$(echo "$1" | sed 's/[.:/]/_/g').json
-  node speedindex.js "$1" "$SI_TIMEOUT" ${tracejson}
-  return $?
-}
-
-# Check the state of the speed index to the target URL.
-# cmdset_speedindex <layer> <version> <target_type> \
-#                   <target_url> <count>
-function cmdset_speedindex() {
-  if [ $# -ne 5 ]; then
-    echo "ERROR: cmdset_speedindex <layer> <version> <target_type>"	\
-         "<target_url> <count>." 1>&2
-    return 1
-  fi
-  local layer=$1
-  local ver=$2
-  local type=$3
-  local target=$4
-  local count=$5
-  local result=$FAIL
-  local string=" speedindex to extarnal server: $target by $ver (timeout: $SI_TIMEOUT)"
-  local speedindex_ans
-
-  if speedindex_ans=$(do_speedindex ${target}); then
-    result=$SUCCESS
-  else
-    stat=$?
-  fi
-  write_json "$layer" "$ver" speedindex "$result" "$target"	\
-             "$speedindex_ans" "$count"
-  if [ "$result" = "$SUCCESS" ]; then
-    string="$string\n  status: ok, speed index value: $speedindex_ans"
-  else
-    string="$string\n  status: ng ($stat)"
-  fi
-  if [ "$VERBOSE" = "yes" ]; then
-    echo -e "$string"
-  fi
-}
-
-# Do iNonius speedtest to the target URL.
-# do_speedtest <target_url>
+# Do iNonius speedtest to the target server.
+# do_speedtest <version> <server_id>
 function do_speedtest() {
-  if [ $# -ne 1 ]; then
-    echo "ERROR: do_speedtest <target_url>." 1>&2
+  if [ $# -ne 2 ]; then
+    echo "ERROR: do_speedtest <version> <server_id>." 1>&2
     return 1
   fi
 
-  node speedtest.js "$1"
+  ./librespeed-cli --local-json server-inonius.json --csv	\
+                   --server "$2" --ipv"$1" --concurrent 6
   return $?
 }
 
-# Get IPv4 RTT from the result of iNonius speedtest.
+# Get RTT from the result of iNonius speedtest.
 # require do_speedtest() data from STDIN.
-function get_speedtest_ipv4_rtt() {
-  sed -n 's/IPv4_RTT://p'
+function get_speedtest_rtt() {
+  awk -F, '{print $4}'
   return $?
 }
 
-# Get IPv4 jitter from the result of iNonius speedtest.
+# Get jitter from the result of iNonius speedtest.
 # require do_speedtest() data from STDIN.
-function get_speedtest_ipv4_jit() {
-  sed -n 's/IPv4_JIT://p'
+function get_speedtest_jitter() {
+  awk -F, '{print $5}'
   return $?
 }
 
-# Get IPv4 download speed from the result of iNonius speedtest.
+# Get download speed from the result of iNonius speedtest.
 # require do_speedtest() data from STDIN.
-function get_speedtest_ipv4_dl() {
-  sed -n 's/IPv4_DL://p'
+function get_speedtest_download() {
+  awk -F, '{print $6}'
   return $?
 }
 
-# Get IPv4 upload speed from the result of iNonius speedtest.
+# Get upload speed from the result of iNonius speedtest.
 # require do_speedtest() data from STDIN.
-function get_speedtest_ipv4_ul() {
-  sed -n 's/IPv4_UL://p'
+function get_speedtest_upload() {
+  awk -F, '{print $7}'
   return $?
 }
 
-# Get IPv6 RTT from the result of iNonius speedtest.
-# require do_speedtest() data from STDIN.
-function get_speedtest_ipv6_rtt() {
-  sed -n 's/IPv6_RTT://p'
-  return $?
-}
-
-# Get IPv6 jitter from the result of iNonius speedtest.
-# require do_speedtest() data from STDIN.
-function get_speedtest_ipv6_jit() {
-  sed -n 's/IPv6_JIT://p'
-  return $?
-}
-
-# Get IPv6 download speed from the result of iNonius speedtest.
-# require do_speedtest() data from STDIN.
-function get_speedtest_ipv6_dl() {
-  sed -n 's/IPv6_DL://p'
-  return $?
-}
-
-# Get IPv6 upload speed from the result of iNonius speedtest.
-# require do_speedtest() data from STDIN.
-function get_speedtest_ipv6_ul() {
-  sed -n 's/IPv6_UL://p'
-  return $?
-}
-
-# Check the state of iNonius speedtest result to the target URL.
+# Check the state of iNonius speedtest result to the target server.
 # cmdset_speedtest <layer> <version> <target_type> \
-#                  <target_url> <count>
+#                  <server_id> <target> <count>
 function cmdset_speedtest() {
-  if [ $# -ne 5 ]; then
+  if [ $# -ne 6 ]; then
       echo "ERROR: cmdset_speedtest <layer> <version> <target_type>"	\
-           "<target_url> <count>." 1>&2
+           "<server_id> <target> <count>." 1>&2
     return 1
   fi
   local layer=$1
   local ver=$2
+  local ipv=IPv${ver}
   local type=$3
-  local target=$4
-  local count=$5
+  local srv_id=$4
+  local target=$5
+  local count=$6
   local result=$FAIL
-  local string=" speedtest to extarnal server: $target by $ver"
+  local string=" speedtest to extarnal server: $target by $ipv"
   local speedtest_ans
-  local ipv4_rtt; local ipv4_jit; local ipv4_dl; local ipv4_ul
-  local ipv6_rtt; local ipv6_jit; local ipv6_dl; local ipv6_ul
+  local rtt; local jitter; local download; local upload
 
-  if speedtest_ans=$(do_speedtest "$target"); then
+  if speedtest_ans=$(do_speedtest "$ver" "$srv_id"); then
     result=$SUCCESS
   else
     stat=$?
   fi
   if [ "$result" = "$SUCCESS" ]; then
     string="$string\n  status: ok"
-    write_json "$layer" "$ver" speedtest "$result" "$target"	\
-               "$speedtest_ans" "$count"
-    if ipv4_rtt=$(echo "$speedtest_ans" | get_speedtest_ipv4_rtt); then
-      write_json "$layer" IPv4 v4speedtest_rtt "$INFO" "$target"	\
-                 "$ipv4_rtt" "$count"
-      string="$string\n  IPv4 RTT: $ipv4_rtt ms"
+    write_json "$layer" "$ipv" speedtest "$result" "$target" "$speedtest_ans"	\
+               "$count"
+    if rtt=$(echo "$speedtest_ans" | get_speedtest_rtt); then
+      write_json "$layer" "$ipv" "v${ver}speedtest_rtt" "$INFO" "$target"	\
+                 "$rtt" "$count"
+      string="$string\n  $ipv RTT: $rtt ms"
     fi
-    if ipv4_jit=$(echo "$speedtest_ans" | get_speedtest_ipv4_jit); then
-      write_json "$layer" IPv4 v4speedtest_jitter "$INFO" "$target"	\
-                 "$ipv4_jit" "$count"
-      string="$string\n  IPv4 Jitter: $ipv4_jit ms"
+    if jitter=$(echo "$speedtest_ans" | get_speedtest_jitter); then
+      write_json "$layer" "$ipv" "v${ver}speedtest_jitter" "$INFO" "$target"	\
+                 "$jitter" "$count"
+      string="$string\n  $ipv Jitter: $jitter ms"
     fi
-    if ipv4_dl=$(echo "$speedtest_ans" | get_speedtest_ipv4_dl); then
-      write_json "$layer" IPv4 v4speedtest_download "$INFO" "$target"	\
-                 "$ipv4_dl" "$count"
-      string="$string\n  IPv4 Download Speed: $ipv4_dl Mbps"
+    if download=$(echo "$speedtest_ans" | get_speedtest_download); then
+      write_json "$layer" "$ipv" "v${ver}speedtest_download" "$INFO" "$target"	\
+                 "$download" "$count"
+      string="$string\n  $ipv Download Speed: $download Mbps"
     fi
-    if ipv4_ul=$(echo "$speedtest_ans" | get_speedtest_ipv4_ul); then
-      write_json "$layer" IPv4 v4speedtest_upload "$INFO" "$target"	\
-                 "$ipv4_ul" "$count"
-      string="$string\n  IPv4 Upload Speed: $ipv4_ul Mbps"
-    fi
-    if ipv6_rtt=$(echo "$speedtest_ans" | get_speedtest_ipv6_rtt); then
-      write_json "$layer" IPv6 v6speedtest_rtt "$INFO" "$target"	\
-                 "$ipv6_rtt" "$count"
-      string="$string\n  IPv6 RTT: $ipv6_rtt ms"
-    fi
-    if ipv6_jit=$(echo "$speedtest_ans" | get_speedtest_ipv6_jit); then
-      write_json "$layer" IPv6 v6speedtest_jitter "$INFO" "$target"	\
-                 "$ipv6_jit" "$count"
-      string="$string\n  IPv6 Jitter: $ipv6_jit ms"
-    fi
-    if ipv6_dl=$(echo "$speedtest_ans" | get_speedtest_ipv6_dl); then
-      write_json "$layer" IPv6 v6speedtest_download "$INFO" "$target"	\
-                 "$ipv6_dl" "$count"
-      string="$string\n  IPv6 Download Speed: $ipv6_dl Mbps"
-    fi
-    if ipv6_ul=$(echo "$speedtest_ans" | get_speedtest_ipv6_ul); then
-      write_json "$layer" IPv6 v6speedtest_upload "$INFO" "$target"	\
-                 "$ipv6_ul" "$count"
-      string="$string\n  IPv6 Upload Speed: $ipv6_ul Mbps"
+    if upload=$(echo "$speedtest_ans" | get_speedtest_upload); then
+      write_json "$layer" "$ipv" "v${ver}speedtest_upload" "$INFO" "$target"	\
+                 "$upload" "$count"
+      string="$string\n  $ipv Upload Speed: $upload Mbps"
     fi
   else
     string="$string\n  status: ng ($stat)"

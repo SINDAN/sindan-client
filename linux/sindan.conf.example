@@ -64,7 +64,7 @@ readonly PS_PORTS="22,80,443"
 # speedtest setting (yes or no)
 readonly DO_SPEEDTEST=yes
 
-# server for speedtest
+# servers for speedtest
 readonly ST_SRVS="1"
 
 # upload urls
