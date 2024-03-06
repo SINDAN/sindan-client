@@ -1,7 +1,7 @@
 #!/bin/bash
 # sindan.sh
-# version 3
-VERSION="3.0.1"
+# version 3.1
+VERSION="3.1.1"
 
 # read configuration file
 cd $(dirname $0)
@@ -960,6 +960,18 @@ if [ "$v4addr_type" = "private" ] || [ "$v4addr_type" = "global" ]; then
     done
     count=$(( count + 1 ))
   done
+
+  # SPEEDTEST
+  if [ "$DO_SPEEDTEST" = "yes" ]; then
+
+    count=0
+    for target in $(echo "$ST_SRVS" | sed 's/,/ /g'); do
+
+      # Do speedtest
+      cmdset_speedtest "$layer" 4 speedtssrv "$target" "$count"
+
+      count=$(( count + 1 ))
+    done
 fi
 
 if [ -n "$v6addrs" ]; then
@@ -1072,25 +1084,6 @@ if [ -n "$v6addrs" ]; then
       done
       count=$(( count + 1 ))
     done
-  fi
-fi
-
-# dualstack performance measurements
-if [ "$v4addr_type" = "private" ] || [ "$v4addr_type" = "global" ] ||	\
-   [ -n "$v6addrs" ]; then
-
-  # SPEEDINDEX
-  if [ "$DO_SPEEDINDEX" = "yes" ]; then
-
-    count=0
-    for target in $(echo "$SI_SRVS" | sed 's/,/ /g'); do
-
-      # Do speedindex
-      cmdset_speedindex "$layer" Dualstack speedidsrv "$target" "$count"
-
-      count=$(( count + 1 ))
-    done
-  fi
 
   # SPEEDTEST
   if [ "$DO_SPEEDTEST" = "yes" ]; then
@@ -1099,7 +1092,7 @@ if [ "$v4addr_type" = "private" ] || [ "$v4addr_type" = "global" ] ||	\
     for target in $(echo "$ST_SRVS" | sed 's/,/ /g'); do
 
       # Do speedtest
-      cmdset_speedtest "$layer" Dualstack speedtssrv "$target" "$count"
+      cmdset_speedtest "$layer" 6 speedtssrv "$target" "$count"
 
       count=$(( count + 1 ))
     done

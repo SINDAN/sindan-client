@@ -1,0 +1,11 @@
+[
+  {
+    "id": 1,
+    "name": "iNonius Server",
+    "server": "https://inonius.net/",
+    "dlURL": "backend/garbage.php",
+    "ulURL": "backend/empty.php",
+    "pingURL": "backend/empty.php",
+    "getIpURL": "backend/getIP.php"
+  }
+]

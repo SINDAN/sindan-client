@@ -1,5 +1,5 @@
 # SINDAN Configuration file
-# version 3
+# version 3.1
 
 # PID file
 readonly PIDFILE=/tmp/sindan.pid
@@ -64,15 +64,8 @@ readonly PS_PORTS="22,80,443"
 # speedtest setting (yes or no)
 readonly DO_SPEEDTEST=yes
 
-# speedindex setting (yes or no)
-readonly DO_SPEEDINDEX=yes
-
-# urls for speedtest
-readonly ST_SRVS="https://inonius.net/speedtest/?ispInfo=false"
-
-# urls for speedindex
-readonly SI_SRVS="http://www.wide.ad.jp/,https://yahoo.co.jp/,https://google.co.jp/"
-readonly SI_TIMEOUT="0"
+# server for speedtest
+readonly ST_SRVS="1"
 
 # upload urls
 readonly URL_CAMPAIGN="http://fluentd.sindan-net.com:8888/sindan.log_campaign"
