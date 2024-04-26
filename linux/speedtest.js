@@ -18,7 +18,7 @@ var url = process.argv[2];
 (async () => {
   const browser = await puppeteer.launch({
                           executablePath: '/usr/bin/chromium-browser',
-                          userDataDir: '/dev/null',
+                          userDataDir: '/tmp',
                           args: ['--no-sandbox']});
   const page = await browser.newPage();
   await page.setDefaultNavigationTimeout(100000);
