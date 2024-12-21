@@ -4,7 +4,7 @@
 ## Hardware Layer functions
 
 # Get OS information.
-function get_os() {
+function get_os_info() {
   if which lsb_release > /dev/null 2>&1; then
     lsb_release -ds
   else
@@ -26,10 +26,6 @@ function get_hw_info() {
 
 # Get CPU frequency infotmation.
 function get_cpu_freq() {
-  if [ $# -ne 1 ]; then
-    echo "ERROR: get_cpu_freq <os>." 1>&2
-    return 1
-  fi
   if which vcgencmd > /dev/null 2>&1; then
     vcgencmd measure_clock arm						|
     awk -F= '{print $2}'
@@ -41,10 +37,6 @@ function get_cpu_freq() {
 
 # Get CPU voltage information.
 function get_cpu_volt() {
-  if [ $# -ne 1 ]; then
-    echo "ERROR: get_cpu_volt <os>." 1>&2
-    return 1
-  fi
   if which vcgencmd > /dev/null 2>&1; then
     vcgencmd measure_volts core						|
     sed -n 's/^volt=\([0-9\.]*\).*$/\1/p'
@@ -56,10 +48,6 @@ function get_cpu_volt() {
 
 # Get CPU temperature information.
 function get_cpu_temp() {
-  if [ $# -ne 1 ]; then
-    echo "ERROR: get_cpu_temp <os>." 1>&2
-    return 1
-  fi
   if which vcgencmd > /dev/null 2>&1; then
     vcgencmd measure_temp						|
     sed -n 's/^temp=\([0-9\.]*\).*$/\1/p'

@@ -7,9 +7,6 @@ readonly PIDFILE=/tmp/sindan.pid
 # lock file
 readonly LOCKFILE_SENDLOG=/tmp/sendlog.isrunning
 
-# airport command
-readonly CMD_AIRPORT=/System/Library/PrivateFrameworks/Apple80211.framework/Versions/Current/Resources/airport
-
 # result parameters
 readonly FAIL=0
 readonly SUCCESS=1
@@ -70,7 +67,7 @@ readonly DO_SPEEDTEST=yes
 readonly DO_SPEEDINDEX=yes
 
 # urls for speedtest
-readonly ST_SRVS="https://inonius.net/speedtest/?ispInfo=false"
+readonly ST_SRVS="https://v2.inonius.net/speedtest/?ispInfo=false"
 
 # urls for speedindex
 readonly SI_SRVS="http://www.wide.ad.jp/,https://yahoo.co.jp/,https://google.co.jp/"

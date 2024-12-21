@@ -90,54 +90,302 @@ function get_mediatype() {
   return $?
 }
 
+# Get Wireless LAN informarion on the interface.
+# get_wlan_info
+function get_wlan_info() {
+  if which system_profiler > /dev/null 2>&1; then
+    system_profiler SPAirPortDataType
+    return $?
+  else
+    echo "ERROR: system_profiler command not found." 1>&2
+    return 1
+  fi
+}
+
 # Get SSID using on the interface.
+# require get_wlan_info() data from STDIN.
 # get_wlan_ssid <ifname>
 function get_wlan_ssid() {
-  $CMD_AIRPORT -I							|
-  sed -n 's/^.*[^B]SSID: \(.*\).*$/\1/p'
+  if [ $# -ne 1 ]; then
+    echo "ERROR: get_wlan_ssid <ifname>." 1>&2
+    return 1
+  fi
+  awk -v ifname="$1" 'BEGIN {						#
+    find=0								#
+    value=""								#
+  } {									#
+    while (getline line) {						#
+      if (match(line,/^ +Interfaces:$/)) {				#
+        find=1								#
+      } else if (find == 1) {						#
+        if (line ~ "(^ +)"ifname":$") {					#
+          find=2							#
+        }								#
+      } else if (find == 2) {						#
+        if (match(line,/^ +Current Network Information:$/)) {		#
+          getline line							#
+          gsub(/^ +|:$/,"",line)					#
+          value=line							#
+          exit								#
+        }								#
+      }									#
+    }									#
+  } END {								#
+    printf "%s", value							#
+  }'
   return $?
 }
 
 # Get BSSID using on the interface.
 # get_wlan_bssid <ifname>
 function get_wlan_bssid() {
-  $CMD_AIRPORT -I							|
-  sed -n 's/^.*BSSID: \([0-9a-fA-F:]*\).*$/\1/p'			|
-  tr "[:upper:]" "[:lower:]" 
+  if [ $# -ne 1 ]; then
+    echo "ERROR: get_wlan_bssid <ifname>." 1>&2
+    return 1
+  fi
+  ioreg -l -n AirPortDriver						|
+  sed -n 's/.*"IO80211BSSID" = <\([^"]*\)>.*/\1/p'			|
+  fold -w2								|
+  paste -sd: -
   return $?
 }
 
-# Get OUI of Access Point using on the interface.
-# get_wlan_apoui <ifname>
-function get_wlan_apoui() {
-  $CMD_AIRPORT -I							|
-  sed -n 's/^.*BSSID: \([0-9a-fA-F:]*\).*$/\1/p'			|
-  cut -d: -f1-3								|
-  tr "[:upper:]" "[:lower:]" 
+# Get WLAN MCS Index using on the interface.
+# require get_wlan_info() data from STDIN.
+# get_wlan_mcsi <ifname>
+function get_wlan_mcsi() {
+  if [ $# -ne 1 ]; then 
+    echo "ERROR: get_wlan_mcsi <ifname>." 1>&2
+    return 1
+  fi
+  awk -v ifname="$1" 'BEGIN {						#
+    find=0								#
+    value=""								#
+  } {									#
+    while (getline line) {						#
+      if (match(line,/^ +Interfaces:$/)) {				#
+        find=1								#
+      } else if (find == 1) {						#
+        if (line ~ "(^ +)"ifname":$") {					#
+          find=2							#
+          gsub(/^ +|:$/,"",line)					#
+        }								#
+      } else if (find == 2) {						#
+        if (match(line,/^ +Current Network Information:$/)) {		#
+          find=3							#
+        }								#
+      } else if (find == 3) {						#
+        if (match(line,/^ +MCS Index:.*$/)) {				#
+          split(line,v," ")						#
+          value=v[3]							#
+          exit								#
+        }								#
+      }									#
+    }									#
+  } END {								#
+    printf "%d", value							#
+  }'
   return $?
 }
 
-# Get channel of WLAN using on the interface.
+# Get WLAN mode using on the interface.
+# require get_wlan_info() data from STDIN.
+# get_wlan_mode <ifname>
+function get_wlan_mode() {
+  if [ $# -ne 1 ]; then
+    echo "ERROR: get_wlan_mode <ifname>." 1>&2
+    return 1
+  fi
+  awk -v ifname="$1" 'BEGIN {						#
+    find=0								#
+    value=""								#
+  } {									#
+    while (getline line) {						#
+      if (match(line,/^ +Interfaces:$/)) {				#
+        find=1								#
+      } else if (find == 1) {						#
+        if (line ~ "(^ +)"ifname":$") {					#
+          find=2							#
+          gsub(/^ +|:$/,"",line)					#
+        }								#
+      } else if (find == 2) {						#
+        if (match(line,/^ +Current Network Information:$/)) {		#
+          find=3							#
+        }								#
+      } else if (find == 3) {						#
+        if (match(line,/^ +PHY Mode:.*$/)) {				#
+          split(line,v," ")						#
+          value=v[3]							#
+          exit								#
+        }								#
+      }									#
+    }									#
+  } END {								#
+    printf "%s", value							#
+  }'
+  return $?
+}
+
+# Get Channel using on the interface.
+# require get_wlan_info() data from STDIN.
 # get_wlan_channel <ifname>
 function get_wlan_channel() {
-  $CMD_AIRPORT -I							|
-  sed -n 's/^.*channel: \([0-9]*\).*$/\1/p'
+  if [ $# -ne 1 ]; then
+    echo "ERROR: get_wlan_channel <ifname>." 1>&2
+    return 1
+  fi
+  if which ioreg > /dev/null 2>&1; then
+    ioreg -l -n AirPortDriver						|
+    sed -n 's/.*"IO80211Channel" = \([0-9]*\)/\1/p'
+    return $?
+  fi
+  awk -v ifname="$1" 'BEGIN {						#
+    find=0								#
+    value=""								#
+  } {									#
+    while (getline line) {						#
+      if (match(line,/^ +Interfaces:$/)) {				#
+        find=1								#
+      } else if (find == 1) {						#
+        if (line ~ "(^ +)"ifname":$") {					#
+          find=2							#
+          gsub(/^ +|:$/,"",line)					#
+        }								#
+      } else if (find == 2) {						#
+        if (match(line,/^ +Current Network Information:$/)) {		#
+          find=3							#
+        }								#
+      } else if (find == 3) {						#
+        if (match(line,/^ +Channel:.*$/)) {				#
+          split(line,v," ")						#
+          value=v[2]							#
+          exit								#
+        }								#
+      }									#
+    }									#
+  } END {								#
+    printf "%d", value							#
+  }'
   return $?
 }
 
-# Get RSSI of WLAN using on the interface.
+# Get Channel BandWidth using on the interface.
+# require get_wlan_info() data from STDIN.
+# get_wlan_chband <ifname>
+function get_wlan_chband() {
+  if [ $# -ne 1 ]; then
+    echo "ERROR: get_wlan_chband <ifname>." 1>&2
+    return 1
+  fi
+  if which ioreg > /dev/null 2>&1; then
+    ioreg -l -n AirPortDriver						|
+    sed -n 's/.*"IO80211ChannelBandwidth" = \([0-9]*\)/\1/p'
+    return $?
+  fi
+  awk -v ifname="$1" 'BEGIN {						#
+    find=0								#
+    value=""								#
+  } {									#
+    while (getline line) {						#
+      if (match(line,/^ +Interfaces:$/)) {				#
+        find=1								#
+      } else if (find == 1) {						#
+        if (line ~ "(^ +)"ifname":$") {					#
+          find=2							#
+          gsub(/^ +|:$/,"",line)					#
+        }								#
+      } else if (find == 2) {						#
+        if (match(line,/^ +Current Network Information:$/)) {		#
+          find=3							#
+        }								#
+      } else if (find == 3) {						#
+        if (match(line,/^ +Channel:.*$/)) {				#
+          split(line,v," ")						#
+          split(v[4],num,"MHz")						#
+          value=num[1]							#
+          exit								#
+        }								#
+      }									#
+    }									#
+  } END {								#
+    printf "%d", value							#
+  }'
+  return $?
+}
+
+# Get RSSI using on the interface.
+# require get_wlan_info() data from STDIN.
 # get_wlan_rssi <ifname>
 function get_wlan_rssi() {
-  $CMD_AIRPORT -I							|
-  sed -n 's/^.*agrCtlRSSI: \([-0-9]*\).*$/\1/p'
+  if [ $# -ne 1 ]; then
+    echo "ERROR: get_wlan_rssi <ifname>." 1>&2
+    return 1
+  fi
+  awk -v ifname="$1" 'BEGIN {						#
+    find=0								#
+    value=""								#
+  } {									#
+    while (getline line) {						#
+      if (match(line,/^ +Interfaces:$/)) {				#
+        find=1								#
+      } else if (find == 1) {						#
+        if (line ~ "(^ +)"ifname":$") {					#
+          find=2							#
+          gsub(/^ +|:$/,"",line)					#
+        }								#
+      } else if (find == 2) {						#
+        if (match(line,/^ +Current Network Information:$/)) {		#
+          find=3							#
+        }								#
+      } else if (find == 3) {						#
+        if (match(line,/^ +Signal \/ Noise:.*$/)) {			#
+          split(line,v," ")						#
+          value=v[4]							#
+          exit								#
+        }								#
+      }									#
+    }									#
+  } END {								#
+    printf "%d", value							#
+  }'
   return $?
 }
 
-# Get noise of WLAN using on the interface.
+# Get Noise using on the interface.
+# require get_wlan_info() data from STDIN.
 # get_wlan_noise <ifname>
 function get_wlan_noise() {
-  $CMD_AIRPORT -I							|
-  sed -n 's/^.*agrCtlNoise: \([-0-9]*\).*$/\1/p'
+  if [ $# -ne 1 ]; then
+    echo "ERROR: get_wlan_noise <ifname>." 1>&2
+    return 1
+  fi
+  awk -v ifname="$1" 'BEGIN {						#
+    find=0								#
+    value=""								#
+  } {									#
+    while (getline line) {						#
+      if (match(line,/^ +Interfaces:$/)) {				#
+        find=1								#
+      } else if (find == 1) {						#
+        if (line ~ "(^ +)"ifname":$") {					#
+          find=2							#
+          gsub(/^ +|:$/,"",line)					#
+        }								#
+      } else if (find == 2) {						#
+        if (match(line,/^ +Current Network Information:$/)) {		#
+          find=3							#
+        }								#
+      } else if (find == 3) {						#
+        if (match(line,/^ +Signal \/ Noise:.*$/)) {			#
+          split(line,v," ")						#
+          value=v[7]							#
+          exit								#
+        }								#
+      }									#
+    }									#
+  } END {								#
+    printf "%d", value							#
+  }'
   return $?
 }
 
@@ -148,19 +396,101 @@ function get_wlan_quality() {
   #TBD
 }
 
-# Get current bit rate of WLAN using on the interface.
+# Get Rate using on the interface.
+# require get_wlan_info() data from STDIN.
 # get_wlan_rate <ifname>
 function get_wlan_rate() {
-  $CMD_AIRPORT -I							|
-  sed -n 's/^.*lastTxRate: \([0-9]*\).*$/\1/p'
+  if [ $# -ne 1 ]; then
+    echo "ERROR: get_wlan_rate <ifname>." 1>&2
+    return 1
+  fi
+  awk -v ifname="$1" 'BEGIN {						#
+    find=0								#
+    value=""								#
+  } {									#
+    while (getline line) {						#
+      if (match(line,/^ +Interfaces:$/)) {				#
+        find=1								#
+      } else if (find == 1) {						#
+        if (line ~ "(^ +)"ifname":$") {					#
+          find=2							#
+          gsub(/^ +|:$/,"",line)					#
+        }								#
+      } else if (find == 2) {						#
+        if (match(line,/^ +Current Network Information:$/)) {		#
+          find=3							#
+        }								#
+      } else if (find == 3) {						#
+        if (match(line,/^ +Transmit Rate:.*$/)) {			#
+          split(line,v," ")						#
+          value=v[3]							#
+          exit								#
+        }								#
+      }									#
+    }									#
+  } END {								#
+    printf "%d", value							#
+  }'
   return $?
 }
 
 # Get the list of access points in range of the interface.
+# require get_wlan_info() json data from STDIN.
 # get_wlan_environment <ifname>
 function get_wlan_environment() {
-  $CMD_AIRPORT -s							|
-  awk '{printf "%s,%s,%s,%s\n", $1, $2, $3, $4}'
+  if [ $# -ne 1 ]; then
+    echo "ERROR: get_wlan_environment <ifname>." 1>&2
+    return 1
+  fi
+  echo "SSID,PHY Mode,Channel,Band,Width,Network Type,Security"
+  awk -v ifname="$1" 'BEGIN {						#
+    find=0								#
+    OFS=","								#
+  } {									#
+    while (getline line) {						#
+      if (match(line,/^ +Interfaces:$/)) {				#
+        find=1								#
+      } else if (find == 1) {						#
+        if (line ~ "(^ +)"ifname":$") {					#
+          find=2							#
+        }								#
+      } else if (find == 2) {						#
+        if (match(line,/^ +Other Local Wi-Fi Networks:$/)) {		#
+          find=3							#
+        }								#
+      } else if ((find == 3) && (line ~ /^ +.*:$/)) {			#
+        gsub(/^ +|:$/,"",line)						#
+        ssid=line							#
+        find=4								#
+      } else if (find == 4) {						#
+        if (match(line,/^ +PHY Mode:.*$/)) {				#
+          split(line,m," ")						#
+          mode=m[3]							#
+        } else if (match(line,/^ +Channel:.*$/)) {			#
+          split(line,c," ")						#
+          channel=c[2]							#
+          band=c[3]							#
+          width=c[4]							#
+          gsub(/[(),]/, "", band)					#
+          gsub(/[(),]/, "", width)					#
+        } else if (match(line,/^ +Network Type:.*$/)) {			#
+          split(line,t," ")						#
+          type=t[3]							#
+        } else if (match(line,/^ +Security:.*$/)) {			#
+          split(line,s,": ")						#
+          security=s[2]							#
+          print ssid,mode,channel,band,width,type,security		#
+          find=3							#
+        } else if (match(line,/^ +MAC Address:.*$/)) {			#
+          # this area is other interface section			#
+          exit								#
+        } else {							#
+          # this filed is not required					#
+          next								#
+        }								#
+      }									#
+    }									#
+  }'
   return $?
 }
 

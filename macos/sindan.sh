@@ -1,7 +1,7 @@
 #!/bin/bash
 # sindan.sh
-# version 3
-VERSION="3.0.1"
+# version 4
+VERSION="4.0.1"
 
 # read configuration file
 cd $(dirname $0)
@@ -26,7 +26,7 @@ source sindan_func6.sh
 ## Preparation
 
 # Check parameters
-for param in PIDFILE MAX_RETRY IFTYPE PING_SRVS PING6_SRVS FQDNS GPDNS4 GPDNS6 V4WEB_SRVS V6WEB_SRVS V4SSH_SRVS V6SSH_SRVS CMD_AIRPORT; do
+for param in PIDFILE MAX_RETRY IFTYPE PING_SRVS PING6_SRVS FQDNS GPDNS4 GPDNS6 V4WEB_SRVS V6WEB_SRVS V4SSH_SRVS V6SSH_SRVS; do
   if [ -z $(eval echo '$'$param) ]; then
     echo "ERROR: $param is null in configration file." 1>&2
     exit 1
@@ -70,7 +70,7 @@ echo "Phase 0: Hardware Layer checking..."
 layer="hardware"
 
 # Get OS version
-os=$(get_os)
+os_info=$(get_os_info)
 
 # Get hardware information
 hw_info=$(get_hw_info)
@@ -78,23 +78,23 @@ if [ -n "$hw_info" ]; then
   write_json "$layer" common hw_info "$INFO" self "$hw_info" 0
 fi
 
-# Get CPU frequency
-cpu_freq=$(get_cpu_freq "$os")
-if [ -n "$cpu_freq" ]; then
-  write_json "$layer" common cpu_freq "$INFO" self "$cpu_freq" 0
-fi
+## Get CPU frequency
+#cpu_freq=$(get_cpu_freq)
+#if [ -n "$cpu_freq" ]; then
+#  write_json "$layer" common cpu_freq "$INFO" self "$cpu_freq" 0
+#fi
 
-# Get CPU voltage
-cpu_volt=$(get_cpu_volt "$os")
-if [ -n "$cpu_volt" ]; then
-  write_json "$layer" common cpu_volt "$INFO" self "$cpu_volt" 0
-fi
+## Get CPU voltage
+#cpu_volt=$(get_cpu_volt)
+#if [ -n "$cpu_volt" ]; then
+#  write_json "$layer" common cpu_volt "$INFO" self "$cpu_volt" 0
+#fi
 
-# Get CPU temperature
-cpu_temp=$(get_cpu_temp "$os")
-if [ -n "$cpu_temp" ]; then
-  write_json "$layer" common cpu_temp "$INFO" self "$cpu_temp" 0
-fi
+## Get CPU temperature
+#cpu_temp=$(get_cpu_temp)
+#if [ -n "$cpu_temp" ]; then
+#  write_json "$layer" common cpu_temp "$INFO" self "$cpu_temp" 0
+#fi
 
 # Get clock state
 clock_state="synchronized=$(get_clock_state)"
@@ -111,9 +111,9 @@ fi
 # Report phase 0 results
 if [ "$VERBOSE" = "yes" ]; then
   echo " hardware information:"
-  echo "  os: $os"
+  echo "  os_info: $os_info"
   echo "  hw_info: $hw_info"
-  echo "  cpu(freq: $cpu_freq Hz, volt: $cpu_volt V, temp: $cpu_temp 'C"
+#  echo "  cpu (freq: $cpu_freq Hz, volt: $cpu_volt V, temp: $cpu_temp 'C)"
   echo "  clock_state: $clock_state"
   echo "  clock_src: $clock_src"
 fi
@@ -177,51 +177,69 @@ fi
 
 #
 if [ "$IFTYPE" = "Wi-Fi" ]; then
-  # Get Wi-Fi SSID
-  ssid=$(get_wlan_ssid)
-  if [ -n "$ssid" ]; then
-    write_json "$layer" "$IFTYPE" ssid "$INFO" self "$ssid" 0
+  # Get WLAN Information
+  wlan_info=$(get_wlan_info)
+
+  # Get WLAN SSID
+  wlan_ssid=$(echo "$wlan_info" | get_wlan_ssid "$ifname")
+  if [ -n "$wlan_ssid" ]; then
+    write_json "$layer" "$IFTYPE" ssid "$INFO" self "$wlan_ssid" 0
   fi
-  # Get Wi-Fi BSSID
-  bssid=$(get_wlan_bssid)
-  if [ -n "$bssid" ]; then
-    write_json "$layer" "$IFTYPE" bssid "$INFO" self "$bssid" 0
+  # Get WLAN BSSID
+  wlan_bssid=$(echo "$wlan_info" | get_wlan_bssid "$ifname")
+  if [ -n "$wlan_bssid" ]; then
+    write_json "$layer" "$IFTYPE" bssid "$INFO" self "$wlan_bssid" 0
   fi
-  # Get Wi-Fi AP's OUI
-  wlanapoui=$(get_wlan_apoui)
-  if [ -n "$wlanapoui" ]; then
-    write_json "$layer" "$IFTYPE" wlanapoui "$INFO" self "$wlanapoui" 0
-  fi
-  # Get Wi-Fi channel
-  channel=$(get_wlan_channel)
-  if [ -n "$channel" ]; then
-    write_json "$layer" "$IFTYPE" channel "$INFO" self "$channel" 0
-  fi
-  # Get Wi-Fi RSSI
-  rssi=$(get_wlan_rssi)
-  if [ -n "$rssi" ]; then
-    write_json "$layer" "$IFTYPE" rssi "$INFO" self "$rssi" 0
-  fi
-  # Get Wi-Fi noise
-  noise=$(get_wlan_noise)
-  if [ -n "$noise" ]; then
-    write_json "$layer" "$IFTYPE" noise "$INFO" self "$noise" 0
-  fi
-#  # Get Wi-Fi quality
-#  quarity=$(get_wlan_quality)
-#  if [ -n "$quarity" ]; then
-#    write_json "$layer" "$IFTYPE" quarity "$INFO" self "$quarity" 0
+#  # Get WLAN AP's OUI
+#  wlan_apoui=$(get_wlan_apoui)
+#  if [ -n "$wlanapoui" ]; then
+#    write_json "$layer" "$IFTYPE" wlanapoui "$INFO" self "$wlan_apoui" 0
 #  fi
-  # Get Wi-Fi rate
-  rate=$(get_wlan_rate)
-  if [ -n "$rate" ]; then
-    write_json "$layer" "$IFTYPE" rate "$INFO" self "$rate" 0
+  # Get WLAN mode
+  wlan_mode=$(echo "$wlan_info" | get_wlan_mode "$ifname")
+  if [ -n "$wlan_mode" ]; then
+    write_json "$layer" "$IFTYPE" mode "$INFO" self "$wlan_mode" 0
   fi
-  # Get Wi-Fi environment
-  environment=$(get_wlan_environment)
-  if [ -n "$environment" ]; then
+  # Get WLAN MCS Index
+  wlan_mcsi=$(echo "$wlan_info" | get_wlan_mcsi "$ifname")
+  if [ -n "$wlan_mcsi" ]; then
+    write_json "$layer" "$IFTYPE" mcsi "$INFO" self "$wlan_mcsi" 0
+  fi
+  # Get WLAN channel
+  wlan_channel=$(echo "$wlan_info" | get_wlan_channel "$ifname")
+  if [ -n "$wlan_channel" ]; then
+    write_json "$layer" "$IFTYPE" channel "$INFO" self "$wlan_channel" 0
+  fi
+  # Get WLAN channel bandwidth
+  wlan_chband=$(echo "$wlan_info" | get_wlan_chband "$ifname")
+  if [ -n "$wlan_chband" ]; then
+    write_json "$layer" "$IFTYPE" chband "$INFO" self "$wlan_chband" 0
+  fi
+  # Get WLAN RSSI
+  wlan_rssi=$(echo "$wlan_info" | get_wlan_rssi "$ifname")
+  if [ -n "$wlan_rssi" ]; then
+    write_json "$layer" "$IFTYPE" rssi "$INFO" self "$wlan_rssi" 0
+  fi
+  # Get WLAN noise
+  wlan_noise=$(echo "$wlan_info" | get_wlan_noise "$ifname")
+  if [ -n "$wlan_noise" ]; then
+    write_json "$layer" "$IFTYPE" noise "$INFO" self "$wlan_noise" 0
+  fi
+#  # Get WLAN quality
+#  wlan_quarity=$(get_wlan_quality)
+#  if [ -n "$quarity" ]; then
+#    write_json "$layer" "$IFTYPE" quarity "$INFO" self "$wlan_quarity" 0
+#  fi
+  # Get WLAN rate
+  wlan_rate=$(echo "$wlan_info" | get_wlan_rate "$ifname")
+  if [ -n "$wlan_rate" ]; then
+    write_json "$layer" "$IFTYPE" rate "$INFO" self "$wlan_rate" 0
+  fi
+  # Get WLAN environment
+  wlan_environment=$(echo "$wlan_info" | get_wlan_environment "$ifname")
+  if [ -n "$wlan_environment" ]; then
     write_json "$layer" "$IFTYPE" environment "$INFO" self		\
-               "$environment" 0
+               "$wlan_environment" 0
   fi
 elif [ "$IFTYPE" = "WWAN" ]; then
   .
@@ -241,12 +259,14 @@ if [ "$VERBOSE" = "yes" ]; then
   echo "  type: $IFTYPE, ifname: $ifname"
   echo "  status: $ifstatus, mtu: $ifmtu byte"
   if [ "$IFTYPE" = "Wi-Fi" ]; then
-    echo "  ssid: $ssid, ch: $channel, rate: $rate Mbps"
-    echo "  bssid: $bssid"
-    echo "  rssi: $rssi dBm, noise: $noise dBm"
-#    echo "  quality: $quality"
+    echo "  ssid: $wlan_ssid, ch: $wlan_channel ($wlan_chband MHz), mode: $wlan_mode"
+    echo "  mcs index: $wlan_mcsi, rate: $wlan_rate Mbps"
+#    echo "  ssid: $wlan_ssid, ch: $wlan_channel, rate: $wlan_rate Mbps"
+    echo "  bssid: $wlan_bssid"
+    echo "  rssi: $wlan_rssi dBm, noise: $wlan_noise dBm"
+#    echo "  quality: $wlan_quality"
     echo "  environment:"
-    echo "$environment"
+    echo "$wlan_environment"
   elif [ "$IFTYPE" = "WWAN" ]; then
     .
     # TBD
@@ -970,11 +990,11 @@ echo "Phase 7: Create campaign log..."
 
 # Write campaign log file
 if [ "$IFTYPE" = "Wi-Fi" ]; then
-  write_json_campaign "$uuid" "$mac_addr" "$os" "$IFTYPE" "$ssid"
+  write_json_campaign "$uuid" "$mac_addr" "$os_info" "$IFTYPE" "$ssid"
 elif [ "$IFTYPE" = "WWAN" ]; then
-  write_json_campaign "$uuid" "$wwan_imei" "$os" "$IFTYPE" "$wwan_apn"
+  write_json_campaign "$uuid" "$wwan_imei" "$os_info" "$IFTYPE" "$wwan_apn"
 else
-  write_json_campaign "$uuid" "$mac_addr" "$os" "$IFTYPE" none
+  write_json_campaign "$uuid" "$mac_addr" "$os_info" "$IFTYPE" none
 fi
 
 # remove PID file
