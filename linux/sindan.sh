@@ -1132,7 +1132,7 @@ echo "Phase 7: Create campaign log..."
 
 # Write campaign log file
 if [ "$IFTYPE" = "Wi-Fi" ]; then
-  write_json_campaign "$uuid" "$mac_addr" "$os_info" "$IFTYPE" "$ssid"
+  write_json_campaign "$uuid" "$mac_addr" "$os_info" "$IFTYPE" "$wlan_ssid"
 elif [ "$IFTYPE" = "WWAN" ]; then
   write_json_campaign "$uuid" "$wwan_imei" "$os_info" "$IFTYPE" "$wwan_apn"
 else
