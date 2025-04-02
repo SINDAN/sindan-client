@@ -34,7 +34,7 @@ for param in PIDFILE MAX_RETRY IFTYPE PING_SRVS PING6_SRVS FQDNS GPDNS4 GPDNS6 V
 done
 
 # Check commands
-for cmd in uuidgen iwgetid iwconfig; do
+for cmd in uuidgen iw; do
   if ! which $cmd > /dev/null 2>&1; then
     echo "ERROR: $cmd is not found." 1>&2
     exit 1
@@ -178,42 +178,50 @@ fi
 
 #
 if [ "$IFTYPE" = "Wi-Fi" ]; then
-  # Get WLAN SSID
-  wlan_ssid=$(get_wlan_ssid "$ifname")
+  # Get WLAN information
+  wlan_info=$(get_wlan_info "$ifname")
+
+  # Get WLAN ssid
+  wlan_ssid=$(get_wlan_ssid "$ifname" <<< "$wlan_info")
   if [ -n "$wlan_ssid" ]; then
     write_json "$layer" "$IFTYPE" ssid "$INFO" self "$wlan_ssid" 0
   fi
-  # Get WLAN BSSID
-  wlan_bssid=$(get_wlan_bssid "$ifname")
+  # Get WLAN bssid
+  wlan_bssid=$(get_wlan_bssid "$ifname" <<< "$wlan_info")
   if [ -n "$wlan_bssid" ]; then
     write_json "$layer" "$IFTYPE" bssid "$INFO" self "$wlan_bssid" 0
   fi
-  # Get WLAN AP's OUI
-  wlan_apoui=$(get_wlan_apoui "$ifname")
-  if [ -n "$wlan_apoui" ]; then
-    write_json "$layer" "$IFTYPE" wlanapoui "$INFO" self "$wlan_apoui" 0
+  # Get WLAN tx rate
+  wlan_rate=$(get_wlan_rate "$ifname" <<< "$wlan_info")
+  if [ -n "$wlan_rate" ]; then
+    write_json "$layer" "$IFTYPE" rate "$INFO" self "$wlan_rate" 0
   fi
-#  # Get WLAN mode
-#  wlan_mode=$(echo "$wlan_info" | get_wlan_mode "$ifname")
-#  if [ -n "$wlan_mode" ]; then
-#    write_json "$layer" "$IFTYPE" mode "$INFO" self "$wlan_mode" 0
-#  fi
-#  # Get WLAN MCS Index
-#  wlan_mcsi=$(echo "$wlan_info" | get_wlan_mcsi "$ifname")
-#  if [ -n "$wlan_mcsi" ]; then
-#    write_json "$layer" "$IFTYPE" mcsi "$INFO" self "$wlan_mcsi" 0
-#  fi
+  # Get WLAN tx mcs index
+  wlan_mcs=$(get_wlan_mcs "$ifname" <<< "$wlan_info")
+  if [ -n "$wlan_mcs" ]; then
+    write_json "$layer" "$IFTYPE" mcs "$INFO" self "$wlan_mcs" 0
+  fi
+  # Get WLAN tx nss
+  wlan_nss=$(get_wlan_nss "$ifname" <<< "$wlan_info")
+  if [ -n "$wlan_nss" ]; then
+    write_json "$layer" "$IFTYPE" nss "$INFO" self "$wlan_nss" 0
+  fi
+  # Get WLAN mode
+  wlan_mode=$(get_wlan_mode <<< "$wlan_info")
+  if [ -n "$wlan_mode" ]; then
+    write_json "$layer" "$IFTYPE" mode "$INFO" self "$wlan_mode" 0
+  fi
   # Get WLAN channel
-  wlan_channel=$(get_wlan_channel "$ifname")
+  wlan_channel=$(get_wlan_channel "$ifname" <<< "$wlan_info")
   if [ -n "$wlan_channel" ]; then
     write_json "$layer" "$IFTYPE" channel "$INFO" self "$wlan_channel" 0
   fi
-#  # Get WLAN channel bandwidth
-#  wlan_chband=$(echo "$wlan_info" | get_wlan_chband "$ifname")
-#  if [ -n "$wlan_chband" ]; then
-#    write_json "$layer" "$IFTYPE" chband "$INFO" self "$wlan_chband" 0
-#  fi
-  # Get WLAN RSSI
+  # Get WLAN channel bandwidth
+  wlan_chband=$(get_wlan_chband "$ifname" <<< "$wlan_info")
+  if [ -n "$wlan_chband" ]; then
+    write_json "$layer" "$IFTYPE" chband "$INFO" self "$wlan_chband" 0
+  fi
+  # Get WLAN rssi
   wlan_rssi=$(get_wlan_rssi "$ifname")
   if [ -n "$wlan_rssi" ]; then
     write_json "$layer" "$IFTYPE" rssi "$INFO" self "$wlan_rssi" 0
@@ -227,11 +235,6 @@ if [ "$IFTYPE" = "Wi-Fi" ]; then
   wlan_quality=$(get_wlan_quality "$ifname")
   if [ -n "$wlan_quality" ]; then
     write_json "$layer" "$IFTYPE" quality "$INFO" self "$wlan_quality" 0
-  fi
-  # Get WLAN rate
-  wlan_rate=$(get_wlan_rate "$ifname")
-  if [ -n "$wlan_rate" ]; then
-    write_json "$layer" "$IFTYPE" rate "$INFO" self "$wlan_rate" 0
   fi
   # Get WLAN environment
   wlan_environment=$(get_wlan_environment "$ifname")
@@ -348,12 +351,10 @@ if [ "$VERBOSE" = "yes" ]; then
   echo "  type: $IFTYPE, ifname: $ifname"
   echo "  status: $ifstatus, mtu: $ifmtu byte"
   if [ "$IFTYPE" = "Wi-Fi" ]; then
-#    echo "  ssid: $wlan_ssid, ch: $wlan_channel ($wlan_chband MHz), mode: $wlan_mode"
-#    echo "  mcs index: $wlan_mcsi, rate: $wlan_rate Mbps"
-    echo "  ssid: $wlan_ssid, ch: $wlan_channel, rate: $wlan_rate Mbps"
+    echo "  ssid: $wlan_ssid, band: $wlan_band, ch: $wlan_channel ($wlan_chband MHz)"
+    echo "  mode: Wi-Fi $wlan_mode", mcs index: $wlan_mcsi, nss: $wlan_nss, rate: $wlan_rate Mbps"
     echo "  bssid: $wlan_bssid"
-    echo "  rssi: $wlan_rssi dBm, noise: $wlan_noise dBm"
-    echo "  quality: $wlan_quality"
+    echo "  rssi: $wlan_rssi dBm, noise: $wlan_noise dBm, quality: $wlan_quality"
     echo "  environment:"
     echo "$wlan_environment"
   elif [ "$IFTYPE" = "WWAN" ]; then

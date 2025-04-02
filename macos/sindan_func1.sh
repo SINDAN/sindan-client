@@ -90,7 +90,7 @@ function get_mediatype() {
   return $?
 }
 
-# Get Wireless LAN informarion on the interface.
+# Get the WLAN interface informarion.
 # get_wlan_info
 function get_wlan_info() {
   if which system_profiler > /dev/null 2>&1; then
@@ -102,7 +102,7 @@ function get_wlan_info() {
   fi
 }
 
-# Get SSID using on the interface.
+# Get WLAN SSID of the interface.
 # require get_wlan_info() data from STDIN.
 # get_wlan_ssid <ifname>
 function get_wlan_ssid() {
@@ -136,7 +136,7 @@ function get_wlan_ssid() {
   return $?
 }
 
-# Get BSSID using on the interface.
+# Get WLAN BSSID of the interface.
 # get_wlan_bssid <ifname>
 function get_wlan_bssid() {
   if [ $# -ne 1 ]; then
@@ -150,12 +150,50 @@ function get_wlan_bssid() {
   return $?
 }
 
-# Get WLAN MCS Index using on the interface.
+# Get WLAN Bit Rate (Tx) of the interface.
 # require get_wlan_info() data from STDIN.
-# get_wlan_mcsi <ifname>
-function get_wlan_mcsi() {
+# get_wlan_rate <ifname>
+function get_wlan_rate() {
+  if [ $# -ne 1 ]; then
+    echo "ERROR: get_wlan_rate <ifname>." 1>&2
+    return 1
+  fi
+  awk -v ifname="$1" 'BEGIN {						#
+    find=0								#
+    value=""								#
+  } {									#
+    while (getline line) {						#
+      if (match(line,/^ +Interfaces:$/)) {				#
+        find=1								#
+      } else if (find == 1) {						#
+        if (line ~ "(^ +)"ifname":$") {					#
+          find=2							#
+          gsub(/^ +|:$/,"",line)					#
+        }								#
+      } else if (find == 2) {						#
+        if (match(line,/^ +Current Network Information:$/)) {		#
+          find=3							#
+        }								#
+      } else if (find == 3) {						#
+        if (match(line,/^ +Transmit Rate:.*$/)) {			#
+          split(line,rate_parts," ")					#
+          value=rate_parts[3]						#
+          exit								#
+        }								#
+      }									#
+    }									#
+  } END {								#
+    printf "%d", value							#
+  }'
+  return $?
+}
+
+# Get WLAN MCS Index (Tx) of the interface.
+# require get_wlan_info() data from STDIN.
+# get_wlan_mcs <ifname>
+function get_wlan_mcs() {
   if [ $# -ne 1 ]; then 
-    echo "ERROR: get_wlan_mcsi <ifname>." 1>&2
+    echo "ERROR: get_wlan_mcs <ifname>." 1>&2
     return 1
   fi
   awk -v ifname="$1" 'BEGIN {						#
@@ -176,8 +214,8 @@ function get_wlan_mcsi() {
         }								#
       } else if (find == 3) {						#
         if (match(line,/^ +MCS Index:.*$/)) {				#
-          split(line,v," ")						#
-          value=v[3]							#
+          split(line,mcs_parts," ")					#
+          value=mcs_parts[3]						#
           exit								#
         }								#
       }									#
@@ -188,7 +226,15 @@ function get_wlan_mcsi() {
   return $?
 }
 
-# Get WLAN mode using on the interface.
+# Get Number of WLAN Spatial Stream (Tx) of the interface.
+# require get_wlan_info() data from STDIN.
+# get_wlan_nss
+function get_wlan_nss() {
+  ::
+  #TBD
+}
+
+# Get WLAN PHY Mode of the interface.
 # require get_wlan_info() data from STDIN.
 # get_wlan_mode <ifname>
 function get_wlan_mode() {
@@ -214,8 +260,8 @@ function get_wlan_mode() {
         }								#
       } else if (find == 3) {						#
         if (match(line,/^ +PHY Mode:.*$/)) {				#
-          split(line,v," ")						#
-          value=v[3]							#
+          split(line,mode_parts," ")					#
+          value=mode_parts[3]						#
           exit								#
         }								#
       }									#
@@ -226,7 +272,15 @@ function get_wlan_mode() {
   return $?
 }
 
-# Get Channel using on the interface.
+# Get WLAN Band of the interface.
+# require get_wlan_info() data from STDIN.
+# get_wlan_band
+function get_wlan_band() {
+  ::
+  #TBD
+}
+
+# Get WLAN Channel of the interface.
 # require get_wlan_info() data from STDIN.
 # get_wlan_channel <ifname>
 function get_wlan_channel() {
@@ -257,8 +311,8 @@ function get_wlan_channel() {
         }								#
       } else if (find == 3) {						#
         if (match(line,/^ +Channel:.*$/)) {				#
-          split(line,v," ")						#
-          value=v[2]							#
+          split(line,channel_parts," ")					#
+          value=channel_parts[2]					#
           exit								#
         }								#
       }									#
@@ -269,7 +323,7 @@ function get_wlan_channel() {
   return $?
 }
 
-# Get Channel BandWidth using on the interface.
+# Get WLAN Channel BandWidth of the interface.
 # require get_wlan_info() data from STDIN.
 # get_wlan_chband <ifname>
 function get_wlan_chband() {
@@ -300,8 +354,8 @@ function get_wlan_chband() {
         }								#
       } else if (find == 3) {						#
         if (match(line,/^ +Channel:.*$/)) {				#
-          split(line,v," ")						#
-          split(v[4],num,"MHz")						#
+          split(line,channel_parts," ")					#
+          split(channel_parts[4],num,"MHz")				#
           value=num[1]							#
           exit								#
         }								#
@@ -313,7 +367,7 @@ function get_wlan_chband() {
   return $?
 }
 
-# Get RSSI using on the interface.
+# Get WLAN RSSI of the interface.
 # require get_wlan_info() data from STDIN.
 # get_wlan_rssi <ifname>
 function get_wlan_rssi() {
@@ -339,8 +393,8 @@ function get_wlan_rssi() {
         }								#
       } else if (find == 3) {						#
         if (match(line,/^ +Signal \/ Noise:.*$/)) {			#
-          split(line,v," ")						#
-          value=v[4]							#
+          split(line,signal_parts," ")					#
+          value=signal_parts[4]						#
           exit								#
         }								#
       }									#
@@ -351,7 +405,7 @@ function get_wlan_rssi() {
   return $?
 }
 
-# Get Noise using on the interface.
+# Get WLAN Noise of the interface.
 # require get_wlan_info() data from STDIN.
 # get_wlan_noise <ifname>
 function get_wlan_noise() {
@@ -377,8 +431,8 @@ function get_wlan_noise() {
         }								#
       } else if (find == 3) {						#
         if (match(line,/^ +Signal \/ Noise:.*$/)) {			#
-          split(line,v," ")						#
-          value=v[7]							#
+          split(line,noise_parts," ")					#
+          value=noise_parts[7]						#
           exit								#
         }								#
       }									#
@@ -389,63 +443,34 @@ function get_wlan_noise() {
   return $?
 }
 
-# Get quality of WLAN using on the interface.
+# Get WLAN Link Quality of the interface.
 # get_wlan_quality <ifname>
 function get_wlan_quality() {
   :
   #TBD
 }
 
-# Get Rate using on the interface.
-# require get_wlan_info() data from STDIN.
-# get_wlan_rate <ifname>
-function get_wlan_rate() {
-  if [ $# -ne 1 ]; then
-    echo "ERROR: get_wlan_rate <ifname>." 1>&2
-    return 1
-  fi
-  awk -v ifname="$1" 'BEGIN {						#
-    find=0								#
-    value=""								#
-  } {									#
-    while (getline line) {						#
-      if (match(line,/^ +Interfaces:$/)) {				#
-        find=1								#
-      } else if (find == 1) {						#
-        if (line ~ "(^ +)"ifname":$") {					#
-          find=2							#
-          gsub(/^ +|:$/,"",line)					#
-        }								#
-      } else if (find == 2) {						#
-        if (match(line,/^ +Current Network Information:$/)) {		#
-          find=3							#
-        }								#
-      } else if (find == 3) {						#
-        if (match(line,/^ +Transmit Rate:.*$/)) {			#
-          split(line,v," ")						#
-          value=v[3]							#
-          exit								#
-        }								#
-      }									#
-    }									#
-  } END {								#
-    printf "%d", value							#
-  }'
-  return $?
-}
-
 # Get the list of access points in range of the interface.
-# require get_wlan_info() json data from STDIN.
+# require get_wlan_info() data from STDIN.
 # get_wlan_environment <ifname>
 function get_wlan_environment() {
   if [ $# -ne 1 ]; then
     echo "ERROR: get_wlan_environment <ifname>." 1>&2
     return 1
   fi
-  echo "SSID,PHY Mode,Channel,Band,Width,Network Type,Security"
+  echo "BSSID,SSID,Mode,Band,Channel,Bandwidth,Security,RSSI"
+#  echo "SSID,PHY Mode,Channel,Band,Width,Network Type,Security"
   awk -v ifname="$1" 'BEGIN {						#
     find=0								#
     OFS=","								#
+    bssid="unknown"							#
+    ssid=""								#
+    mode=""								#
+    band=""								#
+    channel=""								#
+    width=""								#
+    security="Open"							#
+    rssi="unknown"							#
   } {									#
     while (getline line) {						#
       if (match(line,/^ +Interfaces:$/)) {				#
@@ -464,22 +489,22 @@ function get_wlan_environment() {
         find=4								#
       } else if (find == 4) {						#
         if (match(line,/^ +PHY Mode:.*$/)) {				#
-          split(line,m," ")						#
-          mode=m[3]							#
+          split(line,mode_parts," ")					#
+          mode=mode_parts[3]						#
         } else if (match(line,/^ +Channel:.*$/)) {			#
-          split(line,c," ")						#
-          channel=c[2]							#
-          band=c[3]							#
-          width=c[4]							#
+          split(line,channel_parts," ")					#
+          channel=channel_parts[2]					#
+          band=channel_parts[3]						#
+          width=channel_parts[4]					#
           gsub(/[(),]/, "", band)					#
           gsub(/[(),]/, "", width)					#
         } else if (match(line,/^ +Network Type:.*$/)) {			#
-          split(line,t," ")						#
-          type=t[3]							#
+          split(line,type_parts," ")					#
+          type=type_parts[3]						#
         } else if (match(line,/^ +Security:.*$/)) {			#
-          split(line,s,": ")						#
-          security=s[2]							#
-          print ssid,mode,channel,band,width,type,security		#
+          split(line,security_parts,": ")				#
+          security=security_parts[2]					#
+          print bssid,ssid,mode,band,channel,width,security,rssi	#
           find=3							#
         } else if (match(line,/^ +MAC Address:.*$/)) {			#
           # this area is other interface section			#
@@ -508,111 +533,128 @@ function get_wwan_info() {
   #TBD
 }
 
-# Get various information of WWAN.
-# get_wwan_value <type> <cat> <name> <pos>
+# Get various WWAN information of the interface.
 # require get_wwan_info() data from STDIN.
+# get_wwan_value <type> <cat> <name> <pos>
 function get_wwan_value() {
   :
   #TBD
 }
 
-# Get modem ID of WWAN.
+# Get WWAN modem ID of the interface.
+# get_wwan_modemid
 function get_wwan_modemid() {
   :
   #TBD
 }
 
-# Get APN of WWAN.
+# Get WWAN APN of the interface.
+# get_wwan_apn
 function get_wwan_apn() {
   :
   #TBD
 }
 
-# Get IP type of WWAN.
+# Get WWAN IP type of the interface.
+# get_wwan_iptype
 function get_wwan_iptype() {
   :
   #TBD
 }
 
-# Get MTU of WWAN.
+# Get WWAN MTU of the interface.
+# get_wwan_ifmtu
 function get_wwan_ifmtu() {
   :
   #TBD
 }
 
-# Get interface type of WWAN.
+# Get WWAN interface type.
+# get_wwan_iftype
 function get_wwan_iftype() {
   :
   #TBD
 }
 
-# Get quality of WWAN.
+# Get WWAN quality of the interface.
+# get_wwan_quality
 function get_wwan_quality() {
   :
   #TBD
 }
 
-# Get IMEI of WWAN.
+# Get WWAN IMEI of the interface.
+# get_wwan_imei
 function get_wwan_imei() {
   :
   #TBD
 }
 
-# Get operator name of WWAN.
+# Get WWAN operator name of the interface.
+# get_wwan_operator
 function get_wwan_operator() {
   :
   #TBD
 }
 
-# Get operator ID of WWAN.
+# Get WWAN operator ID of the interface.
+# get_wwan_mmcmnc
 function get_wwan_mmcmnc() {
   :
   #TBD
 }
 
-# Get RSSI of WWAN.
+# Get WWAN RSSI of the interface.
+# get_wwan_rssi
 function get_wwan_rssi() {
   :
   #TBD
 }
 
-# Get RSRQ of WWAN.
+# Get WWAN RSRQ of the interface.
+# get_wwan_rsrq
 function get_wwan_rsrq() {
   :
   #TBD
 }
 
-# Get RSRP of WWAN.
+# Get WWAN RSRP of the interface.
+# get_wwan_rsrp
 function get_wwan_rsrp() {
   :
   #TBD
 }
 
-# Get SNR of WWAN.
+# Get WWAN SNR of the interface.
+# get_wwan_snir
 function get_wwan_snir() {
   :
   #TBD
 }
 
-# Get band of WWAN.
+# Get WWAN band of the interface.
+# get_wwan_band
 function get_wwan_band() {
   :
   #TBD
 }
 
-# Get cell ID of WWAN.
+# Get WWAN cell ID of the interface.
+# get_wwan_cid
 function get_wwan_cid() {
   :
   #TBD
 }
 
-# Get location area code of WWAN.
+# Get WWAN location area code of the interface.
+# get_wwan_lac
 function get_wwan_lac() {
   :
   #TBD
 }
 
-# Get.tracking area code of WWAN.
+# Get WWAN tracking area code of the interface.
+# get_wwan_tac
 function get_wwan_tac() {
   :
   #TBD

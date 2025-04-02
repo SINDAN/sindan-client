@@ -5,7 +5,7 @@
 ### via apt
 
 - **uuid-runtime** (for uuidgen)
-- **wireless-tools** (for iwgetid, iwconfig)
+- **iw** (for iw)
 - **ndisc6** (for rdisc6)
 - **dnsutils** (for dig)
 - **curl** (for curl)
