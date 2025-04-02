@@ -276,8 +276,39 @@ function get_wlan_mode() {
 # require get_wlan_info() data from STDIN.
 # get_wlan_band
 function get_wlan_band() {
-  ::
-  #TBD
+  if [ $# -ne 1 ]; then
+    echo "ERROR: get_wlan_band <ifname>." 1>&2
+    return 1
+  fi
+  awk -v ifname="$1" 'BEGIN {						#
+    find=0								#
+    value=""								#
+  } {									#
+    while (getline line) {						#
+      if (match(line,/^ +Interfaces:$/)) {				#
+        find=1								#
+      } else if (find == 1) {						#
+        if (line ~ "(^ +)"ifname":$") {					#
+          find=2							#
+          gsub(/^ +|:$/,"",line)					#
+        }								#
+      } else if (find == 2) {						#
+        if (match(line,/^ +Current Network Information:$/)) {		#
+          find=3							#
+        }								#
+      } else if (find == 3) {						#
+        if (match(line,/^ +Channel:.*$/)) {				#
+          split(line,channel_parts," ")					#
+          split(channel_parts[3],num,"GHz")				#
+          value=num[1]							#
+          exit								#
+        }								#
+      }									#
+    }									#
+  } END {								#
+    printf "%d", value							#
+  }'
+  return $?
 }
 
 # Get WLAN Channel of the interface.

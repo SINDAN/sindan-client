@@ -211,6 +211,11 @@ if [ "$IFTYPE" = "Wi-Fi" ]; then
   if [ -n "$wlan_mode" ]; then
     write_json "$layer" "$IFTYPE" mode "$INFO" self "$wlan_mode" 0
   fi
+  # Get WLAN band
+  wlan_band=$(get_wlan_band "$ifname" <<< "$wlan_info")
+  if [ -n "$wlan_band" ]; then
+    write_json "$layer" "$IFTYPE" band "$INFO" self "$wlan_band" 0
+  fi
   # Get WLAN channel
   wlan_channel=$(get_wlan_channel "$ifname" <<< "$wlan_info")
   if [ -n "$wlan_channel" ]; then
