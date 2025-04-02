@@ -256,11 +256,11 @@ function get_wlan_band() {
   local freq=$(grep -oE "(freq:) [0-9]*"				|
                awk '{print $2}')
   if [[ $freq -ge 2412 && $freq -le 2484 ]]; then
-    echo "2.4G"
+    echo "2.4"
   elif [[ $freq -ge 5180 && $freq -le 5825 ]]; then
-    echo "5G"
+    echo "5"
   elif [[ $freq -ge 5955 && $freq -le 7115 ]]; then
-    echo "6G"
+    echo "6"
   fi
   return $?
 }
