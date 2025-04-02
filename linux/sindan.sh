@@ -352,7 +352,7 @@ if [ "$VERBOSE" = "yes" ]; then
   echo "  status: $ifstatus, mtu: $ifmtu byte"
   if [ "$IFTYPE" = "Wi-Fi" ]; then
     echo "  ssid: $wlan_ssid, band: $wlan_band, ch: $wlan_channel ($wlan_chband MHz)"
-    echo "  mode: Wi-Fi $wlan_mode", mcs index: $wlan_mcsi, nss: $wlan_nss, rate: $wlan_rate Mbps"
+    echo "  mode: Wi-Fi $wlan_mode, mcs index: $wlan_mcsi, nss: $wlan_nss, rate: $wlan_rate Mbps"
     echo "  bssid: $wlan_bssid"
     echo "  rssi: $wlan_rssi dBm, noise: $wlan_noise dBm, quality: $wlan_quality"
     echo "  environment:"

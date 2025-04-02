@@ -232,10 +232,10 @@ if [ "$IFTYPE" = "Wi-Fi" ]; then
     write_json "$layer" "$IFTYPE" noise "$INFO" self "$wlan_noise" 0
   fi
   # Get WLAN quality
-  wlan_quarity="unsupported"
-#  wlan_quarity=$(get_wlan_quality "$ifname" <<< "$wlan_info")
+  wlan_quality="unsupported"
+#  wlan_quality=$(get_wlan_quality "$ifname" <<< "$wlan_info")
 #  if [ -n "$quarity" ]; then
-#    write_json "$layer" "$IFTYPE" quarity "$INFO" self "$wlan_quarity" 0
+#    write_json "$layer" "$IFTYPE" quality "$INFO" self "$wlan_quality" 0
 #  fi
   # Get WLAN environment
   wlan_environment=$(get_wlan_environment "$ifname" <<< "$wlan_info")
@@ -262,7 +262,7 @@ if [ "$VERBOSE" = "yes" ]; then
   echo "  status: $ifstatus, mtu: $ifmtu byte"
   if [ "$IFTYPE" = "Wi-Fi" ]; then
     echo "  ssid: $wlan_ssid, band: $wlan_band, ch: $wlan_channel ($wlan_chband MHz)"
-    echo "  mode: Wi-Fi $wlan_mode", mcs index: $wlan_mcsi, nss: $wlan_nss, rate: $wlan_rate Mbps"
+    echo "  mode: Wi-Fi $wlan_mode, mcs index: $wlan_mcsi, nss: $wlan_nss, rate: $wlan_rate Mbps"
     echo "  bssid: $wlan_bssid"
     echo "  rssi: $wlan_rssi dBm, noise: $wlan_noise dBm, quality: $wlan_quality"
     echo "  environment:"
