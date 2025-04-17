@@ -261,7 +261,14 @@ function get_wlan_mode() {
       } else if (find == 3) {						#
         if (match(line,/^ +PHY Mode:.*$/)) {				#
           split(line,mode_parts," ")					#
-          value=mode_parts[3]						#
+          if (mode_parts[3] ~ "be") { value="7" }			#
+          else if (mode_parts[3] ~ "ax") { value="6" }			#
+          else if (mode_parts[3] ~ "ac") { value="5" }			#
+          else if (mode_parts[3] ~ "n") { value="4" }			#
+          else if (mode_parts[3] ~ "g") { value="3" }			#
+          else if (mode_parts[3] ~ "11a") { value="2" }			#
+          else if (mode_parts[3] ~ "11b") { value="1" }			#
+          else { value="unknown" }					#
           exit								#
         }								#
       }									#
@@ -299,8 +306,8 @@ function get_wlan_band() {
       } else if (find == 3) {						#
         if (match(line,/^ +Channel:.*$/)) {				#
           split(line,channel_parts," ")					#
-          split(channel_parts[3],num,"GHz")				#
-          value=num[1]							#
+          value=channel_parts[3]					#
+          gsub(/[^0-9.]/,"",value)					#
           exit								#
         }								#
       }									#
@@ -386,8 +393,8 @@ function get_wlan_chband() {
       } else if (find == 3) {						#
         if (match(line,/^ +Channel:.*$/)) {				#
           split(line,channel_parts," ")					#
-          split(channel_parts[4],num,"MHz")				#
-          value=num[1]							#
+          value=channel_parts[4]					#
+          gsub(/[^0-9]/,"",value)					#
           exit								#
         }								#
       }									#
@@ -490,7 +497,6 @@ function get_wlan_environment() {
     return 1
   fi
   echo "BSSID,SSID,Mode,Band,Channel,Bandwidth,Security,RSSI"
-#  echo "SSID,PHY Mode,Channel,Band,Width,Network Type,Security"
   awk -v ifname="$1" 'BEGIN {						#
     find=0								#
     OFS=","								#
@@ -521,17 +527,21 @@ function get_wlan_environment() {
       } else if (find == 4) {						#
         if (match(line,/^ +PHY Mode:.*$/)) {				#
           split(line,mode_parts," ")					#
-          mode=mode_parts[3]						#
+          if (mode_parts[3] ~ "be") { mode="7" }			#
+          else if (mode_parts[3] ~ "ax") { mode="6" }			#
+          else if (mode_parts[3] ~ "ac") { mode="5" }			#
+          else if (mode_parts[3] ~ "n") { mode="4" }			#
+          else if (mode_parts[3] ~ "g") { mode="3" }			#
+          else if (mode_parts[3] ~ "11a") { mode="2" }			#
+          else if (mode_parts[3] ~ "11b") { mode="1" }			#
+          else { mode="unknown" }					#
         } else if (match(line,/^ +Channel:.*$/)) {			#
           split(line,channel_parts," ")					#
           channel=channel_parts[2]					#
           band=channel_parts[3]						#
+          gsub(/[^0-9.]/,"",band)					#
           width=channel_parts[4]					#
-          gsub(/[(),]/, "", band)					#
-          gsub(/[(),]/, "", width)					#
-        } else if (match(line,/^ +Network Type:.*$/)) {			#
-          split(line,type_parts," ")					#
-          type=type_parts[3]						#
+          gsub(/[^0-9]/,"",width)					#
         } else if (match(line,/^ +Security:.*$/)) {			#
           split(line,security_parts,": ")				#
           security=security_parts[2]					#
@@ -540,9 +550,6 @@ function get_wlan_environment() {
         } else if (match(line,/^ +MAC Address:.*$/)) {			#
           # this area is other interface section			#
           exit								#
-        } else {							#
-          # this filed is not required					#
-          next								#
         }								#
       }									#
     }									#
