@@ -1,7 +1,7 @@
 #!/bin/bash
 # sindan.sh
-# version 4
-VERSION="4.0.1"
+# version 5
+VERSION="5.0.0"
 
 # read configuration file
 cd $(dirname $0)
@@ -958,19 +958,6 @@ fi
 # dualstack performance measurements
 if [ "$v4addr_type" = "private" ] || [ "$v4addr_type" = "global" ] ||	\
    [ -n "$v6addrs" ]; then
-
-  # SPEEDINDEX
-  if [ "$DO_SPEEDINDEX" = "yes" ]; then
-
-    count=0
-    for target in $(echo "$SI_SRVS" | sed 's/,/ /g'); do
-
-      # Do speedindex
-      cmdset_speedindex "$layer" Dualstack speedidsrv "$target" "$count"
-
-      count=$(( count + 1 ))
-    done
-  fi
 
   # SPEEDTEST
   if [ "$DO_SPEEDTEST" = "yes" ]; then
