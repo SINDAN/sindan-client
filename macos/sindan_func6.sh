@@ -192,9 +192,9 @@ function get_speedtest_data() {
 
 # Get session data from the result of iNonius speedtest.
 # require do_speedtest() data from STDIN.
-function get_speedtest_session_data() {
+function get_speedtest_sess() {
   if [ $# -ne 2 ]; then
-    echo "ERROR: get_speedtest_session_data <version> <type>." 1>&2
+    echo "ERROR: get_speedtest_sess <version> <type>." 1>&2
     return 1
   fi
   case $1 in
