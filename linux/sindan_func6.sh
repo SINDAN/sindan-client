@@ -210,8 +210,8 @@ function get_speedtest_sess() {
     "m" ) field="mss" ;;
     * ) echo "ERROR: <type> must be t, i, p, o or m." 1>&2; return 9 ;;
   esac
-  jq -r --arg key "$key" --arg type "$type" --arg field "$field"		\
-    'if .[$key] == true then .[$type].[$field] else empty end'
+  jq -r --arg key "$key" --arg type "$type" --arg field "$field"	\
+    'if .[$key] == true then .[$type][$field] else empty end'
   return $?
 }
 
