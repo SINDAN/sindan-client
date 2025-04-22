@@ -251,7 +251,13 @@ function cmdset_speedtest() {
         value=$(get_speedtest_data "$ver" "$key" <<< "$speedtest_ans") && {
           write_json "$layer" "$ipv" "${prefix}_${suffix}" "$INFO"	\
                      "$target" "$value" "$count"
-          string="$string\n  $ipv ${suffix^}: $value $unit"
+          case "$key" in
+            p) name="RTT" ;;
+            j) name="Jitter" ;;
+            d) name="Download" ;;
+            u) name="Upload" ;;
+          esac
+          string="$string\n  $ipv $name: $value $unit"
         }
       done
 
@@ -260,12 +266,12 @@ function cmdset_speedtest() {
         value=$(get_speedtest_sess "$ver" "$key" <<< "$speedtest_ans") && {
           write_json "$layer" "$ipv" "${prefix}_${suffix}" "$INFO"	\
                      "$target" "$value" "$count"
-          case "$suffix" in
-            time)  name="Timestamp" ;;
-            ip)    name="IP address" ;;
-            port)  name="Port number" ;;
-            org)   name="ISP" ;;
-            mss)   name="MSS" ;;
+          case "$key" in
+            t) name="Timestamp" ;;
+            i) name="IP address" ;;
+            p) name="Port number" ;;
+            o) name="ISP" ;;
+            m) name="MSS" ;;
           esac
           string="$string\n  $ipv $name: $value"
         }
