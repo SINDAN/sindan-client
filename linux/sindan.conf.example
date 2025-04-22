@@ -38,25 +38,25 @@ readonly DEVNAME=wlan0
 readonly PROXY_URL=""
 
 # target servers
-readonly PING_SRVS="8.8.8.8,203.178.139.60,1.1.1.1"
+readonly PING4_SRVS="8.8.8.8,203.178.139.60,1.1.1.1"
 readonly PING6_SRVS="2001:4860:4860::8888,2001:200:0:180c::6,2606:4700:4700::1111"
 
 # servers for name resolution
 readonly FQDNS="dual.sindan-net.com,ipv4.sindan-net.com,ipv6.sindan-net.com"
-readonly GPDNS4="8.8.8.8,1.1.1.1"
-readonly GPDNS6="2001:4860:4860::8888,2606:4700:4700::1111"
+readonly PDNS4_SRVS="8.8.8.8,1.1.1.1"
+readonly PDNS6_SRVS="2001:4860:4860::8888,2606:4700:4700::1111"
 
 # servers for web comminication
-readonly V4WEB_SRVS="www.wide.ad.jp,www.yahoo.co.jp"
-readonly V6WEB_SRVS="www.wide.ad.jp,www.google.co.jp"
+readonly WEB4_SRVS="www.wide.ad.jp,www.yahoo.co.jp"
+readonly WEB6_SRVS="www.wide.ad.jp,www.google.co.jp"
 
 # servers for ssh servers (format: <FQDN>_<keytype>)
-readonly V4SSH_SRVS="fluentd.sindan-net.com_ed25519"
-readonly V6SSH_SRVS="fluentd.sindan-net.com_ed25519"
+readonly SSH4_SRVS="fluentd.sindan-net.com_ed25519"
+readonly SSH6_SRVS="fluentd.sindan-net.com_ed25519"
 
 # servers for portscan
-readonly PS_SRVS4="target.sindan-net.com"
-readonly PS_SRVS6="target.sindan-net.com"
+readonly PS4_SRVS="target.sindan-net.com"
+readonly PS6_SRVS="target.sindan-net.com"
 
 # ports for portscan
 readonly PS_PORTS="22,80,443"

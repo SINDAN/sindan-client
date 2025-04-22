@@ -225,15 +225,13 @@ function cmdset_speedtest() {
     return 1
   fi
   local layer=$1
-  local ver=$2
+  local pver=$2
   local type=$3
   local target=$4
   local count=$5
   local result=$FAIL
   local string=" speedtest to extarnal server: $target by $ver"
-  local speedtest_ans
-  local ipv4_rtt; local ipv4_jit; local ipv4_dl; local ipv4_ul
-  local ipv6_rtt; local ipv6_jit; local ipv6_dl; local ipv6_ul
+  local speedtest_ans stat
 
   if speedtest_ans=$(do_speedtest "$target"); then
     result=$SUCCESS
@@ -242,100 +240,37 @@ function cmdset_speedtest() {
   fi
   if [ "$result" = "$SUCCESS" ]; then
     string="$string\n  status: ok"
-    write_json "$layer" "$ver" speedtest "$result" "$target"		\
+    write_json "$layer" "$pver" speedtest "$result" "$target"		\
                "$speedtest_ans" "$count"
-    # IPv4
-    if ipv4_rtt=$(get_speedtest_data 4 p <<< "$speedtest_ans"); then
-      write_json "$layer" IPv4 v4speedtest_rtt "$INFO" "$target"	\
-                 "$ipv4_rtt" "$count"
-      string="$string\n  IPv4 RTT: $ipv4_rtt ms"
-    fi
-    if ipv4_jit=$(get_speedtest_data 4 j <<< "$speedtest_ans"); then
-      write_json "$layer" IPv4 v4speedtest_jitter "$INFO" "$target"	\
-                 "$ipv4_jit" "$count"
-      string="$string\n  IPv4 Jitter: $ipv4_jit ms"
-    fi
-    if ipv4_dl=$(get_speedtest_data 4 d <<< "$speedtest_ans"); then
-      write_json "$layer" IPv4 v4speedtest_download "$INFO" "$target"	\
-                 "$ipv4_dl" "$count"
-      string="$string\n  IPv4 Download Speed: $ipv4_dl Mbps"
-    fi
-    if ipv4_ul=$(get_speedtest_data 4 u <<< "$speedtest_ans"); then
-      write_json "$layer" IPv4 v4speedtest_upload "$INFO" "$target"	\
-                 "$ipv4_ul" "$count"
-      string="$string\n  IPv4 Upload Speed: $ipv4_ul Mbps"
-    fi
-    if ipv4_ts=$(get_speedtest_sess 4 t <<< "$speedtest_ans"); then
-      write_json "$layer" IPv4 v4speedtest_time "$INFO" "$target"	\
-                 "$ipv4_ts" "$count"
-      string="$string\n  IPv4 Session Timestamp: $ipv4_ts"
-    fi
-    if ipv4_ip=$(get_speedtest_sess 4 i <<< "$speedtest_ans"); then
-      write_json "$layer" IPv4 v4speedtest_ip "$INFO" "$target"		\
-                 "$ipv4_ip" "$count"
-      string="$string\n  IPv4 IP address: $ipv4_ip"
-    fi
-    if ipv4_pt=$(get_speedtest_sess 4 p <<< "$speedtest_ans"); then
-      write_json "$layer" IPv4 v4speedtest_port "$INFO" "$target"	\
-                 "$ipv4_pt" "$count"
-      string="$string\n  IPv4 Port number: $ipv4_pt"
-    fi
-    if ipv4_org=$(get_speedtest_sess 4 o <<< "$speedtest_ans"); then
-      write_json "$layer" IPv4 v4speedtest_org "$INFO" "$target"	\
-                 "$ipv4_org" "$count"
-      string="$string\n  IPv4 ISP: $ipv4_org"
-    fi
-    if ipv4_mss=$(get_speedtest_sess 4 m <<< "$speedtest_ans"); then
-      write_json "$layer" IPv4 v4speedtest_mss "$INFO" "$target"	\
-                 "$ipv4_mss" "$count"
-      string="$string\n  IPv4 MSS: $ipv4_mss"
-    fi
-    # IPv6
-    if ipv6_rtt=$(get_speedtest_data 6 p <<< "$speedtest_ans"); then
-      write_json "$layer" IPv6 v6speedtest_rtt "$INFO" "$target"	\
-                 "$ipv6_rtt" "$count"
-      string="$string\n  IPv6 RTT: $ipv6_rtt ms"
-    fi
-    if ipv6_jit=$(get_speedtest_data 6 j <<< "$speedtest_ans"); then
-      write_json "$layer" IPv6 v6speedtest_jitter "$INFO" "$target"	\
-                 "$ipv6_jit" "$count"
-      string="$string\n  IPv6 Jitter: $ipv6_jit ms"
-    fi
-    if ipv6_dl=$(get_speedtest_data 6 d <<< "$speedtest_ans"); then
-      write_json "$layer" IPv6 v6speedtest_download "$INFO" "$target"	\
-                 "$ipv6_dl" "$count"
-      string="$string\n  IPv6 Download Speed: $ipv6_dl Mbps"
-    fi
-    if ipv6_ul=$(get_speedtest_data 6 u <<< "$speedtest_ans"); then
-      write_json "$layer" IPv6 v6speedtest_upload "$INFO" "$target"	\
-                 "$ipv6_ul" "$count"
-      string="$string\n  IPv6 Upload Speed: $ipv6_ul Mbps"
-    fi
-    if ipv6_ts=$(get_speedtest_sess 6 t <<< "$speedtest_ans"); then
-      write_json "$layer" IPv6 v6speedtest_time "$INFO" "$target"	\
-                 "$ipv6_ts" "$count"
-      string="$string\n  IPv6 Session Timestamp: $ipv6_ts"
-    fi
-    if ipv6_ip=$(get_speedtest_sess 6 i <<< "$speedtest_ans"); then
-      write_json "$layer" IPv6 v6speedtest_ip "$INFO" "$target"		\
-                 "$ipv6_ip" "$count"
-      string="$string\n  IPv6 IP address: $ipv6_ip"
-    fi
-    if ipv6_pt=$(get_speedtest_sess 6 p <<< "$speedtest_ans"); then
-      write_json "$layer" IPv6 v6speedtest_port "$INFO" "$target"	\
-                 "$ipv6_pt" "$count"
-      string="$string\n  IPv6 Port number: $ipv6_pt"
-    fi
-    if ipv6_org=$(get_speedtest_sess 6 o <<< "$speedtest_ans"); then
-      write_json "$layer" IPv6 v6speedtest_org "$INFO" "$target"	\
-                 "$ipv6_org" "$count"
-      string="$string\n  IPv6 ISP: $ipv6_org"
-    fi
-    if ipv6_mss=$(get_speedtest_sess 6 m <<< "$speedtest_ans"); then
-      write_json "$layer" IPv6 v6speedtest_mss "$INFO" "$target"	\
-                 "$ipv6_mss" "$count"
-      string="$string\n  IPv6 MSS: $ipv6_mss"
-    fi
+    for ver in 4 6; do
+      local prefix="v${ver}speedtest"
+      local ipv="IPv${ver}"
+
+      for code in "p rtt ms" "j jitter ms" "d download Mbps" "u upload Mbps"; do
+        IFS=" " read -r key suffix unit <<< "$code"
+        value=$(get_speedtest_data "$ver" "$key" <<< "$speedtest_ans") && {
+          write_json "$layer" "$ipv" "${prefix}_${suffix}" "$INFO"	\
+                     "$target" "$value" "$count"
+          string="$string\n  $ipv ${suffix^}: $value $unit"
+        }
+      done
+
+      for code in "t time" "i ip" "p port" "o org" "m mss"; do
+        IFS=" " read -r key suffix <<< "$code"
+        value=$(get_speedtest_sess "$ver" "$key" <<< "$speedtest_ans") && {
+          write_json "$layer" "$ipv" "${prefix}_${suffix}" "$INFO"	\
+                     "$target" "$value" "$count"
+          case "$suffix" in
+            time)  name="Timestamp" ;;
+            ip)    name="IP address" ;;
+            port)  name="Port number" ;;
+            org)   name="ISP" ;;
+            mss)   name="MSS" ;;
+          esac
+          string="$string\n  $ipv $name: $value"
+        }
+      done
+    done
   else
     string="$string\n  status: ng ($stat)"
   fi

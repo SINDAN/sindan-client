@@ -5,7 +5,7 @@ URL_V3CLI="https://github.com/inonius/v3cli/releases/latest/download"
 ## apt install
 echo "installing required packages..."
 sudo apt update -y
-sudo apt install -y uuid-runtime iw ndisc6 dnsutils curl traceroute
+sudo apt install -y uuid-runtime iw ndisc6 dnsutils curl traceroute jq
 
 ## for v3cli
 echo "installing v3cli (command line tool for iNonius Speed Test)..."

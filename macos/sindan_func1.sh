@@ -78,11 +78,11 @@ function get_macaddr() {
   return $?
 }
 
-# Get media type of the interface.
-# get_mediatype <ifname>
-function get_mediatype() {
+# Get ethernet media type of the interface.
+# get_ether_mediatype <ifname>
+function get_ether_mediatype() {
   if [ $# -ne 1 ]; then
-    echo "ERROR: get_mediatype <devicename>." 1>&2
+    echo "ERROR: get_ether_mediatype <devicename>." 1>&2
     return 1
   fi
   ifconfig "$1"								|
@@ -150,7 +150,7 @@ function get_wlan_bssid() {
   return $?
 }
 
-# Get WLAN Bit Rate (Tx) of the interface.
+# Get WLAN Data Rate (Tx) of the interface.
 # require get_wlan_info() data from STDIN.
 # get_wlan_rate <ifname>
 function get_wlan_rate() {
@@ -586,7 +586,7 @@ function get_wwan_modemid() {
   #TBD
 }
 
-# Get WWAN APN of the interface.
+# Get WWAN APN (Access Point Name) of the interface.
 # get_wwan_apn
 function get_wwan_apn() {
   :
@@ -607,21 +607,21 @@ function get_wwan_ifmtu() {
   #TBD
 }
 
-# Get WWAN interface type.
+# Get WWAN RAT (Radio Access Technology) of the interface.
 # get_wwan_iftype
 function get_wwan_iftype() {
   :
   #TBD
 }
 
-# Get WWAN quality of the interface.
+# Get WWAN signal quality of the interface.
 # get_wwan_quality
 function get_wwan_quality() {
   :
   #TBD
 }
 
-# Get WWAN IMEI of the interface.
+# Get WWAN IMEI (International Mobile Equipment Identity) of the interface.
 # get_wwan_imei
 function get_wwan_imei() {
   :
@@ -635,9 +635,9 @@ function get_wwan_operator() {
   #TBD
 }
 
-# Get WWAN operator ID of the interface.
-# get_wwan_mmcmnc
-function get_wwan_mmcmnc() {
+# Get WWAN operator ID (MCC/MNC) of the interface.
+# get_wwan_mccmnc
+function get_wwan_mccmnc() {
   :
   #TBD
 }

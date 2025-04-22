@@ -213,7 +213,7 @@ do_iface_menu() {
 }
 
 do_set_pingv4() {
-  CURRENT_STR=$(get_config_var PING_SRVS ${CONFIG})
+  CURRENT_STR=$(get_config_var PING4_SRVS ${CONFIG})
   CURRENT="$(echo ${CURRENT_STR} | sed s/\"//g)"
   if [ "${INTERACTIVE}" = True ]; then
     NEW=$(whiptail --inputbox "Please enter target server's IP addresses (e.g. <target1>,<target2>)" 20 60 "${CURRENT}" 3>&1 1>&2 2>&3)
@@ -223,7 +223,7 @@ do_set_pingv4() {
   fi
   if [ $? -eq 0 ]; then
     STRING="\"${NEW}\""
-    set_config_var PING_SRVS ${STRING} ${CONFIG}
+    set_config_var PING4_SRVS ${STRING} ${CONFIG}
     if [ -n "${NEW}" ] && [ "${INTERACTIVE}" = True ]; then
       whiptail --msgbox "The target server's IP addresses are ${NEW}" 20 60 1
     fi
@@ -249,7 +249,7 @@ do_set_pingv6() {
 }
 
 do_set_digv4() {
-  CURRENT_STR=$(get_config_var GPDNS4 ${CONFIG})
+  CURRENT_STR=$(get_config_var PDNS4_SRVS ${CONFIG})
   CURRENT="$(echo ${CURRENT_STR} | sed s/\"//g)"
   if [ "${INTERACTIVE}" = True ]; then
     NEW=$(whiptail --inputbox "Please enter target global public DNS server's IP addresses (e.g. <target1>,<target2>)" 20 60 "${CURRENT}" 3>&1 1>&2 2>&3)
@@ -259,7 +259,7 @@ do_set_digv4() {
   fi
   if [ $? -eq 0 ]; then
     STRING="\"${NEW}\""
-    set_config_var GPDNS4 ${STRING} ${CONFIG}
+    set_config_var PDNS4_SRVS ${STRING} ${CONFIG}
     if [ -n "${NEW}" ] && [ "${INTERACTIVE}" = True ]; then
       whiptail --msgbox "The target global DNS server's IP addresses are ${NEW}" 20 60 1
     fi
@@ -267,7 +267,7 @@ do_set_digv4() {
 }
 
 do_set_digv6() {
-  CURRENT_STR=$(get_config_var GPDNS6 ${CONFIG})
+  CURRENT_STR=$(get_config_var PDNS6_SRVS ${CONFIG})
   CURRENT="$(echo ${CURRENT_STR} | sed s/\"//g)"
   if [ "${INTERACTIVE}" = True ]; then
     NEW=$(whiptail --inputbox "Please enter target global public DNS server's IPv6 addresses (e.g. <target1>,<target2>)" 20 60 "${CURRENT}" 3>&1 1>&2 2>&3)
@@ -277,7 +277,7 @@ do_set_digv6() {
   fi
   if [ $? -eq 0 ]; then
     STRING="\"${NEW}\""
-    set_config_var GPDNS6 ${STRING} ${CONFIG}
+    set_config_var PDNS6_SRVS ${STRING} ${CONFIG}
     if [ -n "${NEW}" ] && [ "${INTERACTIVE}" = True ]; then
       whiptail --msgbox "The target global DNS server's IPv6 addresses are ${NEW}" 20 60 1
     fi
@@ -285,7 +285,7 @@ do_set_digv6() {
 }
 
 do_set_httpv4() {
-  CURRENT_STR=$(get_config_var V4WEB_SRVS ${CONFIG})
+  CURRENT_STR=$(get_config_var WEB4_SRVS ${CONFIG})
   CURRENT="$(echo ${CURRENT_STR} | sed s/\"//g)"
   if [ "${INTERACTIVE}" = True ]; then
     NEW=$(whiptail --inputbox "Please enter target server's FQDNs for HTTP communication by IPv4 (e.g. <target1>,<target2>)" 20 60 "${CURRENT}" 3>&1 1>&2 2>&3)
@@ -295,7 +295,7 @@ do_set_httpv4() {
   fi
   if [ $? -eq 0 ]; then
     STRING="\"${NEW}\""
-    set_config_var V4WEB_SRVS ${STRING} ${CONFIG}
+    set_config_var WEB4_SRVS ${STRING} ${CONFIG}
     if [ -n "${NEW}" ] && [ "${INTERACTIVE}" = True ]; then
       whiptail --msgbox "The target server's FQDNs for HTTP communication by IPv4 are ${NEW}" 20 60 1
     fi
@@ -303,7 +303,7 @@ do_set_httpv4() {
 }
 
 do_set_httpv6() {
-  CURRENT_STR=$(get_config_var V6WEB_SRVS ${CONFIG})
+  CURRENT_STR=$(get_config_var WEB6_SRVS ${CONFIG})
   CURRENT="$(echo ${CURRENT_STR} | sed s/\"//g)"
   if [ "${INTERACTIVE}" = True ]; then
     NEW=$(whiptail --inputbox "Please enter target server's FQDNs for HTTP communication by IPv6 (e.g. <target1>,<target2>)" 20 60 "${CURRENT}" 3>&1 1>&2 2>&3)
@@ -313,7 +313,7 @@ do_set_httpv6() {
   fi
   if [ $? -eq 0 ]; then
     STRING="\"${NEW}\""
-    set_config_var V6WEB_SRVS ${STRING} ${CONFIG}
+    set_config_var WEB6_SRVS ${STRING} ${CONFIG}
     if [ -n "${NEW}" ] && [ "${INTERACTIVE}" = True ]; then
       whiptail --msgbox "The target server's FQDNs for HTTP communication by IPv6 are ${NEW}" 20 60 1
     fi

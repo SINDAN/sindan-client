@@ -26,7 +26,7 @@ cd $(dirname $0)
 ## Preparation
 
 # Check parameters
-for param in PIDFILE MAX_RETRY IFTYPE PING_SRVS PING6_SRVS FQDNS GPDNS4 GPDNS6 V4WEB_SRVS V6WEB_SRVS V4SSH_SRVS V6SSH_SRVS DEVNAME; do
+for param in PIDFILE MAX_RETRY IFTYPE PING4_SRVS PING6_SRVS FQDNS PDNS4_SRVS PDNS6_SRVS WEB4_SRVS WEB6_SRVS SSH4_SRVS SSH6_SRVS DEVNAME; do
   if [ -z $(eval echo '$'$param) ]; then
     echo "ERROR: $param is null in configration file." 1>&2
     exit 1
@@ -59,7 +59,6 @@ echo $$ >"$PIDFILE"
 
 # Make log directory
 mkdir -p log
-mkdir -p trace-json
 
 # Generate UUID
 uuid=$(generate_uuid)
@@ -184,74 +183,74 @@ if [ "$IFTYPE" = "Wi-Fi" ]; then
   # Get WLAN ssid
   wlan_ssid=$(get_wlan_ssid "$ifname" <<< "$wlan_info")
   if [ -n "$wlan_ssid" ]; then
-    write_json "$layer" "$IFTYPE" ssid "$INFO" self "$wlan_ssid" 0
+    write_json "$layer" "$IFTYPE" wlan_ssid "$INFO" self "$wlan_ssid" 0
   fi
   # Get WLAN bssid
   wlan_bssid=$(get_wlan_bssid "$ifname" <<< "$wlan_info")
   if [ -n "$wlan_bssid" ]; then
-    write_json "$layer" "$IFTYPE" bssid "$INFO" self "$wlan_bssid" 0
+    write_json "$layer" "$IFTYPE" wlan_bssid "$INFO" self "$wlan_bssid" 0
   fi
   # Get WLAN tx rate
   wlan_rate=$(get_wlan_rate "$ifname" <<< "$wlan_info")
   if [ -n "$wlan_rate" ]; then
-    write_json "$layer" "$IFTYPE" rate "$INFO" self "$wlan_rate" 0
+    write_json "$layer" "$IFTYPE" wlan_rate "$INFO" self "$wlan_rate" 0
   fi
   # Get WLAN tx mcs index
   wlan_mcs=$(get_wlan_mcs "$ifname" <<< "$wlan_info")
   if [ -n "$wlan_mcs" ]; then
-    write_json "$layer" "$IFTYPE" mcs "$INFO" self "$wlan_mcs" 0
+    write_json "$layer" "$IFTYPE" wlan_mcs "$INFO" self "$wlan_mcs" 0
   fi
   # Get WLAN tx nss
   wlan_nss=$(get_wlan_nss "$ifname" <<< "$wlan_info")
   if [ -n "$wlan_nss" ]; then
-    write_json "$layer" "$IFTYPE" nss "$INFO" self "$wlan_nss" 0
+    write_json "$layer" "$IFTYPE" wlan_nss "$INFO" self "$wlan_nss" 0
   fi
   # Get WLAN mode
   wlan_mode=$(get_wlan_mode <<< "$wlan_info")
   if [ -n "$wlan_mode" ]; then
-    write_json "$layer" "$IFTYPE" mode "$INFO" self "$wlan_mode" 0
+    write_json "$layer" "$IFTYPE" wlan_mode "$INFO" self "$wlan_mode" 0
   fi
   # Get WLAN band
   wlan_band=$(get_wlan_band "$ifname" <<< "$wlan_info")
   if [ -n "$wlan_band" ]; then
-    write_json "$layer" "$IFTYPE" band "$INFO" self "$wlan_band" 0
+    write_json "$layer" "$IFTYPE" wlan_band "$INFO" self "$wlan_band" 0
   fi
   # Get WLAN channel
   wlan_channel=$(get_wlan_channel "$ifname" <<< "$wlan_info")
   if [ -n "$wlan_channel" ]; then
-    write_json "$layer" "$IFTYPE" channel "$INFO" self "$wlan_channel" 0
+    write_json "$layer" "$IFTYPE" wlan_channel "$INFO" self "$wlan_channel" 0
   fi
   # Get WLAN channel bandwidth
   wlan_chband=$(get_wlan_chband "$ifname" <<< "$wlan_info")
   if [ -n "$wlan_chband" ]; then
-    write_json "$layer" "$IFTYPE" chband "$INFO" self "$wlan_chband" 0
+    write_json "$layer" "$IFTYPE" wlan_chband "$INFO" self "$wlan_chband" 0
   fi
   # Get WLAN rssi
   wlan_rssi=$(get_wlan_rssi "$ifname")
   if [ -n "$wlan_rssi" ]; then
-    write_json "$layer" "$IFTYPE" rssi "$INFO" self "$wlan_rssi" 0
+    write_json "$layer" "$IFTYPE" wlan_rssi "$INFO" self "$wlan_rssi" 0
   fi
   # Get WLAN noise
   wlan_noise=$(get_wlan_noise "$ifname")
   if [ -n "$wlan_noise" ]; then
-    write_json "$layer" "$IFTYPE" noise "$INFO" self "$wlan_noise" 0
+    write_json "$layer" "$IFTYPE" wlan_noise "$INFO" self "$wlan_noise" 0
   fi
   # Get WLAN quality
   wlan_quality=$(get_wlan_quality "$ifname")
   if [ -n "$wlan_quality" ]; then
-    write_json "$layer" "$IFTYPE" quality "$INFO" self "$wlan_quality" 0
+    write_json "$layer" "$IFTYPE" wlan_quality "$INFO" self "$wlan_quality" 0
   fi
   # Get WLAN environment
   wlan_environment=$(get_wlan_environment "$ifname")
   if [ -n "$wlan_environment" ]; then
-    write_json "$layer" "$IFTYPE" environment "$INFO" self		\
+    write_json "$layer" "$IFTYPE" wlan_environment "$INFO" self		\
                "$wlan_environment" 0
   fi
 elif [ "$IFTYPE" = "WWAN" ]; then
   # Get WWAN infomation
   wwan_info=$(get_wwan_info "$ifname")
   if [ -n "$wwan_info" ]; then
-    write_json "$layer" "$IFTYPE" info "$INFO" self "$wwan_info" 0
+    write_json "$layer" "$IFTYPE" wwan_info "$INFO" self "$wwan_info" 0
 
     # Get IMEI
     wwan_imei=$(echo "$wwan_info" | get_wwan_imei)
@@ -259,7 +258,7 @@ elif [ "$IFTYPE" = "WWAN" ]; then
     wwan_modemid=$(echo "$wwan_info" | get_wwan_modemid)
     wwan_environment=$(get_wwan_environment "$wwan_modemid")
     if [ -n "$wwan_environment" ]; then
-      write_json "$layer" "$IFTYPE" environment "$INFO" self		\
+      write_json "$layer" "$IFTYPE" wwan_environment "$INFO" self	\
                  "$wwan_environment" 0
     fi
 
@@ -277,75 +276,84 @@ elif [ "$IFTYPE" = "WWAN" ]; then
     # Get WWAN apn
     wwan_apn=$(echo "$wwan_info" | get_wwan_apn)
     if [ -n "$wwan_apn" ]; then
-      write_json "$layer" "$IFTYPE" apn "$INFO" self "$wwan_apn" 0
+      write_json "$layer" "$IFTYPE" wwan_apn "$INFO" self "$wwan_apn" 0
     fi
-    # Get WWAN iftype
-    wwan_iftype=$(echo "$wwan_info" | get_wwan_iftype)
-    if [ -n "$wwan_iftype" ]; then
-      write_json "$layer" "$IFTYPE" iftype "$INFO" self "$wwan_iftype" 0
+    # Get WWAN rat
+    wwan_rat=$(echo "$wwan_info" | get_wwan_rat)
+    if [ -n "$wwan_rat" ]; then
+      write_json "$layer" "$IFTYPE" wwan_rat "$INFO" self		\
+                 "$wwan_rat" 0
     fi
     # Get WWAN quality
     wwan_quality=$(echo "$wwan_info" | get_wwan_quality)
     if [ -n "$wwan_quality" ]; then
-      write_json "$layer" "$IFTYPE" quality "$INFO" self "$wwan_quality" 0
+      write_json "$layer" "$IFTYPE" wwan_quality "$INFO" self		\
+                 "$wwan_quality" 0
     fi
     # Get WWAN operator
     wwan_operator=$(echo "$wwan_info" | get_wwan_operator)
     if [ -n "$wwan_operator" ]; then
-      write_json "$layer" "$IFTYPE" operator "$INFO" self		\
+      write_json "$layer" "$IFTYPE" wwan_operator "$INFO" self		\
                  "$wwan_operator" 0
     fi
-    # Get WWAN mmcmnc
-    wwan_mmcmnc=$(echo "$wwan_info" | get_wwan_mmcmnc)
-    if [ -n "$wwan_mmcmnc" ]; then
-      write_json "$layer" "$IFTYPE" mmcmnc "$INFO" self "$wwan_mmcmnc" 0
+    # Get WWAN mcc/mnc
+    wwan_mccmnc=$(echo "$wwan_info" | get_wwan_mccmnc)
+    if [ -n "$wwan_mccmnc" ]; then
+      write_json "$layer" "$IFTYPE" wwan_mccmnc "$INFO" self		\
+                 "$wwan_mccmnc" 0
     fi
     # Get WWAN iptype
     wwan_iptype=$(echo "$wwan_info" | get_wwan_iptype)
     if [ -n "$wwan_iptype" ]; then
-      write_json "$layer" "$IFTYPE" iptype "$INFO" self "$wwan_iptype" 0
+      write_json "$layer" "$IFTYPE" wwan_iptype "$INFO" self		\
+                 "$wwan_iptype" 0
     fi
     # Get WWAN rssi
     wwan_rssi=$(echo "$wwan_info" | get_wwan_rssi)
     if [ -n "$wwan_rssi" ]; then
-      write_json "$layer" "$IFTYPE" rssi "$INFO" self "$wwan_rssi" 0
+      write_json "$layer" "$IFTYPE" wwan_rssi "$INFO" self		\
+                 "$wwan_rssi" 0
     fi
     # Get WWAN rsrq
     wwan_rsrq=$(echo "$wwan_info" | get_wwan_rsrq)
     if [ -n "$wwan_rsrq" ]; then
-      write_json "$layer" "$IFTYPE" rsrq "$INFO" self "$wwan_rsrq" 0
+      write_json "$layer" "$IFTYPE" wwan_rsrq "$INFO" self		\
+                 "$wwan_rsrq" 0
     fi
     # Get WWAN rsrp
     wwan_rsrp=$(echo "$wwan_info" | get_wwan_rsrp)
     if [ -n "$wwan_rsrp" ]; then
-      write_json "$layer" "$IFTYPE" rsrp "$INFO" self "$wwan_rsrp" 0
+      write_json "$layer" "$IFTYPE" wwan_rsrp "$INFO" self		\
+                 "$wwan_rsrp" 0
     fi
     # Get WWAN snir
     wwan_snir=$(echo "$wwan_info" | get_wwan_snir)
     if [ -n "$wwan_snir" ]; then
-      write_json "$layer" "$IFTYPE" snir "$INFO" self "$wwan_snir" 0
+      write_json "$layer" "$IFTYPE" wwan_snir "$INFO" self		\
+                 "$wwan_snir" 0
     fi
     # Get WWAN cid
     wwan_cid=$(echo "$wwan_info" | get_wwan_cid)
     if [ -n "$wwan_cid" ]; then
-      write_json "$layer" "$IFTYPE" cid "$INFO" self "$wwan_cid" 0
+      write_json "$layer" "$IFTYPE" wwan_cid "$INFO" self "$wwan_cid" 0
     fi
     # Get WWAN lac
     wwan_lac=$(echo "$wwan_info" | get_wwan_lac)
     if [ -n "$wwan_lac" ]; then
-      write_json "$layer" "$IFTYPE" lac "$INFO" self "$wwan_lac" 0
+      write_json "$layer" "$IFTYPE" wwan_lac "$INFO" self "$wwan_lac" 0
     fi
     # Get WWAN tac
     wwan_tac=$(echo "$wwan_info" | get_wwan_tac)
     if [ -n "$wwan_tac" ]; then
-      write_json "$layer" "$IFTYPE" tac "$INFO" self "$wwan_tac" 0
+      write_json "$layer" "$IFTYPE" wwan_tac "$INFO" self "$wwan_tac" 0
     fi
   fi
 else
   # Get media type
-  media=$(get_mediatype "$ifname")
-  if [ -n "$media" ]; then
-    write_json "$layer" "$IFTYPE" media "$INFO" self "$media" 0
+  ether_media=$(get_ether_mediatype "$ifname")
+  if [ -n "$ether_media" ]; then
+    write_json "$layer" "$IFTYPE" ether_media "$INFO" self		\
+               "$ether_media" 0
   fi
 fi
 
@@ -363,8 +371,8 @@ if [ "$VERBOSE" = "yes" ]; then
     echo "  environment:"
     echo "$wlan_environment"
   elif [ "$IFTYPE" = "WWAN" ]; then
-    echo "  apn: $wwan_apn, iftype: $wwan_iftype, iptype: $wwan_iptype"
-    echo "  operator: $wwan_operator, mmc/mnc: $wwan_mmcmnc"
+    echo "  apn: $wwan_apn, rat: $wwan_rat, iptype: $wwan_iptype"
+    echo "  operator: $wwan_operator, mcc/mnc: $wwan_mccmnc"
     echo "  cid: $wwan_cid, lac: $wwan_lac, tac: $wwan_tac"
     echo "  rssi: $wwan_rssi dBm, rsrq: $wwan_rsrq dB, rsrp:"		\
          "$wwan_rsrp dBm, s/n: $wwan_snir dB"
@@ -372,7 +380,7 @@ if [ "$VERBOSE" = "yes" ]; then
     echo "  environment:"
     echo "$wwan_environment"
   else
-    echo "  media: $media"
+    echo "  media: $ether_media"
   fi
 fi
 
@@ -475,7 +483,7 @@ if [ "$EXCL_IPv6" != "yes" ]; then
   # Get IPv6 RA source addresses
   ra_addrs=$(echo "$ra_info" | get_ra_addrs)
   if [ -n "$ra_addrs" ]; then
-    write_json "$layer" IPv6 ra_addrs "$INFO" self "$ra_addrs" 0
+    write_json "$layer" RA ra_addrs "$INFO" self "$ra_addrs" 0
   fi
 
   if [ "$v6ifconf" = "automatic" ] && [ -z "$ra_addrs" ]; then
@@ -766,7 +774,7 @@ else
 fi
 if [ "$v4addr_type" = "private" ] || [ "$v4addr_type" = "global" ]; then
   count=0
-  for target in $(echo "$PING_SRVS" | sed 's/,/ /g'); do
+  for target in $(echo "$PING4_SRVS" | sed 's/,/ /g'); do
     if [ "$MODE" = "probe" ]; then
       # Do ping to IPv4 routers
       count_r=0
@@ -849,7 +857,7 @@ if [ "$v4addr_type" = "private" ] || [ "$v4addr_type" = "global" ]; then
   done
 
   count=0
-  for target in $(echo "$GPDNS4" | sed 's/,/ /g'); do
+  for target in $(echo "$PDNS4_SRVS" | sed 's/,/ /g'); do
     if [ "$MODE" = "probe" ]; then
       # Do ping to IPv4 routers
       count_r=0
@@ -897,7 +905,7 @@ if [ -n "$v6addrs" ]; then
   done
 
   count=0
-  for target in $(echo "$GPDNS6" | sed 's/,/ /g'); do
+  for target in $(echo "$PDNS6_SRVS" | sed 's/,/ /g'); do
     if [ "$MODE" = "probe" ]; then
       # Do ping to IPv6 routers
       count_r=0
@@ -933,7 +941,7 @@ layer="app"
 
 if [ "$v4addr_type" = "private" ] || [ "$v4addr_type" = "global" ]; then
   count=0
-  for target in $(echo "$V4WEB_SRVS" | sed 's/,/ /g'); do
+  for target in $(echo "$WEB4_SRVS" | sed 's/,/ /g'); do
     if [ "$MODE" = "probe" ]; then
       # Do ping to IPv4 routers
       count_r=0
@@ -956,7 +964,7 @@ if [ "$v4addr_type" = "private" ] || [ "$v4addr_type" = "global" ]; then
   done
 
   count=0
-  for target in $(echo "$V4SSH_SRVS" | sed 's/,/ /g'); do
+  for target in $(echo "$SSH4_SRVS" | sed 's/,/ /g'); do
     if [ "$MODE" = "probe" ]; then
       target_fqdn=$(echo $target | awk -F_ '{print $1}')
 
@@ -974,7 +982,7 @@ if [ "$v4addr_type" = "private" ] || [ "$v4addr_type" = "global" ]; then
   done
 
   count=0
-  for target in $(echo "$PS_SRVS4" | sed 's/,/ /g'); do
+  for target in $(echo "$PS4_SRVS" | sed 's/,/ /g'); do
     for port in $(echo "$PS_PORTS" | sed 's/,/ /g'); do
 
       # Do portscan by IPv4
@@ -987,7 +995,7 @@ fi
 
 if [ -n "$v6addrs" ]; then
   count=0
-  for target in $(echo "$V6WEB_SRVS" | sed 's/,/ /g'); do
+  for target in $(echo "$WEB6_SRVS" | sed 's/,/ /g'); do
     if [ "$MODE" = "probe" ]; then
       count_r=0
       for target_r in $(echo "$v6routers" | sed 's/,/ /g'); do
@@ -1009,7 +1017,7 @@ if [ -n "$v6addrs" ]; then
   done
 
   count=0
-  for target in $(echo "$V6SSH_SRVS" | sed 's/,/ /g'); do
+  for target in $(echo "$SSH6_SRVS" | sed 's/,/ /g'); do
     if [ "$MODE" = "probe" ]; then
       target_fqdn=$(echo $target | awk -F_ '{print $1}')
 
@@ -1027,7 +1035,7 @@ if [ -n "$v6addrs" ]; then
   done
 
   count=0
-  for target in $(echo "$PS_SRVS6" | sed 's/,/ /g'); do
+  for target in $(echo "$PS6_SRVS" | sed 's/,/ /g'); do
     for port in $(echo "$PS_PORTS" | sed 's/,/ /g'); do
 
       # Do portscan by 6
@@ -1041,7 +1049,7 @@ if [ -n "$v6addrs" ]; then
   if [ "$exist_dns64" = "yes" ]; then
     echo " exist dns64 server"
     count=0
-    for target in $(echo "$V4WEB_SRVS" | sed 's/,/ /g'); do
+    for target in $(echo "$WEB4_SRVS" | sed 's/,/ /g'); do
       if [ "$MODE" = "probe" ]; then
         # Do ping to IPv6 routers
         count_r=0
@@ -1068,7 +1076,7 @@ if [ -n "$v6addrs" ]; then
     done
 
     count=0
-    for target in $(echo "$V4SSH_SRVS" | sed 's/,/ /g'); do
+    for target in $(echo "$SSH4_SRVS" | sed 's/,/ /g'); do
       if [ "$MODE" = "probe" ]; then
         target_fqdn=$(echo $target | awk -F_ '{print $1}')
 
@@ -1086,7 +1094,7 @@ if [ -n "$v6addrs" ]; then
     done
 
     count=0
-    for target in $(echo "$PS_SRVS4" | sed 's/,/ /g'); do
+    for target in $(echo "$PS4_SRVS" | sed 's/,/ /g'); do
       for port in $(echo "$PS_PORTS" | sed 's/,/ /g'); do
 
         # Do portscan by IPv6

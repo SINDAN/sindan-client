@@ -119,11 +119,11 @@ function get_macaddr() {
   return $?
 }
 
-# Get media type of the interface.
-# get_mediatype <ifname>
-function get_mediatype() {
+# Get ethernet media type of the interface.
+# get_ether_mediatype <ifname>
+function get_ether_mediatype() {
   if [ $# -ne 1 ]; then
-    echo "ERROR: get_mediatype <ifname>." 1>&2
+    echo "ERROR: get_ether_mediatype <ifname>." 1>&2
     return 1
   fi
   local speed; local duplex
@@ -176,7 +176,7 @@ function get_wlan_bssid() {
   return $?
 }
 
-# Get WLAN Bit Rate (Tx) of the interface.
+# Get WLAN Data Rate (Tx) of the interface.
 # require get_wlan_info() data from STDIN.
 # get_wlan_rate
 function get_wlan_rate() {
@@ -386,14 +386,14 @@ function get_wlan_environment() {
   /DS Parameter set: channel / {
     channel=$5;
   }
-  /STA channel width: / {
+  /* STA channel width: / {
     width=$5;
   }
-  /channel width: / {
+  /* channel width: / {
     split($5,width_parts,"(");
     width=width_parts[2];
   }
-  /Authentication suites: / {
+  /* Authentication suites: / {
     split($0,suite_parts,": ");
     suite=suite_parts[2];
     if (suite == "PSK") {
@@ -558,7 +558,7 @@ function get_wwan_modemid() {
   return $?
 }
 
-# Get WWAN APN of the interface.
+# Get WWAN APN (Access Point Name) of the interface.
 # get_wwan_apn
 function get_wwan_apn() {
   get_wwan_value 'BEARER INFO:' Properties 'apn:' 3
@@ -579,14 +579,14 @@ function get_wwan_ifmtu() {
   return $?
 }
 
-# Get WWAN interface type.
-# get_wwan_iftype
-function get_wwan_iftype() {
+# Get WWAN RAT (Radio Access Technology) of the interface.
+# get_wwan_rat
+function get_wwan_rat() {
   get_wwan_value 'MODEM INFO:' Status 'access tech:' 4
   return $?
 }
 
-# Get WWAN quality of the interface.
+# Get WWAN signal quality of the interface.
 # get_wwan_quality
 function get_wwan_quality() {
   get_wwan_value 'MODEM INFO:' Status 'signal quality:' 4		|
@@ -594,7 +594,7 @@ function get_wwan_quality() {
   return $?
 }
 
-# Get WWAN IMEI of the interface.
+# Get WWAN IMEI (International Mobile Equipment Identity) of the interface.
 # get_wwan_imei
 function get_wwan_imei() {
   get_wwan_value 'MODEM INFO:' 3GPP imei: 3
@@ -608,9 +608,9 @@ function get_wwan_operator() {
   return $?
 }
 
-# Get WWAN operator ID of the interface.
-# get_wwan_mmcmnc
-function get_wwan_mmcmnc() {
+# Get WWAN operator ID (MCC/MNC) of the interface.
+# get_wwan_mccmnc
+function get_wwan_mccmnc() {
   get_wwan_value 'MODEM INFO:' 3GPP 'operator id:' 4
   return $?
 }
