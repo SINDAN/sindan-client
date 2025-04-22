@@ -7,12 +7,10 @@
 /linux/log/*
 !/linux/log/.keep
 /linux/sindan.conf
-/linux/trace-json
-/linux/node_modules
+/linux/bin
 
 # for macos
 /macos/log/*
 !/macos/log/.keep
 /macos/sindan.conf
-/macos/trace-json
-/macos/node_modules
+/macos/bin

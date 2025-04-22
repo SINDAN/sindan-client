@@ -386,14 +386,14 @@ function get_wlan_environment() {
   /DS Parameter set: channel / {
     channel=$5;
   }
-  /* STA channel width: / {
+  /STA channel width: / {
     width=$5;
   }
-  /* channel width: / {
+  /channel width: / {
     split($5,width_parts,"(");
     width=width_parts[2];
   }
-  /* Authentication suites: / {
+  /Authentication suites: / {
     split($0,suite_parts,": ");
     suite=suite_parts[2];
     if (suite == "PSK") {
