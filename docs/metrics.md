@@ -35,7 +35,7 @@
 | datalink | wlan_mode | PHY mode (Wi-Fi generation) of the wireless LAN. |
 | datalink | wlan_band | Frequency band of the wireless LAN. |
 | datalink | wlan_channel | Wireless LAN channel information. |
-| datalink | wlan_chband | Channel bandwidth of the wireless LAN (unit: Hz). |
+| datalink | wlan_chband | Channel bandwidth of the wireless LAN (unit: MHz). |
 | datalink | wlan_rssi | RSSI (Received Signal Strength Indicator) of the wireless LAN (unit: dBm; negative value). |
 | datalink | wlan_noise | Noise level of the wireless LAN (unit: dBm; negative value). |
 | datalink | wlan_quality | Wireless LAN link quality as defined by the Linux device driver (calculation method unknown). |
