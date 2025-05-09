@@ -142,7 +142,7 @@
 | app | v6portscan_#{port} | Perform a port scan to the target IPv6 server using IPv6. The target port number is specified in `PS_PORTS`. [type: boolean] |
 | app | speedtest | Perform the iNonius speed test (throughput measurement using HTTPS) to the target server and store the resulting JSON data. [type: boolean] |
 | app | v4speedtest_rtt | RTT over IPv4 in the iNonius speed test (unit: ms). |
-| app | v4speedtest_jitte | Jitter over IPv4 in the iNonius speed test (unit: ms). |
+| app | v4speedtest_jitter | Jitter over IPv4 in the iNonius speed test (unit: ms). |
 | app | v4speedtest_download | Download throughput over IPv4 in the iNonius speed test (unit: Mbps). |
 | app | v4speedtest_upload | Upload throughput over IPv4 in the iNonius speed test (unit: Mbps). |
 | app | v4speedtest_time | Measurement timestamp in Unix time (IPv4) recorded during the iNonius speed test. |
@@ -151,7 +151,7 @@
 | app | v4speedtest_org | ISP information (IPv4) observed during the iNonius speed test. |
 | app | v4speedtest_mss | IPv4 Maximum Segment Size (MSS) observed during the iNonius speed test (unit: Bytes). |
 | app | v6speedtest_rtt | RTT over IPv6 in the iNonius speed test (unit: ms). |
-| app | v6speedtest_jitte | Jitter over IPv6 in the iNonius speed test (unit: ms). |
+| app | v6speedtest_jitter | Jitter over IPv6 in the iNonius speed test (unit: ms). |
 | app | v6speedtest_download | Download throughput over IPv6 in the iNonius speed test (unit: Mbps). |
 | app | v6speedtest_upload | Upload throughput over IPv6 in the iNonius speed test (unit: Mbps). |
 | app | v6speedtest_time | Measurement timestamp in Unix time (IPv6) recorded during the iNonius speed test. |
