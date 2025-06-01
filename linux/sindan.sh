@@ -2,6 +2,13 @@
 # sindan.sh
 # version 5
 VERSION="5.0.0"
+# check shell variables
+if [ -n "$SSH4_SRVS" ]; then
+    readonly SSH4_SRVS
+fi
+if [ -n "$SSH6_SRVS" ]; then
+    readonly SSH6_SRVS
+fi
 
 # read configuration file
 cd $(dirname $0)
