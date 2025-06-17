@@ -679,8 +679,10 @@ function get_wwan_environment() {
     return 1
   fi
   echo "MMC,MNC,Name,Tech,Status"
-  mmcli -m "$1" --3gpp-scan --timeout=60				|
-  sed -n 's/.*\([0-9]\{3\}\)\([0-9]\{2\}\) - \(.*\) (\(.*\), \(.*\))/\1,\2,\3,\4,\5/p'
+  for path in $(mmcli -L | awk '{print $1}' | tr '\n' ' '); do
+    mmcli -m $path --3gpp-scan --timeout=60				|
+    sed -n 's/.*\([0-9]\{3\}\)\([0-9]\{2\}\) - \(.*\) (\(.*\), \(.*\))/\1,\2,\3,\4,\5/p'
+  done
   return $?
 }
 
