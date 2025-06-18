@@ -113,7 +113,7 @@ if [ "$VERBOSE" = "yes" ]; then
   echo " hardware information:"
   echo "  os_info: $os_info"
   echo "  hw_info: $hw_info"
-  echo "  cpu(freq: $cpu_freq Hz, volt: $cpu_volt V, temp: $cpu_temp 'C"
+  echo "  cpu(freq: $cpu_freq Hz, volt: $cpu_volt V, temp: $cpu_temp 'C)"
   echo "  clock_state: $clock_state"
   echo "  clock_src: $clock_src"
 fi
@@ -134,14 +134,14 @@ if [ "$RECONNECT" = "yes" ]; then
   if [ "$VERBOSE" = "yes" ]; then
     echo " interface:$ifname down"
   fi
-  do_ifdown "$ifname" "$IFTYPE"
+  do_ifdown "$ifname"
   sleep 2
 
   # Start target interface
   if [ "$VERBOSE" = "yes" ]; then
     echo " interface:$ifname up"
   fi
-  do_ifup "$ifname" "$IFTYPE"
+  do_ifup "$ifname"
   sleep 5
 fi
 
