@@ -11,8 +11,10 @@ sudo apt install -y uuid-runtime iw ndisc6 dnsutils curl traceroute jq netcat-op
 echo "installing v3cli (command line tool for iNonius Speed Test)..."
 mkdir -p bin
 case $(uname -m) in
-  "x86_64" ) v3cli="inonius_v3cli-linux-amd64" ;;
-  "aarch64" ) v3cli="inonius_v3cli-linux-arm64" ;;
+  x86_64 ) v3cli="inonius_v3cli-linux-amd64" ;;
+  aarch64 ) v3cli="inonius_v3cli-linux-arm64" ;;
+  armv6* ) v3cli="inonius_v3cli-linux-armv6" ;;
+  armv7* ) v3cli="inonius_v3cli-linux-armv7" ;;
   * ) echo "ERROR: unknown CPU type." 1>&2 ;;
 esac
 curl -o bin/inonius_v3cli -fL ${URL_V3CLI}/${v3cli}
