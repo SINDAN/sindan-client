@@ -12,13 +12,19 @@ function get_ifname() {
 # Stop the interface.
 # do_ifdown <ifname> <iftype>
 function do_ifdown() {
-  if [ $# -ne 1 ]; then
-    echo "ERROR: do_ifdown <ifname>." 1>&2
+  if [ $# -ne 2 ]; then
+    echo "ERROR: do_ifdown <ifname> <iftype>." 1>&2
     return 1
   fi
   if which nmcli > /dev/null 2>&1 &&
      [ "$(nmcli networking)" = "enabled" ]; then
-    nmcli connection down "$1"
+    local wwan_dev
+    if [ "$2" = "WWAN" ]; then
+      wwan_dev=$(get_wwan_port "$1")
+      nmcli device disconnect "$wwan_dev"
+    else
+      nmcli device disconnect "$1"
+    fi
   elif which ifconfig > /dev/null 2>&1; then
     ifconfig "$1" down
   else
@@ -30,13 +36,19 @@ function do_ifdown() {
 # Activate the interface.
 # do_ifup <ifname> <iftype>
 function do_ifup() {
-  if [ $# -ne 1 ]; then
-    echo "ERROR: do_ifup <ifname>." 1>&2
+  if [ $# -ne 2 ]; then
+    echo "ERROR: do_ifup <ifname> <iftype>." 1>&2
     return 1
   fi
   if which nmcli > /dev/null 2>&1 &&
      [ "$(nmcli networking)" = "enabled" ]; then
-    nmcli connection up "$1"
+    local wwan_dev
+    if [ "$2" = "WWAN" ]; then
+      wwan_dev=$(get_wwan_port "$1")
+      nmcli device connect "$wwan_dev"
+    else
+      nmcli device connect "$1"
+    fi
   elif which ifconfig > /dev/null 2>&1; then
     ifconfig "$1" up
   else

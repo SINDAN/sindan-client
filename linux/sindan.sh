@@ -134,14 +134,14 @@ if [ "$RECONNECT" = "yes" ]; then
   if [ "$VERBOSE" = "yes" ]; then
     echo " interface:$ifname down"
   fi
-  do_ifdown "$ifname"
+  do_ifdown "$ifname" "$IFTYPE"
   sleep 2
 
   # Start target interface
   if [ "$VERBOSE" = "yes" ]; then
     echo " interface:$ifname up"
   fi
-  do_ifup "$ifname"
+  do_ifup "$ifname" "$IFTYPE"
   sleep 5
 fi
 
