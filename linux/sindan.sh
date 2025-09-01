@@ -120,7 +120,7 @@ if [ "$VERBOSE" = "yes" ]; then
   echo " hardware information:"
   echo "  os_info: $os_info"
   echo "  hw_info: $hw_info"
-  echo "  cpu(freq: $cpu_freq Hz, volt: $cpu_volt V, temp: $cpu_temp 'C"
+  echo "  cpu(freq: $cpu_freq Hz, volt: $cpu_volt V, temp: $cpu_temp 'C)"
   echo "  clock_state: $clock_state"
   echo "  clock_src: $clock_src"
 fi

@@ -14,8 +14,8 @@ brew install coreutils
 echo "installing v3cli (command line tool for iNonius Speed Test)..."
 mkdir -p bin
 case $(uname -m) in
-  "arm64" ) v3cli="inonius_v3cli-darwin-arm64" ;;
-  "x86_64" ) v3cli="inonius_v3cli-darwin-amd64" ;;
+  arm64 ) v3cli="inonius_v3cli-darwin-arm64" ;;
+  x86_64 ) v3cli="inonius_v3cli-darwin-amd64" ;;
   * ) echo "ERROR: unknown CPU type." 1>&2 ;;
 esac
 curl -o bin/inonius_v3cli -fL ${URL_V3CLI}/${v3cli}
