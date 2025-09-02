@@ -1,7 +1,7 @@
 #!/bin/bash
 # sindan.sh
-# version 5
-VERSION="5.0.0"
+# version 6
+VERSION="6.0.0"
 
 # read configuration file
 cd $(dirname $0)
@@ -71,6 +71,9 @@ layer="hardware"
 # Get OS version
 os_info=$(get_os_info)
 
+# Get Host name
+hostname=$(get_hostname)
+
 # Get hardware information
 hw_info=$(get_hw_info)
 if [ -n "$hw_info" ]; then
@@ -111,6 +114,7 @@ fi
 if [ "$VERBOSE" = "yes" ]; then
   echo " hardware information:"
   echo "  os_info: $os_info"
+  echo "  hostname: $hostname"
   echo "  hw_info: $hw_info"
 #  echo "  cpu (freq: $cpu_freq Hz, volt: $cpu_volt V, temp: $cpu_temp 'C)"
   echo "  clock_state: $clock_state"
@@ -706,7 +710,7 @@ if [ "$v4addr_type" = "private" ] || [ "$v4addr_type" = "global" ]; then
   done
 
   count=0
-  for target in $(echo "$PDNS4" | sed 's/,/ /g'); do
+  for target in $(echo "$PDNS4_SRVS" | sed 's/,/ /g'); do
     if [ "$MODE" = "probe" ]; then
       # Do ping to IPv4 routers
       count_r=0
@@ -754,7 +758,7 @@ if [ -n "$v6addrs" ]; then
   done
 
   count=0
-  for target in $(echo "$PDNS6" | sed 's/,/ /g'); do
+  for target in $(echo "$PDNS6_SRVS" | sed 's/,/ /g'); do
     if [ "$MODE" = "probe" ]; then
       # Do ping to IPv6 routers
       count_r=0
@@ -982,11 +986,14 @@ echo "Phase 7: Create campaign log..."
 
 # Write campaign log file
 if [ "$IFTYPE" = "Wi-Fi" ]; then
-  write_json_campaign "$uuid" "$mac_addr" "$os_info" "$IFTYPE" "$wlan_ssid"
+  write_json_campaign "$uuid" "$mac_addr" "$os_info" "$IFTYPE"		\
+                      "$wlan_ssid" "$hostname"
 elif [ "$IFTYPE" = "WWAN" ]; then
-  write_json_campaign "$uuid" "$wwan_imei" "$os_info" "$IFTYPE" "$wwan_apn"
+  write_json_campaign "$uuid" "$wwan_imei" "$os_info" "$IFTYPE"		\
+                      "$wwan_apn" "$hostname"
 else
-  write_json_campaign "$uuid" "$mac_addr" "$os_info" "$IFTYPE" none
+  write_json_campaign "$uuid" "$mac_addr" "$os_info" "$IFTYPE"		\
+                      none "$hostname"
 fi
 
 # remove PID file

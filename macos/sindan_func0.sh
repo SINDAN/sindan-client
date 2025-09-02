@@ -15,6 +15,16 @@ function get_os_info() {
   fi
 }
 
+# Get hostname.
+function get_hostname() {
+  if which hostname > /dev/null 2>&1; then
+    hostname
+  else
+    uname -n
+  fi
+  return $?
+}
+
 # Get hardware information.
 function get_hw_info() {
   if which system_profiler > /dev/null 2>&1; then

@@ -53,12 +53,13 @@ function hash_result() {
 }
 
 # Generate JSON data of campaign.
-# write_json_campaign <uuid> <mac_addr> <os> <network_type> <network_id>.
+# write_json_campaign <uuid> <mac_addr> <os> <network_type> \
+#                     <network_id> <hostname>.
 function write_json_campaign() {
-  if [ $# -ne 5 ]; then
+  if [ $# -ne 6 ]; then
     echo "ERROR: write_json_campaign <uuid> <mac_addr> <os>"		\
-         "<network_type> <network_id>." 1>&2
-    echo "DEBUG(input data): $1, $2, $3, $4, $5" 1>&2
+         "<network_type> <network_id> <hostname>." 1>&2
+    echo "DEBUG(input data): $1, $2, $3, $4, $5, $6" 1>&2
     return 1
   fi
   local mac_addr; local network_id
@@ -69,6 +70,7 @@ function write_json_campaign() {
        "\"os\" : \"$3\","						\
        "\"network_type\" : \"$4\","					\
        "\"ssid\" : \"$network_id\","					\
+       "\"hostname\" : \"$6\","						\
        "\"version\" : \"$VERSION\","					\
        "\"occurred_at\" : \"$(date -u '+%Y-%m-%d %T')\" }"		\
   > log/campaign_"$(date -u '+%s')".json
