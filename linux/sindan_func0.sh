@@ -16,11 +16,7 @@ function get_os_info() {
 
 # Get hostname.
 function get_hostname() {
-  if which hostname > /dev/null 2>&1; then
-    hostname
-  else
-    uname -n
-  fi
+  uname -n | cut -d. -f1
   return $?
 }
 
