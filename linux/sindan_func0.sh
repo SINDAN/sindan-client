@@ -14,6 +14,12 @@ function get_os_info() {
   return $?
 }
 
+# Get hostname.
+function get_hostname() {
+  uname -n | cut -d. -f1
+  return $?
+}
+
 # Get hardware information.
 function get_hw_info() {
   if [ -e /proc/device-tree/model ]; then
