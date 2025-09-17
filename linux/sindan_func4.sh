@@ -35,30 +35,26 @@ function do_pmtud() {
          "<src_addr>." 1>&2
     return 1
   fi
-  case $1 in
-    "4" ) command="ping -W 1"; dfopt="-M do"; header=28 ;;
-    "6" ) command="ping6 -W 1"; dfopt="-M do"; header=48 ;;
+  local ver=$1 target=$2 min=$3 max=$4 src=$5
+  local mid dfopt header
+  local -a cmd
+  case $ver in
+    "4" ) cmd=(ping -W 1 -c 1); dfopt="-M do"; header=28 ;;
+    "6" ) cmd=(ping6 -W 1 -c 1); dfopt="-M do"; header=48 ;;
     * ) echo "ERROR: <version> must be 4 or 6." 1>&2; return 9 ;;
   esac
-  if ! eval $command -c 1 $2 -I $5 > /dev/null; then
+  if ! "${cmd[@]}" -I $src $target > /dev/null; then
     echo 0
     return 1
   fi
-  local version=$1
-  local target=$2
-  local min=$3
-  local max=$4
-  local src_addr=$5
-  local mid=$(( ( min + max ) / 2 ))
-
-  while [ "$min" -ne "$mid" ] && [ "$max" -ne "$mid" ]; do
-    if eval $command -c 1 -s $mid $dfopt $target -I $src_addr >/dev/null 2>/dev/null
+  while [ $(( max - min )) -gt 1 ]; do
+    mid=$(( ( min + max ) / 2 ))
+    if "${cmd[@]}" -s $mid $dfopt -I $src $target >/dev/null 2>/dev/null
     then
       min=$mid
     else
       max=$mid
     fi
-    mid=$(( ( min + max ) / 2 ))
   done
   echo "$(( min + header ))"
   return 0
@@ -72,16 +68,11 @@ function cmdset_trace() {
          "<target_addr> <count>." 1>&2
     return 1
   fi
-  local layer=$1
-  local ver=$2
-  local ipv=IPv${ver}
-  local type=$3
-  local target=$4
-  local count=$5
-  local result=$FAIL
-  local string=" traceroute to $ipv $type: $target"
-  local path_result; local path_data
-
+  local layer=$1 ver=$2 type=$3 target=$4 count=$5
+  local ipv result string path_result path_data
+  ipv=IPv${ver}
+  result=$FAIL
+  string=" traceroute to $ipv $type: $target"
   if path_result=$(do_traceroute "$ver" "$target" | sed 's/\*/-/g'); then
     result=$SUCCESS
   fi
@@ -109,26 +100,19 @@ function cmdset_pmtud() {
          "<target_addr> <ifmtu> <count> <src_addr>." 1>&2
     return 1
   fi
-  local layer=$1
-  local ver=$2
-  local ipv=IPv${ver}
-  local type=$3
-  local target=$4
-  local min_mtu=56
-  local max_mtu=$5
-  local count=$6
-  local src_addr=$7
-  local string=" pmtud to $ipv server: $target, from: $src_addr"
-  local pmtu_result
-
-  pmtu_result=$(do_pmtud "$ver" "$target" "$min_mtu" "$max_mtu" "$src_addr")
+  local layer=$1 ver=$2 type=$3 target=$4 max=$5 count=$6 src=$7
+  local ipv min string pmtu_result
+  ipv=IPv${ver}
+  min=56
+  string=" pmtud to $ipv server: $target, from: $src"
+  pmtu_result=$(do_pmtud "$ver" "$target" "$min" "$max" "$src")
   if [ "$pmtu_result" -eq 0 ]; then
     write_json "$layer" "$ipv" "v${ver}pmtu_${type}" "$INFO" "$target"	\
-               "unmeasurable,$src_addr" "$count"
+               "unmeasurable,$src" "$count"
     string="$string\n  pmtu: unmeasurable"
   else
     write_json "$layer" "$ipv" "v${ver}pmtu_${type}" "$INFO" "$target"	\
-               "$pmtu_result,$src_addr" "$count"
+               "$pmtu_result,$src" "$count"
     string="$string\n  pmtu: $pmtu_result byte"
   fi
   if [ "$VERBOSE" = "yes" ]; then

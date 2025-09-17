@@ -16,9 +16,9 @@ function do_ifdown() {
     echo "ERROR: do_ifdown <ifname> <iftype>." 1>&2
     return 1
   fi
+  local wwan_dev
   if which nmcli > /dev/null 2>&1 &&
      [ "$(nmcli networking)" = "enabled" ]; then
-    local wwan_dev
     if [ "$2" = "WWAN" ]; then
       wwan_dev=$(get_wwan_port "$1")
       nmcli device disconnect "$wwan_dev"
@@ -40,9 +40,9 @@ function do_ifup() {
     echo "ERROR: do_ifup <ifname> <iftype>." 1>&2
     return 1
   fi
+  local wwan_dev
   if which nmcli > /dev/null 2>&1 &&
      [ "$(nmcli networking)" = "enabled" ]; then
-    local wwan_dev
     if [ "$2" = "WWAN" ]; then
       wwan_dev=$(get_wwan_port "$1")
       nmcli device connect "$wwan_dev"
@@ -64,7 +64,7 @@ function get_ifstatus() {
     echo "ERROR: get_ifstatus <ifname> <iftype>." 1>&2
     return 1
   fi
-  local status; local path; local modem_info
+  local status path modem_info
   if [ "$2" = "WWAN" ]; then
     for path in $(mmcli -L | awk '{print $1}' | tr '\n' ' '); do
       modem_info=$(mmcli -m $path)
@@ -126,7 +126,7 @@ function get_ether_mediatype() {
     echo "ERROR: get_ether_mediatype <ifname>." 1>&2
     return 1
   fi
-  local speed; local duplex
+  local speed duplex
   speed=$(cat /sys/class/net/"$1"/speed)
   duplex=$(cat /sys/class/net/"$1"/duplex)
   echo "${speed}_${duplex}"
@@ -209,13 +209,14 @@ function get_wlan_nss() {
 # require get_wlan_info() data from STDIN.
 # get_wlan_mode
 function get_wlan_mode() {
-  local iw_data="$(cat)"
-  local tx_bitrate=$(echo "$iw_data"					|
-                     grep "tx bitrate:"					|
-                     awk '{print $3, $4, $5, $6, $7}')
-  local freq=$(echo "$iw_data"						|
-               grep "freq:"						|
-               awk '{print $2}')
+  local iw_data tx_bitrate freq
+  iw_data="$(cat)"
+  tx_bitrate=$(echo "$iw_data"						|
+               grep "tx bitrate:"					|
+               awk '{print $3, $4, $5, $6, $7}')
+  freq=$(echo "$iw_data"						|
+         grep "freq:"							|
+         awk '{print $2}')
 
   if [[ $tx_bitrate =~ "EHT-MCS" ]]; then
     echo "7"
@@ -253,8 +254,8 @@ function get_wlan_mode() {
 # require get_wlan_info() data from STDIN.
 # get_wlan_band
 function get_wlan_band() {
-  local freq=$(grep -oE "(freq:) [0-9]*"				|
-               awk '{print $2}')
+  local freq
+  freq=$(grep -oE "(freq:) [0-9]*" | awk '{print $2}')
   if [[ $freq -ge 2412 && $freq -le 2484 ]]; then
     echo "2.4"
   elif [[ $freq -ge 5180 && $freq -le 5825 ]]; then
@@ -481,8 +482,7 @@ function get_wwan_info() {
     echo "ERROR: get_wwan_info <ifname>." 1>&2
     return 1
   fi
-  local modem_info; local bearer_info; local signal_info
-  local threegpp_info
+  local modem_info bearer_info signal_info threegpp_info
   for path in $(mmcli -L | awk '{print $1}' | tr '\n' ' '); do
     modem_info=$(mmcli -m $path)
     if echo $modem_info | grep "$1" > /dev/null 2>&1; then

@@ -1,6 +1,6 @@
 # sindan.sh
 # version 6
-VERSION="6.0.0"
+VERSION="6.0.1"
 
 # read configuration file
 cd $(dirname $0)

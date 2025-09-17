@@ -48,7 +48,7 @@ function get_netmask() {
     echo "ERROR: get_netmask <devicename>." 1>&2
     return 1
   fi
-  local mask; local o1; local o2; local o3; local o4
+  local mask o1 o2 o3 o4
   mask=$(ifconfig "$1"							|
        sed -n 's/^.*netmask \([0-9a-fx]*\).*$/\1/p')
   o1=0x$(echo "$mask" | cut -c 3-4)
@@ -66,8 +66,8 @@ function check_v4autoconf() {
     echo "ERROR: check_v4autoconf <devicename> <v4ifconf>." 1>&2
     return 1
   fi
+  local v4addr dhcp_data dhcpv4addr cmp
   if [ "$2" = "dhcp" ] || [ "$2" = "bootp" ]; then
-    local v4addr; local dhcp_data; local dhcpv4addr; local cmp
     v4addr=$(get_v4addr "$1")
     dhcp_data=$(ipconfig getpacket "$1")
     echo "$dhcp_data"
@@ -130,7 +130,7 @@ function compare_v4addr() {
     echo "ERROR: compare_v4addr <v4addr1> <v4addr2>." 1>&2
     return 1
   fi
-  local addr1; local addr2
+  local addr1 addr2
   addr1=$(ip2decimal "$1")
   addr2=$(ip2decimal "$2")
   if [ "$addr1" = "$addr2" ]; then
@@ -469,10 +469,9 @@ function check_v6autoconf() {
          "<ra_prefix> <ra_prefix_flags>." 1>&2
     return 1
   fi
-  local result=1
+  local result o_flag m_flag a_flag v6addrs dhcp_data
+  result=1
   if [ "$2" = "automatic" ]; then
-    local o_flag; local m_flag; local a_flag; local v6addrs
-    local dhcp_data=""
     o_flag=$(echo "$3" | grep O)
     m_flag=$(echo "$3" | grep M)
     v6addrs=$(get_v6addrs "$1" "$4")

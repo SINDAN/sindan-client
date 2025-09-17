@@ -10,9 +10,9 @@ function get_v4ifconf() {
     echo "ERROR: get_v4ifconf <ifname> <iftype>." 1>&2
     return 1
   fi
+  local wwan_dev conpath
   if which nmcli > /dev/null 2>&1 &&
        [ "$(nmcli networking)" = "enabled" ]; then
-    local wwan_dev; local conpath
     if [ "$2" = "WWAN" ]; then
       wwan_dev=$(get_wwan_port "$1")
       conpath=$(nmcli -g general.con-path device show "$wwan_dev")
@@ -56,7 +56,7 @@ function get_netmask() {
     echo "ERROR: get_netmask <ifname>." 1>&2
     return 1
   fi
-  local plen; local dec
+  local plen dec
   plen=$(ip -4 addr show "$1"						|
        sed -n 's/^.*inet [0-9.]*\/\([0-9]*\) .*$/\1/p')
   dec=$(( 0xFFFFFFFF ^ ((2 ** (32 - plen)) - 1) ))
@@ -73,9 +73,8 @@ function check_v4autoconf() {
     echo "ERROR: check_v4autoconf <ifname> <v4ifconf>." 1>&2
     return 1
   fi
+  local v4addr dhcp_data dhcpv4addr cmp conpath
   if [ "$2" = "dhcp" ] || [ "$2" = "auto" ]; then
-    local v4addr; local dhcp_data=""; local dhcpv4addr; local cmp
-    local conpath
     v4addr=$(get_v4addr "$1")
     if which dhcpcd > /dev/null 2>&1; then
       dhcp_data=$(dhcpcd -4 -U "$1" | sed "s/'//g")
@@ -159,7 +158,7 @@ function compare_v4addr() {
     echo "ERROR: compare_v4addr <v4addr1> <v4addr2>." 1>&2
     return 1
   fi
-  local addr1; local addr2
+  local addr1 addr2
   addr1=$(ip2decimal "$1")
   addr2=$(ip2decimal "$2")
   if [ "$addr1" = "$addr2" ]; then
@@ -204,10 +203,9 @@ function get_v6ifconf() {
     echo "ERROR: get_v6ifconf <ifname>." 1>&2
     return 1
   fi
-  local v6ifconf
+  local v6ifconf wwan_dev conpath
   if which nmcli > /dev/null 2>&1 &&
        [ "$(nmcli networking)" = "enabled" ]; then
-    local wwan_dev; local conpath
     if [ "$2" = "WWAN" ]; then
       wwan_dev=$(get_wwan_port "$1")
       conpath=$(nmcli -g general.con-path device show "$wwan_dev")
@@ -750,10 +748,9 @@ function check_v6autoconf() {
          "<ra_prefix> <ra_prefix_flags>." 1>&2
     return 1
   fi
-  local result=1
+  local result o_flag m_flag a_flag v6addrs dhcp_data conpath
+  result=1
   if [ "$2" = "automatic" ] || [ "$2" = "auto" ]; then
-    local o_flag; local m_flag; local a_flag; local v6addrs
-    local dhcp_data=""
     o_flag=$(echo "$3" | grep O)
     m_flag=$(echo "$3" | grep M)
     v6addrs=$(get_v6addrs "$1" "$4")
@@ -764,7 +761,6 @@ function check_v6autoconf() {
       result=0
     fi
     if [ -n "$o_flag" ] || [ -n "$m_flag" ]; then
-      local conpath
       if which dhcpcd > /dev/null 2>&1; then
         dhcp_data=$(dhcpcd -6 -U "$1" | sed "s/'//g")
       elif [ -f /var/lib/dhcp/dhclient."$1".leases ]; then

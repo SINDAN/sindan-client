@@ -41,17 +41,12 @@ function cmdset_ping() {
          "<target_addr> <count>." 1>&2
     return 1
   fi
-  local layer=$1
-  local ver=$2
-  local ipv=IPv${ver}
-  local type=$3
-  local target=$4
-  local count=$5
-  local rtt_type=(min ave max dev)
-  local result=$FAIL
-  local string=" ping to $ipv $type: $target"
-  local ping_result; local rtt_data; local rtt_loss
-
+  local layer=$1 ver=$2 type=$3 target=$4 count=$5
+  local ipv rtt_type result string ping_result rtt_data rtt_loss
+  ipv=IPv${ver}
+  rtt_type=(min ave max dev)
+  result=$FAIL
+  string=" ping to $ipv $type: $target"
   if ping_result=$(do_ping "$ver" "$target"); then
     result=$SUCCESS
   fi

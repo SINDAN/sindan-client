@@ -27,16 +27,11 @@ function cmdset_http() {
          "<target_url> <count>." 1>&2
     return 1
   fi
-  local layer=$1
-  local ver=$2
-  local ipv=IPv${ver}
-  local type=$3
-  local target=$4
-  local count=$5
-  local result=$FAIL
-  local string=" curl to extarnal server: $target by $ipv"
-  local http_ans
-
+  local layer=$1 ver=$2 type=$3 target=$4 count=$5
+  local ipv result string http_ans
+  ipv=IPv${ver}
+  result=$FAIL
+  string=" curl to extarnal server: $target by $ipv"
   if http_ans=$(do_curl "$ver" "$target"); then
     result=$SUCCESS
   else
@@ -73,18 +68,13 @@ function cmdset_ssh() {
          "<target_str> <count>." 1>&2
     return 1
   fi
-  local layer=$1
-  local ver=$2
-  local ipv=IPv${ver}
-  local type=$3
-  local target; local key_type
-  target=$(echo "$4" | awk -F_ '{print $1}')
-  key_type=$(echo "$4" | awk -F_ '{print $2}')
-  local count=$5
-  local result=$FAIL
-  local string=" sshkeyscan to extarnal server: $target by $ipv"
-  local ssh_ans
-
+  local layer=$1 ver=$2 type=$3 str=$4 count=$5
+  local ipv target key_type result string ssh_ans
+  ipv=IPv${ver}
+  target=$(echo "$str" | awk -F_ '{print $1}')
+  key_type=$(echo "$str" | awk -F_ '{print $2}')
+  result=$FAIL
+  string=" sshkeyscan to extarnal server: $target by $ipv"
   if ssh_ans=$(do_sshkeyscan "$ver" "$target" "$key_type"); then
     result=$SUCCESS
   else
@@ -125,17 +115,11 @@ function cmdset_portscan() {
          "<target_addr> <target_port> <count>." 1>&2
     return 1
   fi
-  local layer=$1
-  local ver=$2
-  local ipv="IPv${ver}"
-  local type=$3
-  local target=$4
-  local port=$5
-  local count=$6
-  local result=$FAIL
-  local string=" portscan to extarnal server: $target:$port by $ipv"
-  local ps_ans
-
+  local layer=$1 ver=$2 type=$3 target=$4 port=$5 count=$6
+  local ipv result string ps_ans
+  ipv="IPv${ver}"
+  result=$FAIL
+  string=" portscan to extarnal server: $target:$port by $ipv"
   if ps_ans=$(do_portscan "$ver" "$target" "$port"); then
     result=$SUCCESS
   else
@@ -224,15 +208,10 @@ function cmdset_speedtest() {
            "<target_url> <count>." 1>&2
     return 1
   fi
-  local layer=$1
-  local pver=$2
-  local type=$3
-  local target=$4
-  local count=$5
-  local result=$FAIL
-  local string=" speedtest to extarnal server: $target by $ver"
-  local speedtest_ans stat
-
+  local layer=$1 pver=$2 type=$3 target=$4 count=$5
+  local ver ipv result string speedtest_ans stat prefix
+  result=$FAIL
+  string=" speedtest to extarnal server: $target by $pver"
   if speedtest_ans=$(do_speedtest "$target"); then
     result=$SUCCESS
   else
@@ -243,9 +222,8 @@ function cmdset_speedtest() {
     write_json "$layer" "$pver" speedtest "$result" "$target"		\
                "$speedtest_ans" "$count"
     for ver in 4 6; do
-      local prefix="v${ver}speedtest"
-      local ipv="IPv${ver}"
-
+      prefix="v${ver}speedtest"
+      ipv="IPv${ver}"
       for code in "p rtt ms" "j jitter ms" "d download Mbps" "u upload Mbps"; do
         IFS=" " read -r key suffix unit <<< "$code"
         value=$(get_speedtest_data "$ver" "$key" <<< "$speedtest_ans") && {
@@ -260,7 +238,6 @@ function cmdset_speedtest() {
           string="$string\n  $ipv $name: $value $unit"
         }
       done
-
       for code in "t time" "i ip" "p port" "o org" "m mss"; do
         IFS=" " read -r key suffix <<< "$code"
         value=$(get_speedtest_sess "$ver" "$key" <<< "$speedtest_ans") && {

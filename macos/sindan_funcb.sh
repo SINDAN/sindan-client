@@ -62,7 +62,7 @@ function write_json_campaign() {
     echo "DEBUG(input data): $1, $2, $3, $4, $5, $6" 1>&2
     return 1
   fi
-  local mac_addr; local network_id
+  local mac_addr network_id
   mac_addr=$(hash_result mac_addr "$2")
   network_id=$(hash_result ssid "$5")
   echo "{ \"log_campaign_uuid\" : \"$1\","				\

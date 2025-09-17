@@ -82,17 +82,12 @@ function cmdset_dnslookup() {
          "<target_addr> <count>." 1>&2
     return 1
   fi
-  local layer=$1
-  local ver=$2
-  local ipv=IPv${ver}
-  local type=$3
-  local target=$4
-  local dns_result=""
-  local string=" dns lookup for $type record by $ipv nameserver: $target"
-  local dns_ans; local dns_ttl; local dns_rtt
-
+  local layer=$1 ver=$2 type=$3 target=$4
+  local ipv string result dns_result dns_ans dns_ttl dns_rtt
+  ipv=IPv${ver}
+  string=" dns lookup for $type record by $ipv nameserver: $target"
   for fqdn in $(echo "$FQDNS" | sed 's/,/ /g'); do
-    local result=$FAIL
+    result=$FAIL
     string="$string\n  resolve server: $fqdn"
     if dns_result=$(do_dnslookup "$target" "$type" "$fqdn"); then
       result=$SUCCESS
