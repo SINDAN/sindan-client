@@ -2,6 +2,14 @@
 # sendlog.sh
 # version 1.5
 
+# check shell variables
+if [ -n "$URL_CAMPAIGN" ]; then
+    readonly URL_CAMPAIGN
+fi
+if [ -n "$URL_SINDAN" ]; then
+    readonly URL_SINDAN
+fi
+
 # read configurationfile
 cd $(dirname $0)
 . ./sindan.conf
