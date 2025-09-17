@@ -39,7 +39,7 @@ function do_pmtud() {
   local mid dfopt header
   local -a cmd
   case $ver in
-    "4" ) cmd=(ping -t 1 -c 1)"; dfopt="-D"; header=28 ;;
+    "4" ) cmd=(ping -t 1 -c 1); dfopt="-D"; header=28 ;;
     "6" ) cmd=(gtimeout -sKILL 3 ping6 -c 1); dfopt=""; header=48 ;;
     * ) echo "ERROR: <version> must be 4 or 6." 1>&2; return 9 ;;
   esac
