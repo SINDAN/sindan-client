@@ -1,3 +1,4 @@
+#!/bin/bash
 # sindan.sh
 # version 6
 VERSION="6.0.1"
