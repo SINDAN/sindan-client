@@ -14,3 +14,8 @@
 !/macos/log/.keep
 /macos/sindan.conf
 /macos/bin
+
+# for windows
+/windows/log/*
+!/windows/log/.keep
+/windows/sindan.conf
