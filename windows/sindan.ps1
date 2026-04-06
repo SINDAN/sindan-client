@@ -1,791 +1,711 @@
-# change to english locale
-chcp 437 > $null
+﻿# change to english locale
+chcp 437
 
-$params = @{}
+$ErrorActionPreference = "Stop"
+$scriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
+$debugEnabled = $true
+$debugLogDir = Join-Path $scriptDir "log"
+$debugLogPath = $null
 
-function Read-Conf([string]$filename) {
-    $lines = Get-Content $filename -ErrorAction Stop
-    foreach ($line in $lines) {
-        if ($line -match '^\s*$') { continue }
-        if ($line -match '^\s*[#;]') { continue }
-        $param = $line.Split('=', 2)
-        if ($param.Count -eq 2) {
-            $params[$param[0].Trim()] = $param[1].Trim().Trim('"')
+trap {
+    Write-Host "fatal error: $($_.Exception.Message)"
+    if ($_.ScriptStackTrace) {
+        Write-Host $_.ScriptStackTrace
+    }
+    if ($debugEnabled) {
+        try {
+            Stop-Transcript | Out-Null
+        } catch {
         }
     }
+    exit 1
 }
 
-function Get-Param {
-    param(
-        [string[]]$Names,
-        [string]$Default = ''
-    )
-    foreach ($name in $Names) {
-        if ($params.ContainsKey($name) -and -not [string]::IsNullOrWhiteSpace($params[$name])) {
-            return $params[$name]
-        }
+$params = @{  }
+$body = @{ }
+$campaignEndpoint = $null
+$doSpeedtest = $false
+$speedtestCmd = "speedtest"
+$speedtestServerIds = @()
+
+function read_conf($filename)
+{
+  $lines = get-content $filename
+  foreach($line in $lines){
+    # Remove comments and blank lines.
+    if($line -match "^$"){ continue }
+    if($line -match "^\s*;"){ continue }
+
+    $param = $line.split("=",2)
+
+    $params[$param[0]] = $param[1]
+  }
+}
+
+read_conf ".\sindan.conf"
+
+if ($params["DEBUG_LOG"]) {
+    $debugValue = $params["DEBUG_LOG"].ToString().Trim().ToLower()
+    $debugEnabled = ($debugValue -eq "1" -or $debugValue -eq "true" -or $debugValue -eq "yes" -or $debugValue -eq "on")
+}
+
+if ($debugEnabled) {
+    if (-not (Test-Path $debugLogDir)) {
+        New-Item -ItemType Directory -Path $debugLogDir -Force | Out-Null
     }
-    return $Default
+    $debugLogPath = Join-Path $debugLogDir ("sindan_debug_" + (Get-Date -Format "yyyyMMdd_HHmmss") + ".log")
+    Start-Transcript -Path $debugLogPath -Force | Out-Null
+    Write-Host "debug log file: $debugLogPath"
 }
 
-function Split-List([string]$value) {
-    if ([string]::IsNullOrWhiteSpace($value)) { return @() }
-    return @($value -split ',' | ForEach-Object { $_.Trim() } | Where-Object { $_ -ne '' })
+if (-not $params["CAMPAIGN_ENDPOINT"]) {
+    throw "CAMPAIGN_ENDPOINT is missing in sindan.conf"
 }
 
-function Get-NowUtc() {
-    return (Get-Date).ToUniversalTime().ToString('yyyy-MM-dd HH:mm:ss')
+$campaignEndpoint = $params["CAMPAIGN_ENDPOINT"]
+
+if ($params["DO_SPEEDTEST"]) {
+    $speedtestValue = $params["DO_SPEEDTEST"].ToString().Trim().ToLower()
+    $doSpeedtest = ($speedtestValue -eq "1" -or $speedtestValue -eq "true" -or $speedtestValue -eq "yes" -or $speedtestValue -eq "on")
 }
 
-function Ensure-LogDir() {
-    if (-not (Test-Path '.\log')) {
-        New-Item -Path '.\log' -ItemType Directory | Out-Null
-    }
+if ($params["SPEEDTEST_CMD"]) {
+    $speedtestCmd = $params["SPEEDTEST_CMD"].ToString().Trim()
 }
 
-$script:campaign_uuid = [guid]::NewGuid().ToString()
-$script:version = '6.0.1'
-
-function Write-Json(
-    [string]$layer,
-    [string]$group,
-    [string]$type,
-    [string]$result,
-    [string]$target,
-    [string]$detail,
-    [int]$count
-) {
-    $json_data = @{}
-    $json_data['layer'] = $layer
-    $json_data['log_group'] = $group
-    $json_data['log_type'] = $type
-    $json_data['log_campaign_uuid'] = $script:campaign_uuid
-    $json_data['result'] = $result
-    $json_data['target'] = $target
-    $json_data['detail'] = $detail
-    $json_data['occurred_at'] = Get-NowUtc
-
-    $epoch = [int][double]::Parse((Get-Date -UFormat %s))
-    $path = ".\log\sindan_${layer}_${type}_${count}_${epoch}.json"
-    $json_data | ConvertTo-Json -Depth 8 | Out-File -FilePath $path -Encoding utf8
+if ($params["ST_SRVS"]) {
+    $speedtestServerIds = @($params["ST_SRVS"].Split(",") | ForEach-Object { $_.Trim() } | Where-Object { $_ -ne "" })
 }
 
-function Write-CampaignJson(
-    [string]$macAddr,
-    [string]$osInfo,
-    [string]$networkType,
-    [string]$networkId,
-    [string]$hostName
-) {
-    $json_data = @{}
-    $json_data['log_campaign_uuid'] = $script:campaign_uuid
-    $json_data['mac_addr'] = $macAddr
-    $json_data['os'] = $osInfo
-    $json_data['network_type'] = $networkType
-    $json_data['ssid'] = $networkId
-    $json_data['hostname'] = $hostName
-    $json_data['version'] = $script:version
-    $json_data['occurred_at'] = Get-NowUtc
+function resolve_check($fqdns, $dns_server, $group, $type, $dnstype) {
+   foreach ($fqdn in $fqdns) {
+            $dns_results = $null
+            $elapsedMsList = @()
+            $lastError = ""
 
-    $epoch = [int][double]::Parse((Get-Date -UFormat %s))
-    $path = ".\log\campaign_${epoch}.json"
-    $json_data | ConvertTo-Json -Depth 8 | Out-File -FilePath $path -Encoding utf8
-}
-
-function Get-WlanValue([string]$key) {
-    $line = netsh wlan show interfaces | Select-String -Pattern "^\s*$([regex]::Escape($key))\s*:\s*(.+)$" | Select-Object -First 1
-    if ($null -eq $line) { return '' }
-    return $line.Matches[0].Groups[1].Value.Trim()
-}
-
-function Get-CurrentSSID() {
-    return Get-WlanValue 'SSID'
-}
-
-function Get-ClockSyncState() {
-    try {
-        $status = w32tm /query /status 2>$null
-        if ($status -match 'Source:\s+(.+)$') {
-            return 'synchronized=true'
-        }
-        return 'synchronized=false'
-    }
-    catch {
-        return ''
-    }
-}
-
-function Get-ClockSource() {
-    try {
-        $status = w32tm /query /status 2>$null
-        $sourceLine = $status | Where-Object { $_ -match '^Source:\s+' } | Select-Object -First 1
-        if ($sourceLine -match '^Source:\s+(.+)$') {
-            return $Matches[1].Trim()
-        }
-    }
-    catch {
-    }
-    return ''
-}
-
-function Invoke-PingCheck(
-    [string]$layer,
-    [string]$version,
-    [string]$type,
-    [string]$target,
-    [int]$count
-) {
-    $group = "IPv$version"
-    $result = $FAIL
-    $raw = ''
-    try {
-        $ping = Test-Connection -TargetName $target -Count 10 -IPv$version -ErrorAction Stop
-        $raw = ($ping | Out-String).Trim()
-        $result = $SUCCESS
-        Write-Json $layer $group "v${version}alive_${type}" $result $target $raw $count
-
-        $times = @($ping | Select-Object -ExpandProperty ResponseTime)
-        if ($times.Count -gt 0) {
-            $min = ($times | Measure-Object -Minimum).Minimum
-            $max = ($times | Measure-Object -Maximum).Maximum
-            $ave = [Math]::Round((($times | Measure-Object -Average).Average), 3)
-            $dev = 0
-            if ($times.Count -gt 1) {
-                $variance = ($times | ForEach-Object { [math]::Pow(($_ - $ave), 2) } | Measure-Object -Sum).Sum / $times.Count
-                $dev = [Math]::Round([Math]::Sqrt($variance), 3)
-            }
-            Write-Json $layer $group "v${version}rtt_${type}_min" $INFO $target "$min" $count
-            Write-Json $layer $group "v${version}rtt_${type}_ave" $INFO $target "$ave" $count
-            Write-Json $layer $group "v${version}rtt_${type}_max" $INFO $target "$max" $count
-            Write-Json $layer $group "v${version}rtt_${type}_dev" $INFO $target "$dev" $count
-            Write-Json $layer $group "v${version}loss_${type}" $INFO $target '0' $count
-        }
-    }
-    catch {
-        $raw = $_.Exception.Message
-        Write-Json $layer $group "v${version}alive_${type}" $result $target $raw $count
-        Write-Json $layer $group "v${version}loss_${type}" $INFO $target '100' $count
-    }
-}
-
-function Invoke-TraceCheck(
-    [string]$layer,
-    [string]$version,
-    [string]$type,
-    [string]$target,
-    [int]$count
-) {
-    $group = "IPv$version"
-    $traceRaw = ''
-    $path = @()
-    try {
-        if ($version -eq '4') {
-            $trace = tracert -4 -d -h 20 -w 2000 $target
-        }
-        else {
-            $trace = tracert -6 -d -h 20 -w 2000 $target
-        }
-        $traceRaw = ($trace | Out-String).Trim()
-        Write-Json $layer $group "v${version}path_detail_${type}" $INFO $target $traceRaw $count
-
-        foreach ($line in $trace) {
-            if ($line -match '^\s*\d+\s+.*?([0-9a-fA-F:\.]+)\s*$') {
-                $hop = $Matches[1]
-                if ($hop -ne '*' -and $hop -ne 'Request') {
-                    $path += $hop
+            for ($i = 0; $i -lt 3; $i++) {
+                try {
+                    $sw = [System.Diagnostics.Stopwatch]::StartNew()
+                    if ($dns_server) {
+                        $probe_results = Resolve-DnsName $fqdn $dnstype -DnsOnly -Server $dns_server -ErrorAction Stop
+                    } else {
+                        $probe_results = Resolve-DnsName $fqdn $dnstype -DnsOnly -ErrorAction Stop
+                    }
+                    $sw.Stop()
+                    $elapsedMsList += [math]::Round($sw.Elapsed.TotalMilliseconds, 2)
+                    if (-not $dns_results) {
+                        $dns_results = $probe_results
+                    }
+                } catch {
+                    $lastError = $_.Exception.Message
                 }
             }
-        }
-        Write-Json $layer $group "v${version}path_${type}" $INFO $target ($path -join ',') $count
+
+            $result = 0
+            if ($elapsedMsList.Count -gt 0) {
+                $result = 1
+            }
+
+            $detail = ""
+            if ($dns_results) {
+                foreach ($dns_result in $dns_results) {
+                    if ($dns_result.Section -eq 1) {
+                        if ($dns_result.IPAddress) {
+                            $detail = $detail + $dns_result.IPAddress + " "
+                        } elseif ($dns_result.NameHost) {
+                            $detail = $detail + $dns_result.NameHost + " "
+                        }
+                    }
+                }
+            }
+
+            if ($detail -ne "") {
+                write_json "dns" $group $type $result $detail.Trim()
+            } elseif ($lastError -ne "") {
+                write_json "dns" $group $type $params['FAIL'] ("(" + $fqdn + ") " + $lastError)
+            }
+
+            if ($elapsedMsList.Count -gt 0) {
+                $minRtt = ($elapsedMsList | Measure-Object -Minimum).Minimum
+                $maxRtt = ($elapsedMsList | Measure-Object -Maximum).Maximum
+                $avgRtt = [math]::Round((($elapsedMsList | Measure-Object -Average).Average), 2)
+                $dnsTarget = if ($dns_server) { $dns_server } else { "system-default" }
+                $rttDetail = "fqdn=$fqdn dns=$dnsTarget min_ms=$minRtt avg_ms=$avgRtt max_ms=$maxRtt count=$($elapsedMsList.Count)"
+                write_json "dns" $group ($type + "_rtt") $params['INFO'] $rttDetail
+            }
     }
-    catch {
-        Write-Json $layer $group "v${version}path_detail_${type}" $INFO $target $_.Exception.Message $count
+    
+}
+
+function ping_check($target_host, $layer, $group, $type) {
+    foreach ($target in @($target_host)) {
+        if ($null -eq $target) { continue }
+        $target = $target.ToString().Trim()
+        if ($target -eq "") { continue }
+
+        try {
+            $ping = Test-Connection $target -Count 4 -ErrorAction Stop
+            $statusCodes = @($ping.StatusCode)
+            $okCount = @($statusCodes | Where-Object { $_ -eq 0 }).Count
+            $result = if ($okCount -gt 0) { $params['SUCCESS'] } else { $params['FAIL'] }
+            write_json $layer $group $type $result ("(" + $target + ") " + ($statusCodes -join ' '))
+
+            $rttList = @($ping | Where-Object { $_.StatusCode -eq 0 -and $null -ne $_.ResponseTime } | ForEach-Object { [double]$_.ResponseTime })
+            if ($rttList.Count -gt 0) {
+                $minRtt = ($rttList | Measure-Object -Minimum).Minimum
+                $maxRtt = ($rttList | Measure-Object -Maximum).Maximum
+                $avgRtt = [math]::Round((($rttList | Measure-Object -Average).Average), 2)
+                $rttDetail = "target=$target min_ms=$minRtt avg_ms=$avgRtt max_ms=$maxRtt count=$($rttList.Count)"
+                write_json $layer $group ($type + "_rtt") $params['INFO'] $rttDetail
+            }
+        } catch {
+            write_json $layer $group $type $params['FAIL'] ("(" + $target + ") " + $_.Exception.Message)
+            write_json $layer $group ($type + "_rtt") $params['FAIL'] ("target=" + $target + " error=" + $_.Exception.Message)
+        }
     }
 }
 
-function Invoke-PmtudCheck(
-    [string]$layer,
-    [string]$version,
-    [string]$type,
-    [string]$target,
-    [int]$ifmtu,
-    [int]$count,
-    [string]$srcAddr
-) {
-    $group = "IPv$version"
-    if ($version -ne '4') {
-        Write-Json $layer $group "v${version}pmtu_${type}" $INFO $target "unmeasurable,$srcAddr" $count
+function trace_check($target_host, $layer, $group, $type) {
+    try {
+        $traceArgs = @("-d", "-h", "15", "-w", "1000")
+        if ($group -eq "IPv6") {
+            $traceArgs += "-6"
+        }
+        $traceArgs += $target_host
+
+        $traceOutput = (& tracert @traceArgs 2>&1 | Out-String)
+        $traceOk = ($traceOutput -match "Trace complete|トレースを完了")
+        $traceSummary = (($traceOutput -split "`r?`n") | Where-Object { $_.Trim() -ne "" } | Select-Object -Last 5) -join " | "
+
+        if ($traceOk) {
+            write_json $layer $group $type 1 $traceSummary
+        } else {
+            write_json $layer $group $type 0 $traceSummary
+        }
+    } catch {
+        write_json $layer $group $type 0 $_.Exception.Message
+    }
+}
+
+function pmtud_check_v4($target_host, $layer, $group, $type, $ifMtu) {
+    try {
+        $ifMtuInt = 1500
+        $tmp = 0
+        if ([int]::TryParse($ifMtu.ToString(), [ref]$tmp) -and $tmp -gt 600) {
+            $ifMtuInt = $tmp
+        }
+
+        $low = 548
+        $high = [Math]::Max($low, $ifMtuInt - 28)
+        $best = -1
+
+        while ($low -le $high) {
+            $mid = [int](($low + $high) / 2)
+            $pingOutput = (& ping -n 1 -w 1000 -f -l $mid $target_host 2>&1 | Out-String)
+
+            if ($pingOutput -match "TTL=|ttl=") {
+                $best = $mid
+                $low = $mid + 1
+            } else {
+                $high = $mid - 1
+            }
+        }
+
+        if ($best -ge 0) {
+            $pmtu = $best + 28
+            write_json $layer $group $type 1 ("target=" + $target_host + " pmtu=" + $pmtu)
+        } else {
+            write_json $layer $group $type 0 ("target=" + $target_host + " pmtu=unknown")
+        }
+    } catch {
+        write_json $layer $group $type 0 $_.Exception.Message
+    }
+}
+
+function speedtest_check($layer) {
+    if (-not (Get-Command $speedtestCmd -ErrorAction SilentlyContinue)) {
+        write_json $layer "Dualstack" "speedtest" $params['FAIL'] ("command not found: " + $speedtestCmd)
         return
     }
 
-    $low = 576
-    $high = [Math]::Max($ifmtu, 576)
-    $best = 0
-    while (($high - $low) -gt 1) {
-        $mid = [int](($low + $high) / 2)
-        $payload = $mid - 28
-        if ($payload -lt 0) { break }
-        $cmd = "ping -4 -n 1 -w 1000 -f -l $payload $target"
-        $res = cmd /c $cmd 2>&1
-        $ok = (($res | Out-String) -match 'TTL=' -or ($res | Out-String) -match 'Reply from')
-        if ($ok) {
-            $best = $mid
-            $low = $mid
-        }
-        else {
-            $high = $mid
-        }
+    $targetIds = @("auto")
+    if ($speedtestServerIds.Count -gt 0) {
+        $targetIds = $speedtestServerIds
     }
 
-    if ($best -gt 0) {
-        Write-Json $layer $group "v${version}pmtu_${type}" $INFO $target "$best,$srcAddr" $count
-    }
-    else {
-        Write-Json $layer $group "v${version}pmtu_${type}" $INFO $target "unmeasurable,$srcAddr" $count
-    }
-}
-
-function Invoke-DnsLookupCheck(
-    [string]$layer,
-    [string]$version,
-    [string]$recordType,
-    [string]$dnsServer,
-    [int]$count,
-    [string[]]$fqdns
-) {
-    $group = "IPv$version"
-    foreach ($fqdn in $fqdns) {
-        $result = $FAIL
-        $raw = ''
-        $answer = ''
-        $ttl = ''
-        $rtt = ''
+    foreach ($targetId in $targetIds) {
         try {
-            $sw = [Diagnostics.Stopwatch]::StartNew()
-            $query = Resolve-DnsName -Name $fqdn -Type $recordType -Server $dnsServer -DnsOnly -ErrorAction Stop
-            $sw.Stop()
-            $result = $SUCCESS
-            $raw = ($query | Out-String).Trim()
-            $answers = @($query | Where-Object { $_.Section -eq 'Answer' })
-            if ($answers.Count -gt 0) {
-                $ttl = "$($answers[0].TTL)"
-                $answerValues = @()
-                foreach ($a in $answers) {
-                    if ($recordType -eq 'A' -and $a.IPAddress) { $answerValues += $a.IPAddress }
-                    if ($recordType -eq 'AAAA' -and $a.IPAddress) { $answerValues += $a.IPAddress }
-                }
-                $answer = ($answerValues -join ',')
+            $args = @("--accept-license", "--accept-gdpr", "--format=json")
+            if ($targetId -ne "auto") {
+                $args += @("--server-id", $targetId)
             }
-            $rtt = "$($sw.ElapsedMilliseconds)"
-        }
-        catch {
-            $raw = $_.Exception.Message
-        }
 
-        Write-Json $layer $group "v${version}dnsqry_${recordType}_${fqdn}" $result $dnsServer $raw $count
-        if ($result -eq $SUCCESS) {
-            Write-Json $layer $group "v${version}dnsans_${recordType}_${fqdn}" $INFO $dnsServer $answer $count
-            Write-Json $layer $group "v${version}dnsttl_${recordType}_${fqdn}" $INFO $dnsServer $ttl $count
-            Write-Json $layer $group "v${version}dnsrtt_${recordType}_${fqdn}" $INFO $dnsServer $rtt $count
-        }
-    }
-}
-
-function Check-Dns64([string]$dnsServer) {
-    try {
-        $ans = Resolve-DnsName -Name 'ipv4only.arpa' -Type AAAA -Server $dnsServer -DnsOnly -ErrorAction Stop
-        if ($ans) { return 'yes' }
-    }
-    catch {
-    }
-    return 'no'
-}
-
-function Invoke-HttpCheck(
-    [string]$layer,
-    [string]$version,
-    [string]$type,
-    [string]$target,
-    [int]$count,
-    [string]$proxyUrl
-) {
-    $group = "IPv$version"
-    $result = $FAIL
-    $detail = ''
-    try {
-        $invokeParams = @{
-            Uri = $target
-            Method = 'Head'
-            TimeoutSec = 10
-            MaximumRedirection = 3
-            ErrorAction = 'Stop'
-        }
-        if (-not [string]::IsNullOrWhiteSpace($proxyUrl)) {
-            $invokeParams['Proxy'] = $proxyUrl
-        }
-        $resp = Invoke-WebRequest @invokeParams
-        $result = $SUCCESS
-        $detail = "$($resp.StatusCode)"
-    }
-    catch {
-        if ($_.Exception.Response -and $_.Exception.Response.StatusCode.value__) {
-            $detail = "$($_.Exception.Response.StatusCode.value__)"
-        }
-        else {
-            $detail = $_.Exception.Message
-        }
-    }
-    Write-Json $layer $group "v${version}http_${type}" $result $target $detail $count
-}
-
-function Invoke-SshCheck(
-    [string]$layer,
-    [string]$version,
-    [string]$type,
-    [string]$targetSpec,
-    [int]$count
-) {
-    $group = "IPv$version"
-    $parts = $targetSpec.Split('_', 2)
-    $target = $parts[0]
-    $result = $FAIL
-    $detail = ''
-
-    $sshKeyscan = Get-Command ssh-keyscan -ErrorAction SilentlyContinue
-    if ($sshKeyscan) {
-        try {
-            $typeArg = if ($parts.Count -gt 1) { $parts[1] } else { 'rsa' }
-            $cmd = "ssh-keyscan -$version -T 5 -t $typeArg $target"
-            $out = cmd /c $cmd 2>$null
-            if ($LASTEXITCODE -eq 0 -and -not [string]::IsNullOrWhiteSpace(($out | Out-String))) {
-                $result = $SUCCESS
-                $detail = ($out | Out-String).Trim()
+            $raw = (& $speedtestCmd @args 2>&1 | Out-String)
+            $jsonStart = $raw.IndexOf("{")
+            if ($jsonStart -lt 0) {
+                throw "speedtest output is not JSON"
             }
-            else {
-                $detail = 'ssh-keyscan failed'
-            }
-        }
-        catch {
-            $detail = $_.Exception.Message
-        }
-    }
-    else {
-        try {
-            $tnc = Test-NetConnection -ComputerName $target -Port 22 -InformationLevel Quiet -WarningAction SilentlyContinue
-            if ($tnc) {
-                $result = $SUCCESS
-                $detail = 'port 22 reachable'
-            }
-            else {
-                $detail = 'port 22 unreachable'
-            }
-        }
-        catch {
-            $detail = $_.Exception.Message
-        }
-    }
 
-    Write-Json $layer $group "v${version}ssh_${type}" $result $target $detail $count
+            $speedtest = $raw.Substring($jsonStart) | ConvertFrom-Json
+            $downloadMbps = [Math]::Round((($speedtest.download.bandwidth * 8) / 1000000), 2)
+            $uploadMbps = [Math]::Round((($speedtest.upload.bandwidth * 8) / 1000000), 2)
+            $latencyMs = [Math]::Round($speedtest.ping.latency, 2)
+            $jitterMs = [Math]::Round($speedtest.ping.jitter, 2)
+            $serverName = $speedtest.server.host
+
+            write_json $layer "Dualstack" "speedtest" $params['SUCCESS'] ("target=" + $targetId + " server=" + $serverName)
+            write_json $layer "Dualstack" "speedtest_download" $params['INFO'] $downloadMbps
+            write_json $layer "Dualstack" "speedtest_upload" $params['INFO'] $uploadMbps
+            write_json $layer "Dualstack" "speedtest_rtt" $params['INFO'] $latencyMs
+            write_json $layer "Dualstack" "speedtest_jitter" $params['INFO'] $jitterMs
+        } catch {
+            write_json $layer "Dualstack" "speedtest" $params['FAIL'] $_.Exception.Message
+        }
+    }
 }
 
-function Invoke-PortScanCheck(
-    [string]$layer,
-    [string]$version,
-    [string]$type,
-    [string]$target,
-    [int]$port,
-    [int]$count
-) {
-    $group = "IPv$version"
-    $result = $FAIL
-    $detail = ''
-    try {
-        $tnc = Test-NetConnection -ComputerName $target -Port $port -InformationLevel Detailed -WarningAction SilentlyContinue
-        if ($tnc.TcpTestSucceeded) {
-            $result = $SUCCESS
-            $detail = 'open'
-        }
-        else {
-            $detail = 'closed'
-        }
+function ConvertTo-DottedDecimalIP {
+  <#
+    .Synopsis
+      Returns a dotted decimal IP address from either an unsigned 32-bit integer or a dotted binary string.
+    .Description
+      ConvertTo-DottedDecimalIP uses a regular expression match on the input string to convert to an IP address.
+    .Parameter IPAddress
+      A string representation of an IP address from either UInt32 or dotted binary.
+  #>
+ 
+  [CmdLetBinding()]
+  param(
+    [Parameter(Mandatory = $true, Position = 0, ValueFromPipeline = $true)]
+    [String]$IPAddress
+  )
+  
+  process {
+    Switch -RegEx ($IPAddress) {
+      "([01]{8}.){3}[01]{8}" {
+        return [String]::Join('.', $( $IPAddress.Split('.') | ForEach-Object { [Convert]::ToUInt32($_, 2) } ))
+      }
+      "\d" {
+        $IPAddress = [UInt32]$IPAddress
+        $DottedIP = $( For ($i = 3; $i -gt -1; $i--) {
+          $Remainder = $IPAddress % [Math]::Pow(256, $i)
+          ($IPAddress - $Remainder) / [Math]::Pow(256, $i)
+          $IPAddress = $Remainder
+         } )
+       
+        return [String]::Join('.', $DottedIP)
+      }
+      default {
+        Write-Error "Cannot convert this format"
+      }
     }
-    catch {
-        $detail = $_.Exception.Message
-    }
-    Write-Json $layer $group "v${version}portscan_${port}" $result $target $detail $count
+  }
 }
 
-Set-Location (Split-Path -Parent $MyInvocation.MyCommand.Path)
-Read-Conf '.\sindan.conf'
-Ensure-LogDir
-
-$PIDFILE = Get-Param -Names @('PIDFILE', 'LOCKFILE') -Default '.\sindan.isrunning'
-$MAX_RETRY = [int](Get-Param -Names @('MAX_RETRY') -Default '5')
-$IFTYPE = Get-Param -Names @('IFTYPE') -Default 'Wi-Fi'
-$RECONNECT = Get-Param -Names @('RECONNECT') -Default 'no'
-$MODE = Get-Param -Names @('MODE') -Default 'client'
-$EXCL_IPv4 = Get-Param -Names @('EXCL_IPv4') -Default 'no'
-$EXCL_IPv6 = Get-Param -Names @('EXCL_IPv6') -Default 'no'
-$PROXY_URL = Get-Param -Names @('PROXY_URL') -Default ''
-
-$PING4_SRVS = Split-List (Get-Param -Names @('PING4_SRVS', 'PING_SRVS'))
-$PING6_SRVS = Split-List (Get-Param -Names @('PING6_SRVS'))
-$FQDNS = Split-List (Get-Param -Names @('FQDNS'))
-$PDNS4_SRVS = Split-List (Get-Param -Names @('PDNS4_SRVS', 'GPDNS4'))
-$PDNS6_SRVS = Split-List (Get-Param -Names @('PDNS6_SRVS', 'GPDNS6'))
-$WEB4_SRVS = Split-List (Get-Param -Names @('WEB4_SRVS', 'V4WEB_SRVS'))
-$WEB6_SRVS = Split-List (Get-Param -Names @('WEB6_SRVS', 'V6WEB_SRVS'))
-$SSH4_SRVS = Split-List (Get-Param -Names @('SSH4_SRVS'))
-$SSH6_SRVS = Split-List (Get-Param -Names @('SSH6_SRVS'))
-$PS4_SRVS = Split-List (Get-Param -Names @('PS4_SRVS'))
-$PS6_SRVS = Split-List (Get-Param -Names @('PS6_SRVS'))
-$PS_PORTS = Split-List (Get-Param -Names @('PS_PORTS'))
-
-$FAIL = Get-Param -Names @('FAIL') -Default '0'
-$SUCCESS = Get-Param -Names @('SUCCESS') -Default '1'
-$INFO = Get-Param -Names @('INFO') -Default '10'
-
-if (Test-Path $PIDFILE) {
-    $oldPid = Get-Content $PIDFILE -ErrorAction SilentlyContinue | Select-Object -First 1
-    if ($oldPid -and (Get-Process -Id $oldPid -ErrorAction SilentlyContinue)) {
-        Stop-Process -Id $oldPid -Force -ErrorAction SilentlyContinue
-    }
-    Remove-Item $PIDFILE -Force -ErrorAction SilentlyContinue
+function ConvertTo-Mask {
+  <#
+    .Synopsis
+      Returns a dotted decimal subnet mask from a mask length.
+    .Description
+      ConvertTo-Mask returns a subnet mask in dotted decimal format from an integer value ranging 
+      between 0 and 32. ConvertTo-Mask first creates a binary string from the length, converts 
+      that to an unsigned 32-bit integer then calls ConvertTo-DottedDecimalIP to complete the operation.
+    .Parameter MaskLength
+      The number of bits which must be masked.
+  #>
+  
+  [CmdLetBinding()]
+  param(
+    [Parameter(Mandatory = $true, Position = 0, ValueFromPipeline = $true)]
+    [Alias("Length")]
+    [ValidateRange(0, 32)]
+    $MaskLength
+  )
+  
+  Process {
+    return ConvertTo-DottedDecimalIP ([Convert]::ToUInt32($(("1" * $MaskLength).PadRight(32, "0")), 2))
+  }
 }
-$PID | Out-File $PIDFILE -Encoding ascii -Force
+# Create UUID
+$campaign_uuid = [guid]::NewGuid().ToString();
 
-try {
-    Write-Host 'Phase 0: Hardware Layer checking...'
-    $layer = 'hardware'
+function write_json($layer, $group, $type, $result, $detail) {
+    $json_data = @{  }
 
-    $osInfo = (Get-CimInstance Win32_OperatingSystem).Caption
-    $hostname = [System.Net.Dns]::GetHostName()
-    $sys = Get-CimInstance Win32_ComputerSystem
-    $cpu = Get-CimInstance Win32_Processor | Select-Object -First 1
+    $json_data["layer"] = $layer
+    $json_data["log_group"] = $group
+    $json_data["log_type"] = $type
+    $json_data["result"] = $result
+    $json_data["detail"] = $detail
+    $json_data["occurred_at"] = Get-Date -Format "yyyy-MM-dd HH:mm:ss"
+    $json_data["log_campaign_uuid"] = $campaign_uuid 
 
-    $hwInfo = "$($sys.Manufacturer),$($sys.Model)"
-    if ($hwInfo) { Write-Json $layer 'common' 'hw_info' $INFO 'self' $hwInfo 0 }
+    echo (ConvertTo-Json $json_data) > ("log\sindan_"+$layer+"_"+$type+(Get-Date -Uformat %s)+".json")
+}
 
-    if ($cpu.MaxClockSpeed) { Write-Json $layer 'common' 'cpu_freq' $INFO 'self' "$($cpu.MaxClockSpeed * 1000000)" 0 }
+$destructive=1
 
-    $clockState = Get-ClockSyncState
-    if ($clockState) { Write-Json $layer 'common' 'clock_state' $INFO 'self' $clockState 0 }
+#################
+##  Phase 0
 
-    $clockSrc = Get-ClockSource
-    if ($clockSrc) { Write-Json $layer 'common' 'clock_src' $INFO 'self' $clockSrc 0 }
+# Set lock file
 
-    Write-Host ' done.'
+function GetCurrentSSID() {
+    return (netsh wlan show interfaces) -Match 'Profile' -NotMatch 'Connection mode' -Replace "^\s+Profile\s+:\s+", "" -Replace "\s+$", ""
+<#
+    $WifiGUID = (Get-NetAdapter -Name $params["IFTYPE"]).interfaceGUID
 
-    Write-Host 'Phase 1: Datalink Layer checking...'
-    $layer = 'datalink'
-
-    $ifname = $IFTYPE
-    if ($RECONNECT -eq 'yes') {
-        Disable-NetAdapter -Name $ifname -Confirm:$false -ErrorAction SilentlyContinue
-        Start-Sleep -Seconds 2
-        Enable-NetAdapter -Name $ifname -Confirm:$false -ErrorAction SilentlyContinue
-        Start-Sleep -Seconds 5
+    $InsterfacePath = "C:\ProgramData\Microsoft\Wlansvc\Profiles\Interfaces\"
+    foreach ($WifiGUID in $WifiGUIDs) {
+        $WifiPath = Join-Path $InsterfacePath $WifiGUID
+        $WifiXmls = Get-ChildItem -Path $WifiPath -Recurse
     }
 
-    Write-Json $layer 'common' 'iftype' $INFO 'self' $IFTYPE 0
+    foreach ($wifixml in $WifiXmls) {
+        [xml]$x = Get-Content -Path $wifixml.FullName
+ 
+        [PSCustomObject]@{
+        FileName = $WifiXml.FullName
+        WifiName = $x.WLANProfile.Name
+        ConnectionMode = $x.WLANProfile.ConnectionMode
+        SSIDName = $x.WLANProfile.SSIDConfig.SSID.Name
+        SSIDHex = $x.WLANProfile.SSIDConfig.SSID.Hex
+        }
+    }
+#>
+}
 
+<#
+function GetInterfaces() {
+#    $body["layer"] = "Layer2";
+    $body["occurred_at"] = Get-Date -Format "yyyy-MM-dd HH:mm:ss"
+#    $body["log_group"] = "Wired"
+#    $body["log_type"] = "Media"
+
+    # Get devicename
+    $interface = (Get-NetAdapter -Name $params["IFTYPE"]).interfaceGUID
+
+    $body["detail"] = $interface
+
+    # Get MAC address
+    $body["mac_addr"] = ((Get-NetAdapter -Name $params["IFTYPE"]).MacAddress -replace ("-", ":")).ToLower()
+    $body["log_campaign_uuid"] = $campaign_uuid    
+
+    # Get OS version
+    $body["os"]=(Get-WmiObject Win32_OperatingSystem).Name.split("|")[0]    
+    
+    # Register log_unit_id
+    Invoke-RestMethod -Method Post -Uri http://fluentd.c.u-tokyo.ac.jp:8888/sindan.log_campaign -Body (ConvertTo-Json $body) -ContentType "application/json"
+#    Invoke-RestMethod -Method Post -Uri http://fluentd.c.u-tokyo.ac.jp:8888/sindan.log -Body (ConvertTo-Json $body)  -ContentType "application/json"     
+
+#    for($i=0; $i -lt $interfaces.Length ; $i++) {
+#        $body["detail"] = $interfaces[$i]
+#        Invoke-RestMethod -Method Post  -Uri http://fluentd.c.u-tokyo.ac.jp:8888/sindan.log -Body (ConvertTo-Json $body)  -ContentType "application/json" 
+#    }
+}
+#>
+
+function RegisterCampaingLog() {
+    # Set Date
+    $body["occurred_at"] = (Get-Date).ToUniversalTime().ToString("yyyy-MM-dd HH:mm:ss")
+
+    # Get MAC address
+    $body["mac_addr"] = ((Get-NetAdapter -Name $params["IFTYPE"]).MacAddress -replace ("-", ":")).ToLower()
+    $body["log_campaign_uuid"] = $campaign_uuid    
+
+    # Get OS version
+    $body["os"]=(Get-WmiObject Win32_OperatingSystem).Name.split("|")[0]    
+    $body["ssid"] = GetCurrentSSID
+
+    # Register campaign id
+    Invoke-RestMethod -Method Post -Uri $campaignEndpoint -Body (ConvertTo-Json $body) -ContentType "application/json"
+
+}
+
+
+RegisterCampaingLog
+
+##################
+### Phase 1 
+echo "Phase 1: Datalink Layer checking..."
+$layer = "datalink"
+
+if ($destructive) {
+    # Record current ssid
+    $ssid = GetCurrentSSID
+#    echo $ssid_profile
+    # If up/down
+    echo "Interface Up/Down..."
+    netsh interface set interface name= $params["IFTYPE"] admin=DISABLED
+    sleep 1
+    netsh interface set interface name= $params["IFTYPE"] admin=ENABLED
+
+    # Change to recorded ssid
+    sleep 5
+    netsh wlan connect ssid=$ssid name=$ssid
+}
+
+sleep 2
+$netadapter = Get-NetAdapter -Name $params["IFTYPE"]
+
+# Check I/F status
+$result = 0
+if ($netadapter.Status -eq 'Up') {
+    $result = 1
+    $ifstatus = 'active'
+} else {
+    $result = 0
     $ifstatus = 'inactive'
-    $resultPhase1 = $FAIL
-    for ($i = 0; $i -lt $MAX_RETRY; $i++) {
-        $netadapter = Get-NetAdapter -Name $ifname -ErrorAction SilentlyContinue
-        if ($netadapter -and $netadapter.Status -eq 'Up') {
-            $ifstatus = 'active'
-            $resultPhase1 = $SUCCESS
-            break
-        }
-        Start-Sleep -Seconds 5
-    }
-    Write-Json $layer $IFTYPE 'ifstatus' $resultPhase1 'self' $ifstatus 0
-
-    if ($netadapter) {
-        if ($netadapter.MacAddress) {
-            $macAddr = ($netadapter.MacAddress -replace '-', ':').ToLower()
-            Write-Json $layer $IFTYPE 'mac_addr' $INFO 'self' $macAddr 0
-        }
-        if ($netadapter.MtuSize) {
-            $ifmtu = [int]$netadapter.MtuSize
-            Write-Json $layer $IFTYPE 'ifmtu' $INFO 'self' "$ifmtu" 0
-        }
-    }
-
-    $wlanSsid = 'none'
-    if ($IFTYPE -eq 'Wi-Fi') {
-        $wlanSsid = Get-CurrentSSID
-        if ($wlanSsid) { Write-Json $layer $IFTYPE 'wlan_ssid' $INFO 'self' $wlanSsid 0 }
-
-        $bssid = Get-WlanValue 'BSSID'
-        if ($bssid) { Write-Json $layer $IFTYPE 'wlan_bssid' $INFO 'self' $bssid 0 }
-
-        $radioType = Get-WlanValue 'Radio type'
-        if ($radioType) { Write-Json $layer $IFTYPE 'wlan_mode' $INFO 'self' $radioType 0 }
-
-        $channel = Get-WlanValue 'Channel'
-        if ($channel) { Write-Json $layer $IFTYPE 'wlan_channel' $INFO 'self' $channel 0 }
-
-        $txRate = Get-WlanValue 'Transmit rate (Mbps)'
-        if ($txRate) { Write-Json $layer $IFTYPE 'wlan_rate' $INFO 'self' $txRate 0 }
-
-        $signal = Get-WlanValue 'Signal'
-        if ($signal) { Write-Json $layer $IFTYPE 'wlan_quality' $INFO 'self' ($signal -replace '%', '') 0 }
-    }
-
-    Write-Host ' done.'
-
-    Write-Host 'Phase 2: Interface Layer checking...'
-    $layer = 'interface'
-
-    $v4addr = ''
-    $v6addrs = @()
-    $v4routers = @()
-    $v6routers = @()
-    $v4nameservers = @()
-    $v6nameservers = @()
-
-    if ($EXCL_IPv4 -ne 'yes') {
-        $ip4if = Get-NetIPInterface -InterfaceAlias $ifname -AddressFamily IPv4 -ErrorAction SilentlyContinue
-        if ($ip4if) {
-            $v4ifconf = if ($ip4if.Dhcp -eq 'Enabled') { 'dhcp' } else { 'manual' }
-            Write-Json $layer 'IPv4' 'v4ifconf' $INFO 'self' $v4ifconf 0
-        }
-
-        $ipconf = Get-NetIPConfiguration -InterfaceAlias $ifname -ErrorAction SilentlyContinue
-        if ($ipconf -and $ipconf.IPv4Address) {
-            $v4addr = $ipconf.IPv4Address.IPAddress
-            Write-Json $layer 'IPv4' 'v4autoconf' $SUCCESS 'self' $v4addr 0
-            Write-Json $layer 'IPv4' 'v4addr' $INFO 'self' $v4addr 0
-            $mask = [IPAddress](([uint32]0xffffffff) -shl (32 - $ipconf.IPv4Address.PrefixLength) -shr 0)
-            Write-Json $layer 'IPv4' 'netmask' $INFO 'self' $mask.IPAddressToString 0
-        }
-        else {
-            Write-Json $layer 'IPv4' 'v4autoconf' $FAIL 'self' 'no IPv4 address' 0
-        }
-
-        if ($ipconf -and $ipconf.IPv4DefaultGateway) {
-            $v4routers = @($ipconf.IPv4DefaultGateway.NextHop | Where-Object { $_ })
-            Write-Json $layer 'IPv4' 'v4routers' $INFO 'self' ($v4routers -join ',') 0
-        }
-
-        $dns4 = Get-DnsClientServerAddress -InterfaceAlias $ifname -AddressFamily IPv4 -ErrorAction SilentlyContinue
-        if ($dns4) {
-            $v4nameservers = @($dns4.ServerAddresses | Where-Object { $_ })
-            if ($v4nameservers.Count -gt 0) {
-                Write-Json $layer 'IPv4' 'v4nameservers' $INFO 'self' ($v4nameservers -join ',') 0
-            }
-        }
-    }
-
-    if ($EXCL_IPv6 -ne 'yes') {
-        $ip6if = Get-NetIPInterface -InterfaceAlias $ifname -AddressFamily IPv6 -ErrorAction SilentlyContinue
-        if ($ip6if) {
-            $v6ifconf = if ($ip6if.RouterDiscovery -eq 'Enabled') { 'automatic' } else { 'manual' }
-            Write-Json $layer 'IPv6' 'v6ifconf' $INFO 'self' $v6ifconf 0
-        }
-
-        $ip6all = Get-NetIPAddress -InterfaceAlias $ifname -AddressFamily IPv6 -ErrorAction SilentlyContinue
-        $ll = $ip6all | Where-Object { $_.IPAddress -like 'fe80*' } | Select-Object -First 1
-        if ($ll) {
-            Write-Json $layer 'IPv6' 'v6lladdr' $INFO 'self' $ll.IPAddress 0
-        }
-
-        $v6global = @($ip6all | Where-Object { $_.IPAddress -notlike 'fe80*' -and $_.IPAddress -ne '::1' } | Select-Object -ExpandProperty IPAddress)
-        if ($v6global.Count -gt 0) {
-            $v6addrs = $v6global
-            Write-Json $layer 'IPv6' 'v6addrs' $INFO 'self' ($v6addrs -join ',') 0
-            Write-Json $layer 'IPv6' 'v6autoconf' $SUCCESS 'self' 'ok' 0
-        }
-
-        $ipconf6 = Get-NetIPConfiguration -InterfaceAlias $ifname -ErrorAction SilentlyContinue
-        if ($ipconf6 -and $ipconf6.IPv6DefaultGateway) {
-            $v6routers = @($ipconf6.IPv6DefaultGateway.NextHop | Where-Object { $_ })
-            Write-Json $layer 'IPv6' 'v6routers' $INFO 'self' ($v6routers -join ',') 0
-        }
-
-        $dns6 = Get-DnsClientServerAddress -InterfaceAlias $ifname -AddressFamily IPv6 -ErrorAction SilentlyContinue
-        if ($dns6) {
-            $v6nameservers = @($dns6.ServerAddresses | Where-Object { $_ })
-            if ($v6nameservers.Count -gt 0) {
-                Write-Json $layer 'IPv6' 'v6nameservers' $INFO 'self' ($v6nameservers -join ',') 0
-            }
-        }
-    }
-
-    Write-Host ' done.'
-
-    Write-Host 'Phase 3: Localnet Layer checking...'
-    $layer = 'localnet'
-
-    $c = 0
-    foreach ($target in $v4routers) { Invoke-PingCheck $layer '4' 'router' $target $c; $c++ }
-    $c = 0
-    foreach ($target in $v4nameservers) { Invoke-PingCheck $layer '4' 'namesrv' $target $c; $c++ }
-    $c = 0
-    foreach ($target in $v6routers) { Invoke-PingCheck $layer '6' 'router' $target $c; $c++ }
-    $c = 0
-    foreach ($target in $v6nameservers) { Invoke-PingCheck $layer '6' 'namesrv' $target $c; $c++ }
-
-    Write-Host ' done.'
-
-    Write-Host 'Phase 4: Globalnet Layer checking...'
-    $layer = 'globalnet'
-
-    if ($EXCL_IPv4 -ne 'yes' -and -not [string]::IsNullOrWhiteSpace($v4addr)) {
-        $c = 0
-        foreach ($target in $PING4_SRVS) {
-            Invoke-PingCheck $layer '4' 'srv' $target $c
-            Invoke-TraceCheck $layer '4' 'srv' $target $c
-            if ($netadapter -and $netadapter.MtuSize) {
-                Invoke-PmtudCheck $layer '4' 'srv' $target ([int]$netadapter.MtuSize) $c $v4addr
-            }
-            $c++
-        }
-    }
-
-    if ($EXCL_IPv6 -ne 'yes' -and $v6addrs.Count -gt 0) {
-        $c = 0
-        foreach ($target in $PING6_SRVS) {
-            Invoke-PingCheck $layer '6' 'srv' $target $c
-            Invoke-TraceCheck $layer '6' 'srv' $target $c
-            foreach ($src in $v6addrs) {
-                if ($netadapter -and $netadapter.MtuSize) {
-                    Invoke-PmtudCheck $layer '6' 'srv' $target ([int]$netadapter.MtuSize) $c $src
-                }
-            }
-            $c++
-        }
-    }
-
-    Write-Host ' done.'
-
-    Write-Host 'Phase 5: DNS Layer checking...'
-    $layer = 'dns'
-    Clear-DnsClientCache -ErrorAction SilentlyContinue
-
-    if ($FQDNS.Count -gt 0) {
-        $c = 0
-        foreach ($dns in $v4nameservers) {
-            if ($MODE -eq 'probe') { Invoke-PingCheck $layer '4' 'namesrv' $dns $c }
-            Invoke-DnsLookupCheck $layer '4' 'A' $dns $c $FQDNS
-            Invoke-DnsLookupCheck $layer '4' 'AAAA' $dns $c $FQDNS
-            $c++
-        }
-
-        $c = 0
-        foreach ($dns in $PDNS4_SRVS) {
-            if ($MODE -eq 'probe') {
-                Invoke-PingCheck $layer '4' 'namesrv' $dns $c
-                Invoke-TraceCheck $layer '4' 'namesrv' $dns $c
-            }
-            Invoke-DnsLookupCheck $layer '4' 'A' $dns $c $FQDNS
-            Invoke-DnsLookupCheck $layer '4' 'AAAA' $dns $c $FQDNS
-            $c++
-        }
-
-        $existDns64 = 'no'
-        $c = 0
-        foreach ($dns in $v6nameservers) {
-            if ($MODE -eq 'probe') { Invoke-PingCheck $layer '6' 'namesrv' $dns $c }
-            Invoke-DnsLookupCheck $layer '6' 'A' $dns $c $FQDNS
-            Invoke-DnsLookupCheck $layer '6' 'AAAA' $dns $c $FQDNS
-            if ($existDns64 -ne 'yes') {
-                $existDns64 = Check-Dns64 $dns
-            }
-            $c++
-        }
-
-        $c = 0
-        foreach ($dns in $PDNS6_SRVS) {
-            if ($MODE -eq 'probe') {
-                Invoke-PingCheck $layer '6' 'namesrv' $dns $c
-                Invoke-TraceCheck $layer '6' 'namesrv' $dns $c
-            }
-            Invoke-DnsLookupCheck $layer '6' 'A' $dns $c $FQDNS
-            Invoke-DnsLookupCheck $layer '6' 'AAAA' $dns $c $FQDNS
-            $c++
-        }
-    }
-
-    Write-Host ' done.'
-
-    Write-Host 'Phase 6: Application Layer checking...'
-    $layer = 'app'
-
-    $c = 0
-    foreach ($target in $WEB4_SRVS) {
-        if ($MODE -eq 'probe') {
-            Invoke-PingCheck $layer '4' 'websrv' $target $c
-            Invoke-TraceCheck $layer '4' 'websrv' $target $c
-        }
-        Invoke-HttpCheck $layer '4' 'websrv' $target $c $PROXY_URL
-        $c++
-    }
-
-    $c = 0
-    foreach ($target in $WEB6_SRVS) {
-        if ($MODE -eq 'probe') {
-            Invoke-PingCheck $layer '6' 'websrv' $target $c
-            Invoke-TraceCheck $layer '6' 'websrv' $target $c
-        }
-        Invoke-HttpCheck $layer '6' 'websrv' $target $c $PROXY_URL
-        $c++
-    }
-
-    $c = 0
-    foreach ($target in $SSH4_SRVS) {
-        if ($MODE -eq 'probe') {
-            $fqdn = $target.Split('_', 2)[0]
-            Invoke-PingCheck $layer '4' 'sshsrv' $fqdn $c
-            Invoke-TraceCheck $layer '4' 'sshsrv' $fqdn $c
-        }
-        Invoke-SshCheck $layer '4' 'sshsrv' $target $c
-        $c++
-    }
-
-    $c = 0
-    foreach ($target in $SSH6_SRVS) {
-        if ($MODE -eq 'probe') {
-            $fqdn = $target.Split('_', 2)[0]
-            Invoke-PingCheck $layer '6' 'sshsrv' $fqdn $c
-            Invoke-TraceCheck $layer '6' 'sshsrv' $fqdn $c
-        }
-        Invoke-SshCheck $layer '6' 'sshsrv' $target $c
-        $c++
-    }
-
-    $c = 0
-    foreach ($target in $PS4_SRVS) {
-        foreach ($portText in $PS_PORTS) {
-            $port = [int]$portText
-            Invoke-PortScanCheck $layer '4' 'pssrv' $target $port $c
-        }
-        $c++
-    }
-
-    $c = 0
-    foreach ($target in $PS6_SRVS) {
-        foreach ($portText in $PS_PORTS) {
-            $port = [int]$portText
-            Invoke-PortScanCheck $layer '6' 'pssrv' $target $port $c
-        }
-        $c++
-    }
-
-    Write-Host ' done.'
-
-    Write-Host 'Phase 7: Create campaign log...'
-
-    $macCampaign = if ($netadapter -and $netadapter.MacAddress) { ($netadapter.MacAddress -replace '-', ':').ToLower() } else { '' }
-    $networkId = if ($IFTYPE -eq 'Wi-Fi') { $wlanSsid } else { 'none' }
-    Write-CampaignJson $macCampaign $osInfo $IFTYPE $networkId $hostname
-
-    Write-Host ' done.'
 }
-finally {
-    Remove-Item $PIDFILE -Force -ErrorAction SilentlyContinue
+write_json $layer "" ifstatus $result $ifstatus
+
+# Get iftype
+write_json $layer "" iftype $params['INFO'] $params['IFTYPE']
+
+# Get ifmtu
+write_json $layer "" ifmtu $params['INFO'] $netadapter.MtuSize
+
+# Wi-Fi
+if ($params["IFTYPE"] -eq 'Wi-Fi') {
+    # Get Wi-Fi SSID
+    $ssid = GetCurrentSSID
+    write_json $layer "Wi-Fi" ssid $params['INFO'] $ssid
+
+    # Get Wi-Fi RSSI
+    $signalQualityRaw = (netsh wlan show interfaces) -Match 'Signal' -Replace "^\s+Signal\s+:\s+", "" -Replace "\s+$", "" -Replace "%", ""
+    $signalQuality = 0
+    if ([int]::TryParse($signalQualityRaw, [ref]$signalQuality)) {
+        if ($signalQuality -lt 0) { $signalQuality = 0 }
+        if ($signalQuality -gt 100) { $signalQuality = 100 }
+        $rssi = [math]::Round(($signalQuality / 2.0) - 100)
+    } else {
+        $rssi = $params['FAIL']
+    }
+    write_json $layer "Wi-Fi" rssi $params['INFO'] $rssi
+
+    # Get Wi-Fi noise
+    write_json $layer "Wi-Fi" noise $params['INFO'] '-'
+
+    # Get Wi-Fi rate
+    write_json $layer 'Wi-Fi' rate $params['INFO'] (($netadapter.speed)/1000000)
+
+    # Get Wi-Fi channel
+    $channel = (netsh wlan show interfaces) -Match 'Channel' -Replace "^\s+Channel\s+:\s+", "" -Replace "\s+$", "" -Replace "%", ""
+    write_json $layer "Wi-Fi" channel $params['INFO'] $channel
+
+} else {
+    # Get media type
+}
+
+#Get-NetAdapter
+
+##################
+### Phase 2 
+
+echo "Phase 2: Interface Layer checking..."
+$layer = 'interface'
+
+$ifindex = (Get-NetIPInterface 'Wi-Fi' -AddressFamily IPv6).ifIndex
+
+$ipinterface = Get-NetIPInterface $params["IFTYPE"] -AddressFamily 'IPv4'
+$ip6interface = Get-NetIPInterface $params["IFTYPE"] -AddressFamily 'IPv6'
+$ipconfig = (Get-NetIPConfiguration $params["IFTYPE"])
+
+# Get if configuration
+if ($ipinterface.Dhcp -eq 'Enabled') {
+    $v4ifconf = 'dhcp'
+} else {
+    $v4ifconf = 'static'
+}
+write_json $layer 'IPv4' v4ifconf $params['INFO'] $v4ifconf
+
+# Get IPv4 address
+write_json $layer 'IPv4' v4addr $params['INFO'] $ipconfig.IPv4Address.IPAddress
+
+# Get IPv4 netmask
+write_json $layer 'IPv4' netmask $params['INFO'] (ConvertTo-Mask $ipconfig.IPv4Address.PrefixLength)
+
+# Get IPv4 routers
+$ipv4gateway = $ipconfig.IPv4DefaultGateway.NextHop
+write_json $layer 'IPv4' v4routers $params['INFO'] $ipv4gateway
+
+# Get IPv4 name servers
+$ipv4nameserver = ((Get-NetIPConfiguration 'Wi-FI').DNSServer | Where-Object {$_.AddressFamily -eq 2}).ServerAddresses
+write_json $layer 'IPv4' v4nameservers $params['INFO'] $ipv4nameserver
+
+# Get IPv4 NTP servers
+
+# Get IPv6 linklocal address
+$v6addrs = (Get-NetIPAddress -InterfaceIndex $ifindex -AddressFamily IPv6)
+foreach ($v6addr in $v6addrs) {
+    if ($v6addr.PrefixOrigin -eq 'WellKnown') {
+        write_json $layer 'IPv6' v6lladdr $params['INFO'] $v6addr.IPv6Address
+    }
+}
+# Get IPv6 RA prefix
+
+# if RA prefix present
+    # Get IPv6 RA prefix flags
+    # Get IPv6 RA flags
+    # Get Ipv6 address
+    # Get IPv6 routers
+    $ipv6gateway = $ipconfig.IPv6DefaultGateway.NextHop
+    write_json $layer 'IPv6' v6routers $params['INFO'] $ipv6gateway
+    # Get IPv6 name servers
+
+    # Get IPv6 NTP servers
+# fi
+
+# Report phase 2 results
+
+##################
+### Phase 3
+
+echo "Phase 3: Localnet Layer checking..."
+$layer = "localnet"
+
+# Do ping to IPv4 routers
+ping_check $ipv4gateway $layer 'IPv4' 'v4alive_router'
+
+# Do ping to IPv4 nameservers
+ping_check $ipv4nameserver $layer 'IPv4' 'v4alive_namesrv'
+
+# Do ping to IPv6 routers
+if ($ipv6gateway) {
+    if (($ipv6gateway -match '^fe80:') -and ($ipv6gateway -notmatch '%') -and $ifindex) {
+        $ipv6gateway = "$ipv6gateway%$ifindex"
+    }
+    ping_check $ipv6gateway $layer 'IPv6' 'v6alive_router'
+}
+
+# Do ping to IPv6 nameservers
+if ($ipv6nameserver) {
+    ping_check $ipv6nameserver $layer 'IPv6' 'v6alive_namesrv'
+}
+
+##################
+### Phase 4
+echo "Phase 4: Globalnet Layer checking..."
+$layer="globalnet"
+
+# Check PING_SRVS parameter
+if ($params["PING_SRVS"]) {
+    # Do ping to external IPv4 servers
+    foreach ($target in ($params["PING_SRVS"] -split ",")) {
+        $target = $target.Trim()
+        if ($target -eq "") { continue }
+        ping_check $target $layer 'IPv4' 'v4alive_srv'
+        trace_check $target $layer 'IPv4' 'v4trace_srv'
+        pmtud_check_v4 $target $layer 'IPv4' 'v4pmtud_srv' $netadapter.MtuSize
+    }
+}
+
+# Check PING6_SRVS parameter
+if ($params["PING6_SRVS"]) {
+    # Do ping to external IPv6 servers
+    foreach ($target in ($params["PING6_SRVS"] -split ",")) {
+        $target = $target.Trim()
+        if ($target -eq "") { continue }
+        ping_check $target $layer 'IPv6' 'v6alive_srv'
+        trace_check $target $layer 'IPv6' 'v6trace_srv'
+        write_json $layer 'IPv6' 'v6pmtud_srv' $params['INFO'] 'not_implemented'
+    }
+}
+
+##################
+### Phase  5
+echo "Phase 5: DNS Layer checking..."
+
+$layer="dns"
+# Clear dns local cache
+echo "flushing DNS caches..."
+Clear-DnsClientCache
+
+# Check FQDNS parameter
+if ($params["FQDNS"]) {
+    $fqdns = $params["FQDNS"] -split ","
+
+    # Do dns lookup for A record by IPv4
+    resolve_check $fqdns "" 'IPv4' v4trans_a_namesrv 'A'
+
+    # Do dns lookup for AAAA record by IPv4
+    resolve_check $fqdns "" 'IPv4' v4trans_aaaa_namesrv 'AAAA'
+
+    # Do dns lookup for A record by IPv6
+    resolve_check $fqdns "" 'IPv6' v6trans_a_namesrv 'A'
+
+    # Do dns lookup for AAAA record by IPv6
+    resolve_check $fqdns "" 'IPv6' v6trans_aaaa_namesrv 'AAAA'
+
+    # Check GPDNS[4|6] parameter
+    if ($params["GPDNS4"]) {
+        # Do dns lookup for A record by GPDNS4
+        resolve_check $fqdns $params["GPDNS4"] 'IPv4' v4trans_a_namesrv 'A'
+
+        # Do dns lookup for AAAA record by GPDNS4
+        resolve_check $fqdns $params["GPDNS4"] 'IPv4' v4trans_aaaa_namesrv 'AAAA'
+    }
+    if ($params["GPDNS6"]) {
+        # Do dns lookup for A record by GPDNS6
+        resolve_check $fqdns $params["GPDNS6"] 'IPv6' v6trans_a_namesrv 'A'
+
+        # Do dns lookup for AAAA record by GPDNS6
+        resolve_check $fqdns $params["GPDNS6"] 'IPv6' v6trans_aaaa_namesrv 'AAAA'
+
+    }
+
+}
+
+##################
+### Phase 6
+echo "Phase 6: Web Layer checking..."
+$layer="web"
+
+# Check V4WEB_SRVS parameter
+if($params["V4WEB_SRVS"]) {
+
+    foreach ($v4target in ($params["V4WEB_SRVS"] -split ',')) {
+        $webresult = Invoke-WebRequest $v4target
+        if ($webresult.StatusDescription -eq "OK") {
+            $result = 1
+        } else {
+            $result = 0
+        }
+        write_json $layer 'IPv4' v4http_srv $result $webresult.StatusCode
+    }
+}
+
+if($params["V6WEB_SRVS"]) {
+
+    foreach ($v6target in ($params["V6WEB_SRVS"] -split ',')) {
+        $webresult = Invoke-WebRequest $v6target
+        if ($webresult.StatusDescription -eq "OK") {
+            $result = 1
+        } else {
+            $result = 0
+        }
+        write_json $layer 'IPv6' v6http_srv $result $webresult.StatusCode
+    }
+}
+
+##################
+### Phase 7
+echo "Phase 7: Application Layer checking..."
+$layer="app"
+
+if ($doSpeedtest) {
+    speedtest_check $layer
+}
+
+# write log file
+
+# remove lock file
+
+if ($debugEnabled) {
+    Stop-Transcript | Out-Null
 }
 
 exit 0
+
+
+
