@@ -1,8 +1,32 @@
 ﻿# change to english locale
 chcp 437
 
+$ErrorActionPreference = "Stop"
+$scriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
+$debugEnabled = $true
+$debugLogDir = Join-Path $scriptDir "log"
+$debugLogPath = $null
+
+trap {
+    Write-Host "fatal error: $($_.Exception.Message)"
+    if ($_.ScriptStackTrace) {
+        Write-Host $_.ScriptStackTrace
+    }
+    if ($debugEnabled) {
+        try {
+            Stop-Transcript | Out-Null
+        } catch {
+        }
+    }
+    exit 1
+}
+
 $params = @{  }
 $body = @{ }
+$campaignEndpoint = $null
+$doSpeedtest = $false
+$speedtestCmd = "speedtest"
+$speedtestServerIds = @()
 
 function read_conf($filename)
 {
@@ -20,40 +44,275 @@ function read_conf($filename)
 
 read_conf ".\sindan.conf"
 
+if ($params["DEBUG_LOG"]) {
+    $debugValue = $params["DEBUG_LOG"].ToString().Trim().ToLower()
+    $debugEnabled = ($debugValue -eq "1" -or $debugValue -eq "true" -or $debugValue -eq "yes" -or $debugValue -eq "on")
+}
+
+if ($debugEnabled) {
+    if (-not (Test-Path $debugLogDir)) {
+        New-Item -ItemType Directory -Path $debugLogDir -Force | Out-Null
+    }
+    $debugLogPath = Join-Path $debugLogDir ("sindan_debug_" + (Get-Date -Format "yyyyMMdd_HHmmss") + ".log")
+    Start-Transcript -Path $debugLogPath -Force | Out-Null
+    Write-Host "debug log file: $debugLogPath"
+}
+
+if (-not $params["CAMPAIGN_ENDPOINT"]) {
+    throw "CAMPAIGN_ENDPOINT is missing in sindan.conf"
+}
+
+$campaignEndpoint = $params["CAMPAIGN_ENDPOINT"]
+
+if ($params["DO_SPEEDTEST"]) {
+    $speedtestValue = $params["DO_SPEEDTEST"].ToString().Trim().ToLower()
+    $doSpeedtest = ($speedtestValue -eq "1" -or $speedtestValue -eq "true" -or $speedtestValue -eq "yes" -or $speedtestValue -eq "on")
+}
+
+if ($params["SPEEDTEST_CMD"]) {
+    $speedtestCmd = $params["SPEEDTEST_CMD"].ToString().Trim()
+}
+
+if ($params["ST_SRVS"]) {
+    $speedtestServerIds = @($params["ST_SRVS"].Split(",") | ForEach-Object { $_.Trim() } | Where-Object { $_ -ne "" })
+}
+
 function resolve_check($fqdns, $dns_server, $group, $type, $dnstype) {
    foreach ($fqdn in $fqdns) {
-            try {
-                $result = 1
-                if ($dns_server) {
-                    $dns_results = Resolve-DnsName $fqdn $dnstype -DnsOnly -Server $dns_server
-                } else {
-                    $dns_results = Resolve-DnsName $fqdn $dnstype -DnsOnly
+            $dns_results = $null
+            $elapsedMsList = @()
+            $lastError = ""
+
+            for ($i = 0; $i -lt 3; $i++) {
+                try {
+                    $sw = [System.Diagnostics.Stopwatch]::StartNew()
+                    if ($dns_server) {
+                        $probe_results = Resolve-DnsName $fqdn $dnstype -DnsOnly -Server $dns_server -ErrorAction Stop
+                    } else {
+                        $probe_results = Resolve-DnsName $fqdn $dnstype -DnsOnly -ErrorAction Stop
+                    }
+                    $sw.Stop()
+                    $elapsedMsList += [math]::Round($sw.Elapsed.TotalMilliseconds, 2)
+                    if (-not $dns_results) {
+                        $dns_results = $probe_results
+                    }
+                } catch {
+                    $lastError = $_.Exception.Message
                 }
-            } catch {
-                $result = 0
             }
+
+            $result = 0
+            if ($elapsedMsList.Count -gt 0) {
+                $result = 1
+            }
+
             $detail = ""
-            foreach ($dns_result in $dns_results) {
-                if ($dns_result.Section -eq 1) {
-                    if($dns_result.IPAddress) {
-                        $detail = $detail + $dns_result.IPAddress
-                        $detail = $detail + " "
+            if ($dns_results) {
+                foreach ($dns_result in $dns_results) {
+                    if ($dns_result.Section -eq 1) {
+                        if ($dns_result.IPAddress) {
+                            $detail = $detail + $dns_result.IPAddress + " "
+                        } elseif ($dns_result.NameHost) {
+                            $detail = $detail + $dns_result.NameHost + " "
+                        }
                     }
                 }
             }
+
             if ($detail -ne "") {
-                write_json "dns" $group $type $result $detail
+                write_json "dns" $group $type $result $detail.Trim()
+            } elseif ($lastError -ne "") {
+                write_json "dns" $group $type $params['FAIL'] ("(" + $fqdn + ") " + $lastError)
+            }
+
+            if ($elapsedMsList.Count -gt 0) {
+                $minRtt = ($elapsedMsList | Measure-Object -Minimum).Minimum
+                $maxRtt = ($elapsedMsList | Measure-Object -Maximum).Maximum
+                $avgRtt = [math]::Round((($elapsedMsList | Measure-Object -Average).Average), 2)
+                $dnsTarget = if ($dns_server) { $dns_server } else { "system-default" }
+                $rttDetail = "fqdn=$fqdn dns=$dnsTarget min_ms=$minRtt avg_ms=$avgRtt max_ms=$maxRtt count=$($elapsedMsList.Count)"
+                write_json "dns" $group ($type + "_rtt") $params['INFO'] $rttDetail
             }
     }
     
 }
 
 function ping_check($target_host, $layer, $group, $type) {
-    $ping = Test-Connection $target_host
-    if (($ping.StatusCode -join ' ') -eq "0 0 0 0") {
-        write_json $layer $group $type 1 ("("+$target_host+")"+$ping.StatusCode -join ' ')
-    } else {
-        write_json $layer $group $type 0 ("("+$target_host+")"+$ping.StatusCode -join ' ')  
+    foreach ($target in @($target_host)) {
+        if ($null -eq $target) { continue }
+        $target = $target.ToString().Trim()
+        if ($target -eq "") { continue }
+
+        $ver = if ($group -eq "IPv6") { "6" } else { "4" }
+        $targetType = $type
+        if ($type -match '^v[46]alive_(.+)$') {
+            $targetType = $Matches[1]
+        }
+        $aliveType = "v${ver}alive_${targetType}"
+
+        try {
+            $ping = Test-Connection $target -Count 4 -ErrorAction Stop
+            $statusCodes = @($ping.StatusCode)
+            $okCount = @($statusCodes | Where-Object { $_ -eq 0 }).Count
+            $result = if ($okCount -gt 0) { $params['SUCCESS'] } else { $params['FAIL'] }
+            write_json $layer $group $type $result ("(" + $target + ") " + ($statusCodes -join ' '))
+            write_json $layer $group $aliveType $result $target
+
+            $rttList = @($ping | Where-Object { $_.StatusCode -eq 0 -and $null -ne $_.ResponseTime } | ForEach-Object { [double]$_.ResponseTime })
+            if ($rttList.Count -gt 0) {
+                $minRtt = ($rttList | Measure-Object -Minimum).Minimum
+                $maxRtt = ($rttList | Measure-Object -Maximum).Maximum
+                $avgRtt = [math]::Round((($rttList | Measure-Object -Average).Average), 2)
+
+                $sumSq = 0.0
+                foreach ($rtt in $rttList) {
+                    $diff = [double]$rtt - [double]$avgRtt
+                    $sumSq += ($diff * $diff)
+                }
+                $devRtt = [math]::Round([math]::Sqrt($sumSq / $rttList.Count), 2)
+
+                $totalCount = [double]$statusCodes.Count
+                $lossPct = if ($totalCount -gt 0) {
+                    [math]::Round((($totalCount - [double]$okCount) / $totalCount) * 100.0, 2)
+                } else {
+                    100
+                }
+
+                $rttDetail = "target=$target min_ms=$minRtt avg_ms=$avgRtt max_ms=$maxRtt count=$($rttList.Count)"
+                write_json $layer $group ($type + "_rtt") $params['INFO'] $rttDetail
+                write_json $layer $group ("v${ver}rtt_${targetType}_min") $params['INFO'] $minRtt
+                write_json $layer $group ("v${ver}rtt_${targetType}_ave") $params['INFO'] $avgRtt
+                write_json $layer $group ("v${ver}rtt_${targetType}_max") $params['INFO'] $maxRtt
+                write_json $layer $group ("v${ver}rtt_${targetType}_dev") $params['INFO'] $devRtt
+                write_json $layer $group ("v${ver}loss_${targetType}") $params['INFO'] $lossPct
+            }
+        } catch {
+            write_json $layer $group $type $params['FAIL'] ("(" + $target + ") " + $_.Exception.Message)
+            write_json $layer $group $aliveType $params['FAIL'] $target
+            write_json $layer $group ($type + "_rtt") $params['FAIL'] ("target=" + $target + " error=" + $_.Exception.Message)
+        }
+    }
+}
+
+function trace_check($target_host, $layer, $group, $type) {
+    $ver = if ($group -eq "IPv6") { "6" } else { "4" }
+    $targetType = $type
+    if ($type -match '^v[46]trace_(.+)$') {
+        $targetType = $Matches[1]
+    }
+
+    try {
+        $traceArgs = @("-d", "-h", "15", "-w", "1000")
+        if ($group -eq "IPv6") {
+            $traceArgs += "-6"
+        }
+        $traceArgs += $target_host
+
+        $traceOutput = (& tracert @traceArgs 2>&1 | Out-String)
+        $traceOk = ($traceOutput -match "Trace complete|トレースを完了")
+        $traceSummary = (($traceOutput -split "`r?`n") | Where-Object { $_.Trim() -ne "" } | Select-Object -Last 5) -join " | "
+
+        $pathHops = @()
+        foreach ($line in ($traceOutput -split "`r?`n")) {
+            if ($line -match '^\s*\d+\s+') {
+                if ($group -eq "IPv6") {
+                    $m = [regex]::Match($line, '([0-9a-fA-F:]{2,})')
+                    if ($m.Success) { $pathHops += $m.Value }
+                } else {
+                    $m = [regex]::Match($line, '(?<!\d)(?:\d{1,3}\.){3}\d{1,3}(?!\d)')
+                    if ($m.Success) { $pathHops += $m.Value }
+                }
+            }
+        }
+        $pathData = ($pathHops -join ',')
+
+        if ($traceOk) {
+            write_json $layer $group $type 1 $traceSummary
+            write_json $layer $group ("v${ver}path_detail_${targetType}") $params['INFO'] $traceOutput.Trim()
+            write_json $layer $group ("v${ver}path_${targetType}") $params['INFO'] $pathData
+        } else {
+            write_json $layer $group $type 0 $traceSummary
+            write_json $layer $group ("v${ver}path_detail_${targetType}") $params['INFO'] $traceOutput.Trim()
+        }
+    } catch {
+        write_json $layer $group $type 0 $_.Exception.Message
+    }
+}
+
+function pmtud_check_v4($target_host, $layer, $group, $type, $ifMtu) {
+    try {
+        $ifMtuInt = 1500
+        $tmp = 0
+        if ([int]::TryParse($ifMtu.ToString(), [ref]$tmp) -and $tmp -gt 600) {
+            $ifMtuInt = $tmp
+        }
+
+        $low = 548
+        $high = [Math]::Max($low, $ifMtuInt - 28)
+        $best = -1
+
+        while ($low -le $high) {
+            $mid = [int](($low + $high) / 2)
+            $pingOutput = (& ping -n 1 -w 1000 -f -l $mid $target_host 2>&1 | Out-String)
+
+            if ($pingOutput -match "TTL=|ttl=") {
+                $best = $mid
+                $low = $mid + 1
+            } else {
+                $high = $mid - 1
+            }
+        }
+
+        if ($best -ge 0) {
+            $pmtu = $best + 28
+            write_json $layer $group $type 1 ("target=" + $target_host + " pmtu=" + $pmtu)
+        } else {
+            write_json $layer $group $type 0 ("target=" + $target_host + " pmtu=unknown")
+        }
+    } catch {
+        write_json $layer $group $type 0 $_.Exception.Message
+    }
+}
+
+function speedtest_check($layer) {
+    if (-not (Get-Command $speedtestCmd -ErrorAction SilentlyContinue)) {
+        write_json $layer "Dualstack" "speedtest" $params['FAIL'] ("command not found: " + $speedtestCmd)
+        return
+    }
+
+    $targetIds = @("auto")
+    if ($speedtestServerIds.Count -gt 0) {
+        $targetIds = $speedtestServerIds
+    }
+
+    foreach ($targetId in $targetIds) {
+        try {
+            $args = @("--accept-license", "--accept-gdpr", "--format=json")
+            if ($targetId -ne "auto") {
+                $args += @("--server-id", $targetId)
+            }
+
+            $raw = (& $speedtestCmd @args 2>&1 | Out-String)
+            $jsonStart = $raw.IndexOf("{")
+            if ($jsonStart -lt 0) {
+                throw "speedtest output is not JSON"
+            }
+
+            $speedtest = $raw.Substring($jsonStart) | ConvertFrom-Json
+            $downloadMbps = [Math]::Round((($speedtest.download.bandwidth * 8) / 1000000), 2)
+            $uploadMbps = [Math]::Round((($speedtest.upload.bandwidth * 8) / 1000000), 2)
+            $latencyMs = [Math]::Round($speedtest.ping.latency, 2)
+            $jitterMs = [Math]::Round($speedtest.ping.jitter, 2)
+            $serverName = $speedtest.server.host
+
+            write_json $layer "Dualstack" "speedtest" $params['SUCCESS'] ("target=" + $targetId + " server=" + $serverName)
+            write_json $layer "Dualstack" "speedtest_download" $params['INFO'] $downloadMbps
+            write_json $layer "Dualstack" "speedtest_upload" $params['INFO'] $uploadMbps
+            write_json $layer "Dualstack" "speedtest_rtt" $params['INFO'] $latencyMs
+            write_json $layer "Dualstack" "speedtest_jitter" $params['INFO'] $jitterMs
+        } catch {
+            write_json $layer "Dualstack" "speedtest" $params['FAIL'] $_.Exception.Message
+        }
     }
 }
 
@@ -211,7 +470,7 @@ function RegisterCampaingLog() {
     $body["ssid"] = GetCurrentSSID
 
     # Register campaign id
-    Invoke-RestMethod -Method Post -Uri http://sindan-dev.c.u-tokyo.ac.jp:8888/sindan.log_campaign -Body (ConvertTo-Json $body) -ContentType "application/json"
+    Invoke-RestMethod -Method Post -Uri $campaignEndpoint -Body (ConvertTo-Json $body) -ContentType "application/json"
 
 }
 
@@ -265,7 +524,15 @@ if ($params["IFTYPE"] -eq 'Wi-Fi') {
     write_json $layer "Wi-Fi" ssid $params['INFO'] $ssid
 
     # Get Wi-Fi RSSI
-    $rssi = (netsh wlan show interfaces) -Match 'Signal' -Replace "^\s+Signal\s+:\s+", "" -Replace "\s+$", "" -Replace "%", ""
+    $signalQualityRaw = (netsh wlan show interfaces) -Match 'Signal' -Replace "^\s+Signal\s+:\s+", "" -Replace "\s+$", "" -Replace "%", ""
+    $signalQuality = 0
+    if ([int]::TryParse($signalQualityRaw, [ref]$signalQuality)) {
+        if ($signalQuality -lt 0) { $signalQuality = 0 }
+        if ($signalQuality -gt 100) { $signalQuality = 100 }
+        $rssi = [math]::Round(($signalQuality / 2.0) - 100)
+    } else {
+        $rssi = $params['FAIL']
+    }
     write_json $layer "Wi-Fi" rssi $params['INFO'] $rssi
 
     # Get Wi-Fi noise
@@ -357,6 +624,9 @@ ping_check $ipv4nameserver $layer 'IPv4' 'v4alive_namesrv'
 
 # Do ping to IPv6 routers
 if ($ipv6gateway) {
+    if (($ipv6gateway -match '^fe80:') -and ($ipv6gateway -notmatch '%') -and $ifindex) {
+        $ipv6gateway = "$ipv6gateway%$ifindex"
+    }
     ping_check $ipv6gateway $layer 'IPv6' 'v6alive_router'
 }
 
@@ -374,25 +644,25 @@ $layer="globalnet"
 if ($params["PING_SRVS"]) {
     # Do ping to external IPv4 servers
     foreach ($target in ($params["PING_SRVS"] -split ",")) {
+        $target = $target.Trim()
+        if ($target -eq "") { continue }
         ping_check $target $layer 'IPv4' 'v4alive_srv'
+        trace_check $target $layer 'IPv4' 'v4trace_srv'
+        pmtud_check_v4 $target $layer 'IPv4' 'v4pmtud_srv' $netadapter.MtuSize
     }
 }
-
-# Do traceroute to external IPv4 servers
-
-# Check path MTU to external IPv4 servers
 
 # Check PING6_SRVS parameter
 if ($params["PING6_SRVS"]) {
     # Do ping to external IPv6 servers
     foreach ($target in ($params["PING6_SRVS"] -split ",")) {
+        $target = $target.Trim()
+        if ($target -eq "") { continue }
         ping_check $target $layer 'IPv6' 'v6alive_srv'
+        trace_check $target $layer 'IPv6' 'v6trace_srv'
+        write_json $layer 'IPv6' 'v6pmtud_srv' $params['INFO'] 'not_implemented'
     }
 }
-
-# Do traceroute to external IPv6 servers
-
-# Check path MTU to external IPv6 servers
 
 ##################
 ### Phase  5
@@ -472,10 +742,20 @@ if($params["V6WEB_SRVS"]) {
 
 ##################
 ### Phase 7
+echo "Phase 7: Application Layer checking..."
+$layer="app"
+
+if ($doSpeedtest) {
+    speedtest_check $layer
+}
 
 # write log file
 
 # remove lock file
+
+if ($debugEnabled) {
+    Stop-Transcript | Out-Null
+}
 
 exit 0
 
