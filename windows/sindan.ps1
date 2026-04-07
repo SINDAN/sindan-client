@@ -143,29 +143,64 @@ function ping_check($target_host, $layer, $group, $type) {
         $target = $target.ToString().Trim()
         if ($target -eq "") { continue }
 
+        $ver = if ($group -eq "IPv6") { "6" } else { "4" }
+        $targetType = $type
+        if ($type -match '^v[46]alive_(.+)$') {
+            $targetType = $Matches[1]
+        }
+        $aliveType = "v${ver}alive_${targetType}"
+
         try {
             $ping = Test-Connection $target -Count 4 -ErrorAction Stop
             $statusCodes = @($ping.StatusCode)
             $okCount = @($statusCodes | Where-Object { $_ -eq 0 }).Count
             $result = if ($okCount -gt 0) { $params['SUCCESS'] } else { $params['FAIL'] }
             write_json $layer $group $type $result ("(" + $target + ") " + ($statusCodes -join ' '))
+            write_json $layer $group $aliveType $result $target
 
             $rttList = @($ping | Where-Object { $_.StatusCode -eq 0 -and $null -ne $_.ResponseTime } | ForEach-Object { [double]$_.ResponseTime })
             if ($rttList.Count -gt 0) {
                 $minRtt = ($rttList | Measure-Object -Minimum).Minimum
                 $maxRtt = ($rttList | Measure-Object -Maximum).Maximum
                 $avgRtt = [math]::Round((($rttList | Measure-Object -Average).Average), 2)
+
+                $sumSq = 0.0
+                foreach ($rtt in $rttList) {
+                    $diff = [double]$rtt - [double]$avgRtt
+                    $sumSq += ($diff * $diff)
+                }
+                $devRtt = [math]::Round([math]::Sqrt($sumSq / $rttList.Count), 2)
+
+                $totalCount = [double]$statusCodes.Count
+                $lossPct = if ($totalCount -gt 0) {
+                    [math]::Round((($totalCount - [double]$okCount) / $totalCount) * 100.0, 2)
+                } else {
+                    100
+                }
+
                 $rttDetail = "target=$target min_ms=$minRtt avg_ms=$avgRtt max_ms=$maxRtt count=$($rttList.Count)"
                 write_json $layer $group ($type + "_rtt") $params['INFO'] $rttDetail
+                write_json $layer $group ("v${ver}rtt_${targetType}_min") $params['INFO'] $minRtt
+                write_json $layer $group ("v${ver}rtt_${targetType}_ave") $params['INFO'] $avgRtt
+                write_json $layer $group ("v${ver}rtt_${targetType}_max") $params['INFO'] $maxRtt
+                write_json $layer $group ("v${ver}rtt_${targetType}_dev") $params['INFO'] $devRtt
+                write_json $layer $group ("v${ver}loss_${targetType}") $params['INFO'] $lossPct
             }
         } catch {
             write_json $layer $group $type $params['FAIL'] ("(" + $target + ") " + $_.Exception.Message)
+            write_json $layer $group $aliveType $params['FAIL'] $target
             write_json $layer $group ($type + "_rtt") $params['FAIL'] ("target=" + $target + " error=" + $_.Exception.Message)
         }
     }
 }
 
 function trace_check($target_host, $layer, $group, $type) {
+    $ver = if ($group -eq "IPv6") { "6" } else { "4" }
+    $targetType = $type
+    if ($type -match '^v[46]trace_(.+)$') {
+        $targetType = $Matches[1]
+    }
+
     try {
         $traceArgs = @("-d", "-h", "15", "-w", "1000")
         if ($group -eq "IPv6") {
@@ -177,10 +212,27 @@ function trace_check($target_host, $layer, $group, $type) {
         $traceOk = ($traceOutput -match "Trace complete|トレースを完了")
         $traceSummary = (($traceOutput -split "`r?`n") | Where-Object { $_.Trim() -ne "" } | Select-Object -Last 5) -join " | "
 
+        $pathHops = @()
+        foreach ($line in ($traceOutput -split "`r?`n")) {
+            if ($line -match '^\s*\d+\s+') {
+                if ($group -eq "IPv6") {
+                    $m = [regex]::Match($line, '([0-9a-fA-F:]{2,})')
+                    if ($m.Success) { $pathHops += $m.Value }
+                } else {
+                    $m = [regex]::Match($line, '(?<!\d)(?:\d{1,3}\.){3}\d{1,3}(?!\d)')
+                    if ($m.Success) { $pathHops += $m.Value }
+                }
+            }
+        }
+        $pathData = ($pathHops -join ',')
+
         if ($traceOk) {
             write_json $layer $group $type 1 $traceSummary
+            write_json $layer $group ("v${ver}path_detail_${targetType}") $params['INFO'] $traceOutput.Trim()
+            write_json $layer $group ("v${ver}path_${targetType}") $params['INFO'] $pathData
         } else {
             write_json $layer $group $type 0 $traceSummary
+            write_json $layer $group ("v${ver}path_detail_${targetType}") $params['INFO'] $traceOutput.Trim()
         }
     } catch {
         write_json $layer $group $type 0 $_.Exception.Message
