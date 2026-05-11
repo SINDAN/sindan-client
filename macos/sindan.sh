@@ -437,6 +437,14 @@ if [ "$EXCL_IPv6" != "yes" ]; then
         write_json "$layer" RA ra_flags "$INFO" "$saddr" "$ra_flags"	\
                    "$count"
 
+        # Get IPv6 RA router preference
+        ra_pref=$(echo "$ra_info" | get_ra_pref "$saddr")
+        if [ -z "$ra_pref" ]; then
+          ra_pref="none"
+        fi
+        write_json "$layer" RA ra_pref "$INFO" "$saddr" "$ra_pref"	\
+                   "$count"
+
         # Get IPv6 RA parameters
 #        ra_hlim=$(echo "$ra_info" | get_ra_hlim "$saddr")
 #        if [ -n "$ra_hlim" ]; then
@@ -463,6 +471,7 @@ if [ "$EXCL_IPv6" != "yes" ]; then
         if [ "$VERBOSE" = "yes" ]; then
           echo "  IPv6 RA src addr: $saddr"
           echo "   IPv6 RA flags: $ra_flags"
+          echo "   IPv6 RA router preference: $ra_pref"
 #          echo "   IPv6 RA hoplimit: $ra_hlim"
 #          echo "   IPv6 RA lifetime: $ra_ltime"
 #          echo "   IPv6 RA reachable: $ra_reach"

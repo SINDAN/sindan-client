@@ -226,8 +226,9 @@ function get_ra_addrs() {
   return $?
 }
 
-# Get flags of RA.
+# Get flags of the RA.
 # require get_ra_info() data from STDIN.
+# get_ra_flags <ra_source>
 function get_ra_flags() {
   if [ $# -ne 1 ]; then
     echo "ERROR: get_ra_flags <ra_source>." 1>&2
@@ -235,6 +236,19 @@ function get_ra_flags() {
   fi
   grep "$1"								|
   sed -n 's/^.*flags=\([A-Z]*\),.*$/\1/p'
+  return $?
+}
+
+# Get router preference of the RA.
+# require get_ra_info() data from STDIN.
+# get_ra_pref <ra_source>
+function get_ra_pref() {
+  if [ $# -ne 1 ]; then
+    echo "ERROR: get_ra_pref <ra_source>." 1>&2
+    return 1
+  fi
+  grep "$1"								|
+  sed -n 's/^.*pref=\([a-z]*\),.*$/\1/p'
   return $?
 }
 

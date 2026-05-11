@@ -268,8 +268,9 @@ function get_ra_addrs() {
   return $?
 }
 
-# Get flags of RA.
+# Get flags of the RA.
 # require get_ra_info() data from STDIN.
+# get_ra_flags <ra_source>
 function get_ra_flags() {
   if [ $# -ne 1 ]; then
     echo "ERROR: get_ra_flags <ra_source>." 1>&2
@@ -309,6 +310,35 @@ function get_ra_flags() {
     }									#
   } END {								#
     printf "%s", flags							#
+  }'
+  return $?
+}
+
+# Get router preference of the RA.
+# require get_ra_info() data from STDIN.
+# get_ra_pref <ra_source>
+function get_ra_pref() {
+  if [ $# -ne 1 ]; then
+    echo "ERROR: get_ra_pref <ra_source>." 1>&2
+    return 1
+  fi
+  awk -v src="$1" 'BEGIN {						#
+    pref=""								#
+  } {									#
+    while (getline line) {						#
+      if (match(line,/^Router preference/)) {				#
+        split(line,t," ")						#
+        pref=t[4]							#
+      } else if (match(line,/^ from.*/)) {				#
+        if (line ~ src) {						#
+          exit								#
+        } else {							#
+          pref=""							#
+        }								#
+      }									#
+    }									#
+  } END {								#
+    printf "%s", pref							#
   }'
   return $?
 }
