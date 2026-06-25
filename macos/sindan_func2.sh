@@ -66,9 +66,15 @@ function check_v4autoconf() {
     echo "ERROR: check_v4autoconf <devicename> <v4ifconf>." 1>&2
     return 1
   fi
-  local v4addr dhcp_data dhcpv4addr cmp
+  local v4addr v4addr_type dhcp_data dhcpv4addr cmp
   if [ "$2" = "dhcp" ] || [ "$2" = "bootp" ]; then
     v4addr=$(get_v4addr "$1")
+    # exclude link-local and CLAT addresses
+    v4addr_type=$(check_v4addr "$v4addr")
+    if [ "$v4addr_type" = "linklocal" ] ||
+       [ "$v4addr_type" = "ipv4-service-continuity" ]; then
+      return 0
+    fi
     dhcp_data=$(ipconfig getpacket "$1")
     echo "$dhcp_data"
 
@@ -147,25 +153,107 @@ function check_v4addr() {
     echo "ERROR: check_v4addr <v4addr>." 1>&2
     return 1
   fi
-  if echo "$1"								|
-   grep -vE '^(([1-9]?[0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\.){3}([1-9]?[0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])$' > /dev/null; then
-    echo 'not IP address'
+  local ip="$1"
+  # IPv4 syntax validation
+  if echo "$ip"                                                         |
+   grep -vqE '^(([1-9]?[0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\.){3}([1-9]?[0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])$'; then
+    echo "not IPv4 address"
     return 1
-  elif echo "$1" | grep '^127\.' > /dev/null; then
-    echo 'loopback'
-    return 0
-  elif echo "$1" | grep '^169\.254' > /dev/null; then
-    echo 'linklocal'
-    return 0
-  elif echo "$1"							|
-   grep -e '^10\.' -e '^172\.\(1[6-9]\|2[0-9]\|3[01]\)\.' -e '^192\.168\.' > /dev/null; then
-    echo 'private'
-    return 0
-  else
-    echo 'global'
-    return 0
   fi
-  return 1
+  case "$ip" in
+    # 0.0.0.0/32 (This host on this network)
+    0.0.0.0)
+      echo "this-host"
+      ;;
+    # 0.0.0.0/8 (This network)
+    0.*)
+      echo "this-network"
+      ;;
+    # 10.0.0.0/8,172.16.0.0/12,192.168.0.0/16 (Private-Use)
+    10.*|172.1[6-9].*|172.2[0-9].*|172.3[0-1].*|192.168.*)
+      echo "private"
+      ;;
+    # 100.64.0.0/10 (Shared Address Space)
+    100.6[4-9].*|100.[7-9][0-9].*|100.1[01][0-9].*|100.12[0-7].*)
+      echo "shared"
+      ;;
+    # 127.0.0.0/8 (Loopback)
+    127.*)
+      echo "loopback"
+      ;;
+    # 169.254.0.0/16 (Link Local)
+    169.254.*)
+      echo "linklocal"
+      ;;
+    # 192.0.0.0/29 (IPv4 Service Continuity Prefix)
+    192.0.0.[0-7])
+      echo "ipv4-service-continuity"
+      ;;
+    # 192.0.0.8/32 (IPv4 dummy address)
+    192.0.0.8)
+      echo "ipv4-dummy"
+      ;;
+    # 192.0.0.9/32 (Port Control Protocol Anycast)
+    192.0.0.9)
+      echo "pcp-anycast"
+      ;;
+    # 192.0.0.10/32 (Traversal Using Relays around NAT Anycast)
+    192.0.0.10)
+      echo "turn-anycast"
+      ;;
+    # 192.0.0.170/32,192.0.0.171/32 (NAT64/DNS64 Discovery)
+    192.0.0.170|192.0.0.171)
+      echo "nat64-discovery"
+      ;;
+    # 192.0.0.0/24 (IETF Protocol Assignments)
+    192.0.0.*)
+      echo "ietf"
+      ;;
+    # 192.0.2.0/24,198.51.100.0/24,203.0.113.0/24 (Documentation)
+    192.0.2.*|198.51.100.*|203.0.113.*)
+      echo "documentation"
+      ;;
+    # 192.31.196.0/24 (AS112-v4)
+    192.31.196.*)
+      echo "as112"
+      ;;
+    # 192.52.193.0/24 (AMT)
+    192.52.193.*)
+      echo "amt"
+      ;;
+    # 192.88.99.2/32 (6a44-relay anycast address)
+    192.88.99.2)
+      echo "6a44-relay"
+      ;;
+    # 192.88.99.0/24 (6to4 Relay Anycast)
+    192.88.99.*)
+      echo "6to4-relay"
+      ;;
+    # 192.175.48.0/24 (Direct Delegation AS112 Service)
+    192.175.48.*)
+      echo "direct-delegation-as112"
+      ;;
+    # 198.18.0.0/15 (Benchmarking)
+    198.18.*|198.19.*)
+      echo "benchmarking"
+      ;;
+    # 224.0.0.0/4 (Multicast Addresses)
+    22[4-9].*|23[0-9].*)
+      echo "multicast"
+      ;;
+    # 240.0.0.0/4 (Reserved)
+    24[0-9].*|25[0-4].*)
+      echo "reserved"
+      ;;
+    # 255.255.255.255/32 (Limited Broadcast)
+    255.255.255.255)
+      echo "limited-broadcast"
+      ;;
+    *)
+      echo "global"
+      ;;
+  esac
+  return 0
 }
 
 # Get IPv6 configuration on the interface.
@@ -591,26 +679,125 @@ function check_v6addr() {
     echo "ERROR: check_v6addr <v6addr>." 1>&2
     return 1
   fi
-  # IPv6 address format check (TBD)
-  #if [ ]; then
-    #return 1 
-  #fi
-  if echo "$1"								|
-   grep -e '^::1$' -e '^\(0\+:\)\{7\}0*1$' > /dev/null; then
-    echo 'loopback'
-    return 0
-  elif echo "$1" | grep '^fe80:' > /dev/null; then
-    echo 'linklocal'
-    return 0
-  elif echo "$1" | grep '^fec0:' > /dev/null; then
-    echo 'sitelocal'
-    return 0
-  elif echo "$1" | grep -e '^fc00:' -e '^fd00:' > /dev/null; then
-    echo 'ula'
-    return 0
-  else
-    echo 'global'
-    return 0
+  local ip
+  ip=$(printf '%s\n' "$1" | tr 'A-F' 'a-f')
+  # IPv6 syntax validation
+  if echo "$ip"                                                         |
+   grep -vqE '^([0-9a-f]{0,4}:){1,7}[0-9a-f]{0,4}$|^([0-9a-f]{0,4}:)*:[0-9a-f:]*$'; then
+    echo "not IPv6 address"
+    return 1
   fi
+  case "$ip" in
+    # Multiple :: not allowed
+    *::*::*)
+      echo "not IPv6 address"
+      return 1
+      ;;
+    # ::/128 (Unspecified Address)
+    ::)
+      echo "unspecified"
+      ;;
+    # ::1/128 (Loopback Address)
+    ::1)
+      echo "loopback"
+      ;;
+    # ::ffff:0:0/96 (IPv4-mapped Address)
+    ::ffff:*)
+      echo "ipv4-mapped"
+      ;;
+    # 64:ff9b::/96,64:ff9b:1::/48 (IPv4-IPv6 Translat)
+    64:ff9b::*|64:ff9b:1:*)
+      echo "46translat"
+      ;;
+    # 100::/64 (Discard-Only Address Block)
+    100::*)
+      echo "discard-only"
+      ;;
+    # 100:0:0:1::/64 (Dummy IPv6 Prefix)
+    100:0:0:1:*)
+      echo "dummy"
+      ;;
+    # 2001::/32 (TEREDO)
+    2001::*)
+      echo "teredo"
+      ;;
+    # 2001:1::1/128 (Port Control Protocol Anycast)
+    2001:1::1)
+      echo "pcp-anycast"
+      ;;
+    # 2001:1::2/128 (Traversal Using Relays around NAT Anycast)
+    2001:1::2)
+      echo "turn-anycast"
+      ;;
+    # 2001:1::3/128 (DNS-SD Service Registration Protocol Anycast)
+    2001:1::3)
+      echo "dns-sd-anycast"
+      ;;
+    # 2001:2::/48 (Benchmarking)
+    2001:2:*)
+      echo "benchmarking"
+      ;;
+    # 2001:3::/32 (AMT)
+    2001:3:*)
+      echo "amt"
+      ;;
+    # 2001:4:12::/48 (AS112-v6)
+    2001:4:12:*)
+      echo "as112"
+      ;;
+    # 2001:10::/28 (ORCHID)
+    2001:1[0-9a-f]:*)
+      echo "orchid"
+      ;;
+    # 2001:20::/28 (ORCHIDv2)
+    2001:2[0-9a-f]:*)
+      echo "orchid-v2"
+      ;;
+    # 2001:30::/28 (Drone Remote ID Protocol Entity Tags (DETs) Prefix)
+    2001:3[[0-9a-f]:*)
+      echo "dets"
+      ;;
+    # 2001:db8::/32,3ffe::/20 (Documentation)
+    2001:db8:*|3ffe:[0-9a-f]*:*|3ffe::*)
+      echo "documentation"
+      ;;
+    # 2001::/23 (IETF Protocol Assignments)
+    2001:*)
+      echo "ietf"
+      ;;
+    # 2002::/16 (6to4)
+    2002:*)
+      echo "6to4"
+      ;;
+    # 2620:4f:8000::/48 (Direct Delegation AS112 Service)
+    2620:4f:8000:*)
+      echo "direct-delegation-as112"
+      ;;
+    # 5f00::/16 (Segment Routing (SRv6) SIDs)
+    5f00:*)
+      echo "srv6"
+      ;;
+    # fc00::/7 (Unique-Local)
+    fc*|fd*)
+      echo "ula"
+      ;;
+    # fe80::/10 (Link-Local Unicast)
+    fe8*|fe9*|fea*|feb*)
+      echo "linklocal"
+      ;;
+    # fec0::/10 (Site-Local Address)
+    fec*|fed*|fee*|fef*)
+      echo "sitelocal"
+      ;;
+    # ff00::/8 (Multicast Address)
+    ff*)
+      echo "multicast"
+      ;;
+    # [NOTE] included not assigned addresses
+    *)
+      echo "global"
+      ;;
+  esac
+  return 0
 }
 
