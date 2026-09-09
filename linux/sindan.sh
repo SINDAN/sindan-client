@@ -132,6 +132,15 @@ layer="datalink"
 # Get ifname
 ifname=$(get_ifname "$IFTYPE")
 
+if [ "$IFTYPE" = "Wi-Fi" ]; then
+  # Get WLAN environment
+  wlan_environment=$(get_wlan_environment "$ifname")
+  if [ -n "$wlan_environment" ]; then
+    write_json "$layer" "$IFTYPE" wlan_environment "$INFO" self                \
+               "$wlan_environment" 0
+  fi
+fi
+
 # Down, Up interface
 if [ "$RECONNECT" = "yes" ]; then
   # Down target interface
@@ -244,12 +253,12 @@ if [ "$IFTYPE" = "Wi-Fi" ]; then
   if [ -n "$wlan_quality" ]; then
     write_json "$layer" "$IFTYPE" wlan_quality "$INFO" self "$wlan_quality" 0
   fi
-  # Get WLAN environment
-  wlan_environment=$(get_wlan_environment "$ifname")
-  if [ -n "$wlan_environment" ]; then
-    write_json "$layer" "$IFTYPE" wlan_environment "$INFO" self		\
-               "$wlan_environment" 0
-  fi
+  ## Get WLAN environment
+  #wlan_environment=$(get_wlan_environment "$ifname")
+  #if [ -n "$wlan_environment" ]; then
+  #  write_json "$layer" "$IFTYPE" wlan_environment "$INFO" self		\
+  #             "$wlan_environment" 0
+  #fi
 elif [ "$IFTYPE" = "WWAN" ]; then
   # Get WWAN infomation
   wwan_info=$(get_wwan_info "$ifname")
