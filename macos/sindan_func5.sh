@@ -74,6 +74,25 @@ function check_dns64() {
   fi
 }
 
+# Check if the DNS64 function is working on any of the name servers.
+# The result of one name server must not overwrite the others, so a single
+# DNS64 server in the list is enough to answer "yes".
+# check_dns64_any <comma separated nameservers>
+function check_dns64_any() {
+  if [ $# -ne 1 ]; then
+    echo "ERROR: check_dns64_any <nameservers>." 1>&2
+    return 1
+  fi
+  local ns
+  for ns in $(echo "$1" | sed 's/,/ /g'); do
+    if [ "$(check_dns64 "$ns")" = "yes" ]; then
+      echo 'yes'
+      return 0
+    fi
+  done
+  echo 'no'
+}
+
 # Check the state of DNS lookup command to the target address.
 # cmdset_dnslookup <layer> <version> <target_type> <target_addr> <count>
 function cmdset_dnslookup() {

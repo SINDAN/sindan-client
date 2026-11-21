@@ -745,8 +745,10 @@ if is_usable_v4addr_type "$v4addr_type"; then
   done
 fi
 
+# Check DNS64 on all of the IPv6 nameservers
 exist_dns64="no"
 if [ -n "$v6addrs" ]; then
+  exist_dns64=$(check_dns64_any "$v6nameservers")
   count=0
   for target in $(echo "$v6nameservers" | sed 's/,/ /g'); do
     if [ "$MODE" = "probe" ]; then
@@ -759,9 +761,6 @@ if [ -n "$v6addrs" ]; then
 
     # Do dns lookup for AAAA record by IPv6
     cmdset_dnslookup "$layer" 6 AAAA "$target" "$count" &
-
-    # check DNS64
-    exist_dns64=$(check_dns64 "$target")
 
     count=$(( count + 1 ))
   done
