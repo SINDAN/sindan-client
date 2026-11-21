@@ -166,3 +166,10 @@ function write_json() {
   return $?
 }
 
+# Check if the value of a measurement is available: not empty and not the
+# "TBD" placeholder of a probe that is not implemented on the platform.
+# is_available <value>
+function is_available() {
+  [ -n "$1" ] && [ "$1" != "TBD" ]
+}
+

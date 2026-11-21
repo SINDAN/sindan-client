@@ -76,7 +76,7 @@ hostname=$(get_hostname)
 
 # Get hardware information
 hw_info=$(get_hw_info)
-if [ -n "$hw_info" ]; then
+if is_available "$hw_info"; then
   write_json "$layer" common hw_info "$INFO" self "$hw_info" 0
 fi
 
@@ -99,14 +99,15 @@ fi
 #fi
 
 # Get clock state
-clock_state="synchronized=$(get_clock_state)"
-if [ -n "$clock_state" ]; then
+clock_state=$(get_clock_state)
+if is_available "$clock_state"; then
+  clock_state="synchronized=$clock_state"
   write_json "$layer" common clock_state "$INFO" self "$clock_state" 0
 fi
 
 # Get clock source
 clock_src=$(get_clock_src)
-if [ -n "$clock_src" ]; then
+if is_available "$clock_src"; then
   write_json "$layer" common clock_src "$INFO" self "$clock_src" 0
 fi
 
