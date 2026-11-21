@@ -799,11 +799,9 @@ if is_usable_v4addr_type "$v4addr_type"; then
   for target in $(echo "$PING4_SRVS" | sed 's/,/ /g'); do
     if [ "$MODE" = "probe" ]; then
       # Do ping to IPv4 routers
-      count_r=0
-      for target_r in $(echo "$v4routers" | sed 's/,/ /g'); do
-        cmdset_ping "$layer" 4 router "$target_r" "$count_r" &
-        count_r=$(( count_r + 1 ))
-      done
+      if [ "$count" -eq 0 ]; then
+        cmdset_ping_routers "$layer" 4 "$v4routers"
+      fi
     fi
 
     # Do ping to extarnal IPv4 servers
@@ -826,11 +824,9 @@ if [ -n "$v6addrs" ]; then
   for target in $(echo "$PING6_SRVS" | sed 's/,/ /g'); do
     if [ "$MODE" = "probe" ]; then
       # Do ping to IPv6 routers
-      count_r=0
-      for target_r in $(echo "$v6routers" | sed 's/,/ /g'); do
-        cmdset_ping "$layer" 6 router "$target_r" "$count_r" &
-        count_r=$(( count_r + 1 ))
-      done
+      if [ "$count" -eq 0 ]; then
+        cmdset_ping_routers "$layer" 6 "$v6routers"
+      fi
     fi
 
     # Do ping to extarnal IPv6 servers
@@ -882,11 +878,9 @@ if is_usable_v4addr_type "$v4addr_type"; then
   for target in $(echo "$PDNS4_SRVS" | sed 's/,/ /g'); do
     if [ "$MODE" = "probe" ]; then
       # Do ping to IPv4 routers
-      count_r=0
-      for target_r in $(echo "$v4routers" | sed 's/,/ /g'); do
-        cmdset_ping "$layer" 4 router "$target_r" "$count_r" &
-        count_r=$(( count_r + 1 ))
-      done
+      if [ "$count" -eq 0 ]; then
+        cmdset_ping_routers "$layer" 4 "$v4routers"
+      fi
 
       # Do ping to IPv4 nameservers
       cmdset_ping "$layer" 4 namesrv "$target" "$count" &
@@ -929,11 +923,9 @@ if [ -n "$v6addrs" ]; then
   for target in $(echo "$PDNS6_SRVS" | sed 's/,/ /g'); do
     if [ "$MODE" = "probe" ]; then
       # Do ping to IPv6 routers
-      count_r=0
-      for target_r in $(echo "$v6routers" | sed 's/,/ /g'); do
-        cmdset_ping "$layer" 6 router "$target_r" "$count_r" &
-        count_r=$(( count_r + 1 ))
-      done
+      if [ "$count" -eq 0 ]; then
+        cmdset_ping_routers "$layer" 6 "$v6routers"
+      fi
 
       # Do ping to IPv6 nameservers
       cmdset_ping "$layer" 6 namesrv "$target" "$count" &
@@ -965,11 +957,9 @@ if is_usable_v4addr_type "$v4addr_type"; then
   for target in $(echo "$WEB4_SRVS" | sed 's/,/ /g'); do
     if [ "$MODE" = "probe" ]; then
       # Do ping to IPv4 routers
-      count_r=0
-      for target_r in $(echo "$v4routers" | sed 's/,/ /g'); do
-        cmdset_ping "$layer" 4 router "$target_r" "$count_r" &
-        count_r=$(( count_r + 1 ))
-      done
+      if [ "$count" -eq 0 ]; then
+        cmdset_ping_routers "$layer" 4 "$v4routers"
+      fi
 
       # Do ping to IPv4 web servers
       cmdset_ping "$layer" 4 websrv "$target" "$count" &
@@ -1018,11 +1008,9 @@ if [ -n "$v6addrs" ]; then
   count=0
   for target in $(echo "$WEB6_SRVS" | sed 's/,/ /g'); do
     if [ "$MODE" = "probe" ]; then
-      count_r=0
-      for target_r in $(echo "$v6routers" | sed 's/,/ /g'); do
-        cmdset_ping "$layer" 6 router "$target_r" "$count_r" &
-        count_r=$(( count_r + 1 ))
-      done
+      if [ "$count" -eq 0 ]; then
+        cmdset_ping_routers "$layer" 6 "$v6routers"
+      fi
 
       # Do ping to IPv6 web servers
       cmdset_ping "$layer" 6 websrv "$target" "$count" &
@@ -1072,13 +1060,7 @@ if [ -n "$v6addrs" ]; then
     count=0
     for target in $(echo "$WEB4_SRVS" | sed 's/,/ /g'); do
       if [ "$MODE" = "probe" ]; then
-        # Do ping to IPv6 routers
-        count_r=0
-        for target_r in $(echo "$v6routers" | sed 's/,/ /g'); do
-          cmdset_ping "$layer" 6 router "$target_r" "$count_r" &
-          count_r=$(( count_r + 1 ))
-        done
-
+        # The routers are already checked in the loop over WEB6_SRVS.
         # Do ping to IPv4 web servers by IPv6
         cmdset_ping "$layer" 6 websrv "$target" "$count" &
 

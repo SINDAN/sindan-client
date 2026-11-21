@@ -140,7 +140,8 @@ function write_json() {
   json_escape "$4"; result=$REPLY
   json_escape "$5"; target=$REPLY
   json_escape "$detail"; detail=$REPLY
-  printf '%s %s %s %s %s %s %s %s\n' \
+  local json base file n=0
+  printf -v json '%s %s %s %s %s %s %s %s\n' \
     "{ \"layer\" : \"$layer\"," \
     "\"log_group\" : \"$group\"," \
     "\"log_type\" : \"$type\"," \
@@ -148,8 +149,20 @@ function write_json() {
     "\"result\" : \"$result\"," \
     "\"target\" : \"$target\"," \
     "\"detail\" : \"$detail\"," \
-    "\"occurred_at\" : \"$(date -u '+%Y-%m-%d %T')\" }" \
-    > log/sindan_"$1"_"$3"_"$7"_"$(date -u '+%s')".json
+    "\"occurred_at\" : \"$(date -u '+%Y-%m-%d %T')\" }"
+  # Never overwrite a log written in the same second with the same name:
+  # noclobber makes the creation atomic, and a numeric suffix is added on
+  # collision. Names without a collision keep the legacy format.
+  base=log/sindan_"$1"_"$3"_"$7"_"$(date -u '+%s')"
+  file=$base.json
+  while ! ( set -o noclobber; printf '%s' "$json" > "$file" ) 2> /dev/null; do
+    n=$(( n + 1 ))
+    if [ "$n" -gt 100 ] || [ ! -e "$file" ]; then
+      echo "ERROR: cannot write $file." 1>&2
+      return 1
+    fi
+    file=${base}_$n.json
+  done
   return $?
 }
 

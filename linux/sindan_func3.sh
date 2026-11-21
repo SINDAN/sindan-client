@@ -71,3 +71,19 @@ function cmdset_ping() {
   fi
 }
 
+# Check the state of ping commands to all of the routers.
+# The checks are started in the background, one per router.
+# cmdset_ping_routers <layer> <version> <comma separated routers>
+function cmdset_ping_routers() {
+  if [ $# -ne 3 ]; then
+    echo "ERROR: cmdset_ping_routers <layer> <version> <routers>." 1>&2
+    return 1
+  fi
+  local target count=0
+  for target in $(echo "$3" | sed 's/,/ /g'); do
+    cmdset_ping "$1" "$2" router "$target" "$count" &
+    count=$(( count + 1 ))
+  done
+  return 0
+}
+
