@@ -15,17 +15,16 @@ function hash_result() {
     echo "ERROR: hash_result <type> <src>." 1>&2
     return 1
   fi
-  type="$1"
-  src="$2"
+  local type="$1" src="$2"
   case "$type" in
-    "ssid"|"bssid")
+    "ssid"|"bssid"|"wlan_ssid"|"wlan_bssid")
       if [ "$LOCAL_NETWORK_PRIVACY" = "yes" ]; then
         echo "$(echo "$src" | $CMD_HASH | cut -d' ' -f1):SHA1"
       else
         echo "$src"
       fi
       ;;
-    "environment")
+    "environment"|"wlan_environment")
       # XXX do something if "$LOCAL_NETWORK_PRIVACY" = "yes".
       if [ "$LOCAL_NETWORK_PRIVACY" = "yes" ]; then
         echo 'XXX'
