@@ -149,10 +149,13 @@ make_shim() {
 # Source the given function files of the platform under test.
 # load_funcs <name>... (e.g. funcb func4)
 load_funcs() {
-  local name
+  local name file
   for name in "$@"; do
+    # The platform directory has priority over the shared directory.
+    file="$SINDAN_DIR/sindan_$name.sh"
+    [ -f "$file" ] || file="$SINDAN_DIR/../common/sindan_$name.sh"
     # shellcheck disable=SC1090
-    . "$SINDAN_DIR/sindan_$name.sh" || fail "cannot source sindan_$name.sh"
+    . "$file" || fail "cannot source sindan_$name.sh"
   done
 }
 

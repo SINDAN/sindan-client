@@ -20,7 +20,9 @@ function do_ping() {
 # Get RTT of ping command.
 # require do_ping() data from STDIN.
 function get_rtt() {
-  sed -n 's/^rtt.* \([0-9\.\/]*\) .*$/\1/p'				|
+  # "rtt min/avg/max/mdev = ..." on Linux, "round-trip min/avg/max/stddev = ..."
+  # on macOS. ERE (-E) is used because BSD sed has no \| in a BRE.
+  sed -n -E 's/^(rtt|round-trip).* ([0-9.\/]*) .*$/\2/p' |
   sed 's/\// /g'
   return $?
 }

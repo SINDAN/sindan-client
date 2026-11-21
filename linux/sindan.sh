@@ -3,20 +3,24 @@
 # version 6
 VERSION="6.0.1"
 
+# directory of the files shared by all platforms
+COMMON_DIR=$(cd "$(dirname "$0")/../common" && pwd)
+
 # read configuration file
 cd $(dirname $0)
 . ./sindan.conf
 
 # read function files
+# The files shared by all platforms are in ../common.
 cd $(dirname $0)
-. ./sindan_funcb.sh
+. "$COMMON_DIR"/sindan_funcb.sh
 . ./sindan_func0.sh
 . ./sindan_func1.sh
 . ./sindan_func2.sh
-. ./sindan_func3.sh
+. "$COMMON_DIR"/sindan_func3.sh
 . ./sindan_func4.sh
-. ./sindan_func5.sh
-. ./sindan_func6.sh
+. "$COMMON_DIR"/sindan_func5.sh
+. "$COMMON_DIR"/sindan_func6.sh
 
 #
 # main
