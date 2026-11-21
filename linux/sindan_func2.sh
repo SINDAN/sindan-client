@@ -301,10 +301,11 @@ function is_usable_v4addr_type() {
 }
 
 # Get IPv6 configuration on the interface.
-# get_v6ifconf <ifname>
+# The interface type is needed to find the connection of a WWAN device.
+# get_v6ifconf <ifname> <iftype>
 function get_v6ifconf() {
-  if [ $# -ne 1 ]; then
-    echo "ERROR: get_v6ifconf <ifname>." 1>&2
+  if [ $# -ne 2 ]; then
+    echo "ERROR: get_v6ifconf <ifname> <iftype>." 1>&2
     return 1
   fi
   local v6ifconf wwan_dev conpath

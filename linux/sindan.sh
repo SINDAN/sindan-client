@@ -473,7 +473,7 @@ fi
 ## IPv6
 if [ "$EXCL_IPv6" != "yes" ]; then
   # Get IPv6 I/F configurations
-  v6ifconf=$(get_v6ifconf "$ifname")
+  v6ifconf=$(get_v6ifconf "$ifname" "$IFTYPE")
   if [ -n "$v6ifconf" ]; then
     write_json "$layer" IPv6 v6ifconf "$INFO" self "$v6ifconf" 0
   fi

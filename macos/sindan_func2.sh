@@ -287,7 +287,7 @@ function get_v6ifconf() {
    grep 'IPv6: Manual' > /dev/null; then
     echo 'manual'
   elif networksetup -getinfo "$1"					|
-   grep 'IPv6 IP address: none' > /dev/nul; then
+   grep 'IPv6 IP address: none' > /dev/null; then
     echo 'linklocal'
   else
     echo 'unknown'
