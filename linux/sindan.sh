@@ -512,7 +512,7 @@ if [ "$EXCL_IPv6" != "yes" ]; then
                  "$v6autoconf" 0
       # Get IPv6 address
       v6addrs=$(get_v6addrs "$ifname" "")
-      if [ -n "$v6addr" ]; then
+      if [ -n "$v6addrs" ]; then
         write_json "$layer" IPv6 v6addrs "$INFO" "$v6ifconf" "$v6addrs" 0
       fi
       s_count=0
