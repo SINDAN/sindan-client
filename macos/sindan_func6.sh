@@ -99,10 +99,10 @@ function do_portscan() {
     echo "ERROR: do_portscan <verson> <target> <port>." 1>&2
     return 1
   fi
-  case $1 in
+  case "$1" in
     "4" ) nc -zv4 -w1 "$2" "$3" 2>&1 ; return $? ;;
     "6" ) nc -zv6 -w1 "$2" "$3" 2>&1 ; return $? ;;
-    "*" ) echo "ERROR: <version> must be 4 or 6." 1>&2; return 9 ;;
+    * ) echo "ERROR: <version> must be 4 or 6." 1>&2; return 9 ;;
   esac
 }
 
