@@ -53,7 +53,7 @@ function cmdset_http() {
 # do_sshkeyscan <version> <target> <key_type>
 function do_sshkeyscan() {
   if [ $# -ne 3 ]; then
-    echo "ERROR: do_sshkeyscan <version> <target> <key_type>." 1>&2	\
+    echo "ERROR: do_sshkeyscan <version> <target> <key_type>." 1>&2
     return 1
   fi
   ssh-keyscan -"$1" -T 5 -t "$3" "$2" 2>/dev/null
