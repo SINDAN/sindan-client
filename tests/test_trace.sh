@@ -13,12 +13,12 @@
 # exit status of the shim.
 setup_traceroute() {
   # The Linux implementation wraps traceroute with timeout(1).
-  if grep -q 'timeout -s' "$SINDAN_DIR/sindan_func4.sh" &&
+  if grep -q 'timeout -s' "$SINDAN_DIR/sindan_func4_os.sh" &&
      ! command -v timeout > /dev/null 2>&1; then
     skip "timeout(1) is not installed"
   fi
   require_json_tool
-  load_funcs funcb func4
+  load_funcs funcb func4_os func4
   VERBOSE=yes
   local body='printf "%s\n" "$*" >> "$T/calls.$(basename "$0")"
 echo "traceroute to 192.0.2.1 (192.0.2.1), 20 hops max, 60 byte packets"

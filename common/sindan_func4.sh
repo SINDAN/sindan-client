@@ -1,5 +1,9 @@
 #!/bin/bash
 # sindan_func4.sh
+#
+# The commands that differ between the platforms (traceroute and ping
+# options) are in sindan_func4_os.sh of each platform directory, which must be
+# read before this file.
 
 ## Globalnet Layer functions
 
@@ -11,8 +15,7 @@ function do_traceroute() {
     return 1
   fi
   case $1 in
-    "4" ) traceroute -n -I -w 2 -q 1 -m 20 "$2" 2>/dev/null; return $? ;;
-    "6" ) traceroute6 -n -I -w 2 -q 1 -m 20 "$2" 2>/dev/null; return $? ;;
+    "4" | "6" ) run_traceroute "$1" "$2"; return $? ;;
     * ) echo "ERROR: <version> must be 4 or 6." 1>&2; return 9 ;;
   esac
 }
@@ -36,20 +39,22 @@ function do_pmtud() {
     return 1
   fi
   local ver=$1 target=$2 min=$3 max=$4 src=$5
-  local mid dfopt header
-  local -a cmd
+  local mid header
   case $ver in
-    "4" ) cmd=(ping -t 1 -c 1); dfopt="-D"; header=28 ;;
-    "6" ) cmd=(gtimeout -sKILL 3 ping6 -c 1); dfopt=""; header=48 ;;
+    "4" ) header=28 ;;
+    "6" ) header=48 ;;
     * ) echo "ERROR: <version> must be 4 or 6." 1>&2; return 9 ;;
   esac
-  if ! "${cmd[@]}" -S $src $target >/dev/null; then
+  # Set PMTUD_CMD (array), PMTUD_DFOPT and PMTUD_SRCOPT for the platform.
+  pmtud_setup "$ver"
+  if ! "${PMTUD_CMD[@]}" $PMTUD_SRCOPT $src $target > /dev/null; then
     echo 0
     return 1
   fi
   while [ $(( max - min )) -gt 1 ]; do
     mid=$(( ( min + max ) / 2 ))
-    if "${cmd[@]}" -s $mid $dfopt -S $src $target >/dev/null 2>/dev/null
+    if "${PMTUD_CMD[@]}" -s $mid $PMTUD_DFOPT $PMTUD_SRCOPT $src $target       \
+         >/dev/null 2>/dev/null
     then
       min=$mid
     else

@@ -18,7 +18,8 @@ source ./sindan_func0.sh
 source ./sindan_func1.sh
 source ./sindan_func2.sh
 source "$COMMON_DIR"/sindan_func3.sh
-source ./sindan_func4.sh
+source ./sindan_func4_os.sh
+source "$COMMON_DIR"/sindan_func4.sh
 source "$COMMON_DIR"/sindan_func5.sh
 source "$COMMON_DIR"/sindan_func6.sh
 
