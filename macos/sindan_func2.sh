@@ -256,6 +256,23 @@ function check_v4addr() {
   return 0
 }
 
+# Check if the type of the IPv4 address (the output of check_v4addr) is one
+# that can reach other networks, i.e. if the checks of the globalnet, dns and
+# application layers make sense. Private, shared (100.64.0.0/10, used by
+# carrier-grade NAT) and global addresses qualify. Link-local, loopback, IPv4
+# service continuity (CLAT) and the other special-purpose addresses do not.
+# is_usable_v4addr_type <v4addr_type>
+function is_usable_v4addr_type() {
+  if [ $# -ne 1 ]; then
+    echo "ERROR: is_usable_v4addr_type <v4addr_type>." 1>&2
+    return 1
+  fi
+  case "$1" in
+    "private"|"shared"|"global" ) return 0 ;;
+    * ) return 1 ;;
+  esac
+}
+
 # Get IPv6 configuration on the interface.
 # get_v6ifconf <ifname>
 function get_v6ifconf() {

@@ -21,4 +21,15 @@ test_manual_ipv6_branch_tests_the_v6addrs_variable() {
   fi
 }
 
+test_ipv4_layer_checks_use_the_usable_type_helper() {
+  # The shared address space (100.64.0.0/10) must not be excluded, so the
+  # conditions must not compare the type with "private"/"global" directly.
+  if grep -nE '"\$v4addr_type" = "(private|global)"' "$(main_script)"; then
+    fail "sindan.sh compares v4addr_type directly"
+  fi
+  local n
+  n=$(grep -c 'is_usable_v4addr_type "\$v4addr_type"' "$(main_script)")
+  assert_eq 4 "$n" "number of call sites of is_usable_v4addr_type"
+}
+
 run_tests

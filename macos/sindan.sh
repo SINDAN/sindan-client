@@ -634,7 +634,7 @@ if [ "$EXCL_IPv4" != "yes" ]; then
 else
   v4addr_type="linklocal"
 fi
-if [ "$v4addr_type" = "private" ] || [ "$v4addr_type" = "global" ]; then
+if is_usable_v4addr_type "$v4addr_type"; then
   count=0
   for target in $(echo "$PING4_SRVS" | sed 's/,/ /g'); do
     if [ "$MODE" = "probe" ]; then
@@ -701,7 +701,7 @@ layer="dns"
 # Clear dns local cache
 #TBD
 
-if [ "$v4addr_type" = "private" ] || [ "$v4addr_type" = "global" ]; then
+if is_usable_v4addr_type "$v4addr_type"; then
   count=0
   for target in $(echo "$v4nameservers" | sed 's/,/ /g'); do
     if [ "$MODE" = "probe" ]; then
@@ -801,7 +801,7 @@ echo " done."
 echo "Phase 6: Application Layer checking..."
 layer="app"
 
-if [ "$v4addr_type" = "private" ] || [ "$v4addr_type" = "global" ]; then
+if is_usable_v4addr_type "$v4addr_type"; then
   count=0
   for target in $(echo "$WEB4_SRVS" | sed 's/,/ /g'); do
     if [ "$MODE" = "probe" ]; then
@@ -969,7 +969,7 @@ if [ -n "$v6addrs" ]; then
 fi
 
 # dualstack performance measurements
-if [ "$v4addr_type" = "private" ] || [ "$v4addr_type" = "global" ] ||	\
+if is_usable_v4addr_type "$v4addr_type" ||
    [ -n "$v6addrs" ]; then
 
   # SPEEDTEST
