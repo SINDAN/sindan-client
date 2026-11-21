@@ -73,7 +73,11 @@ function cmdset_trace() {
   ipv=IPv${ver}
   result=$FAIL
   string=" traceroute to $ipv $type: $target"
-  if path_result=$(do_traceroute "$ver" "$target" | sed 's/\*/-/g'); then
+  # Enable pipefail inside the command substitution only. Without it the
+  # status of the pipeline is the status of sed, which hides the failure of
+  # traceroute itself (an error, or the kill by the 30 s timeout).
+  if path_result=$(set -o pipefail
+                   do_traceroute "$ver" "$target" | sed 's/\*/-/g'); then
     result=$SUCCESS
   fi
   write_json "$layer" "$ipv" "v${ver}path_detail_${type}" "$INFO"	\
