@@ -16,6 +16,12 @@ This script is available for Linux, macOS, and Windows. The macOS version uses t
 - `sindan.sh` - 
 - `sendlog.sh` - 
 
+## Directory layout
+- `linux/`, `macos/` - the scripts and `sindan.conf.example` of each platform. Run `sindan.sh` and `sendlog.sh` from here.
+- `common/` - the functions and the `sendlog.sh` implementation shared by Linux and macOS. They are read by the scripts in `linux/` and `macos/` through the relative path `../common`, so keep the directories of a checkout together.
+- `*_os.sh` in `linux/` and `macos/` - the parts of the function files that depend on the platform.
+- `tests/` - tests of the shell scripts. Run `tests/run_tests.sh` (needs bash and python3 or jq).
+
 ## Configuration
 The sindan.conf file is assumed to be located in the same directory as sindan.sh.
 
