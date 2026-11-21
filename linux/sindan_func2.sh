@@ -890,8 +890,6 @@ function check_v6autoconf() {
     m_flag=$(echo "$3" | grep M)
     v6addrs=$(get_v6addrs "$1" "$4")
     a_flag=$(echo "$5" | grep A)
-    #
-    rdisc6 -n "$1"
     if [ -n "$a_flag" ] && [ -n "$v6addrs" ]; then
       result=0
     fi
