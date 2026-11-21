@@ -11,7 +11,7 @@ is_linux() { grep -q 'timeout -sKILL 30' "$SINDAN_DIR/sindan_func4_os.sh"; }
 # Ping shim: the largest payload that passes is $MAX_PAYLOAD (default 1372,
 # i.e. an MTU of 1400 for IPv4). It records its arguments.
 setup_ping() {
-  load_funcs funcb func4_os func4
+  load_funcs funcb func4
   local body='printf "%s\n" "$*" >> "$T/calls.$(basename "$0")"
 size=0
 prev=""

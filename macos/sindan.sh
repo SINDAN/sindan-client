@@ -16,7 +16,8 @@ cd $(dirname $0)
 source "$COMMON_DIR"/sindan_funcb.sh
 source ./sindan_func0.sh
 source ./sindan_func1.sh
-source ./sindan_func2.sh
+source ./sindan_func2_os.sh
+source "$COMMON_DIR"/sindan_func2.sh
 source "$COMMON_DIR"/sindan_func3.sh
 source ./sindan_func4_os.sh
 source "$COMMON_DIR"/sindan_func4.sh

@@ -14,7 +14,6 @@ setup() {
 }
 
 test_check_v6autoconf_does_not_send_router_solicitations() {
-  grep -q 'function check_v6autoconf' "$SINDAN_DIR/sindan_func2.sh" || skip "not implemented"
   setup
   get_v6addrs() { echo 2001:db8::10; }
   out=$(check_v6autoconf eth0 automatic "" 2001:db8:: "LA")

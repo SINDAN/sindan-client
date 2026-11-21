@@ -151,7 +151,15 @@ make_shim() {
 load_funcs() {
   local name file
   for name in "$@"; do
-    # The platform directory has priority over the shared directory.
+    # The shared file may need the platform part (sindan_<name>_os.sh) of the
+    # same name, which is read first. A name given with the _os suffix reads
+    # only the platform part. Otherwise the platform directory has priority
+    # over the shared directory.
+    file="$SINDAN_DIR/sindan_${name}_os.sh"
+    if [ -f "$file" ] && [ "${name%_os}" = "$name" ]; then
+      # shellcheck disable=SC1090
+      . "$file" || fail "cannot source sindan_${name}_os.sh"
+    fi
     file="$SINDAN_DIR/sindan_$name.sh"
     [ -f "$file" ] || file="$SINDAN_DIR/../common/sindan_$name.sh"
     # shellcheck disable=SC1090

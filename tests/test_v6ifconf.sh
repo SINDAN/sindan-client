@@ -8,7 +8,7 @@
 # shellcheck disable=SC2034
 . "$(dirname "$0")/lib.sh"
 
-is_linux() { grep -q nmcli "$SINDAN_DIR/sindan_func2.sh"; }
+is_linux() { grep -q nmcli "$SINDAN_DIR/sindan_func2_os.sh"; }
 
 test_main_script_passes_the_interface_type() {
   if is_linux; then
@@ -56,7 +56,7 @@ test_linux_wrong_argument_count_is_rejected() {
 
 test_macos_linklocal_branch_does_not_use_a_typo_device() {
   is_linux && skip "macOS only"
-  assert_eq 0 "$(grep -c '/dev/nul\b' "$SINDAN_DIR/sindan_func2.sh")" "typo count"
+  assert_eq 0 "$(grep -c '/dev/nul\b' "$SINDAN_DIR/sindan_func2_os.sh")" "typo count"
   load_funcs funcb func2
   make_shim networksetup 'echo "IPv6: Off"; echo "IPv6 IP address: none"'
   assert_eq linklocal "$(get_v6ifconf Wi-Fi)"

@@ -18,7 +18,7 @@ setup_traceroute() {
     skip "timeout(1) is not installed"
   fi
   require_json_tool
-  load_funcs funcb func4_os func4
+  load_funcs funcb func4
   VERBOSE=yes
   local body='printf "%s\n" "$*" >> "$T/calls.$(basename "$0")"
 echo "traceroute to 192.0.2.1 (192.0.2.1), 20 hops max, 60 byte packets"
