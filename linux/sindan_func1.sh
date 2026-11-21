@@ -134,26 +134,36 @@ function get_ether_mediatype() {
 }
 
 # Get the WLAN interface information.
-# get_wlan_info
+# The link information is polled until the Tx bitrate is available, because
+# it is missing for a short time after the association. If it never appears,
+# the last output is printed anyway (the SSID and BSSID are still useful)
+# and the status is 1. The number of retries and the interval can be set by
+# WLAN_MAX_RETRIES and WLAN_RETRY_INTERVAL.
+# get_wlan_info <ifname>
 function get_wlan_info() {
   if [ $# -ne 1 ]; then
     echo "ERROR: get_wlan_info <ifname>." 1>&2
     return 1
   fi
+  local max_retries=${WLAN_MAX_RETRIES:-15}
+  local retry_interval=${WLAN_RETRY_INTERVAL:-1}
+  local i output
   iw dev "$1" info
-  MAX_RETRIES=15
-  RETRY_INTERVAL=1                                                      
-  for ((i=1; i<=MAX_RETRIES; i++)); do
+  for ((i=1; i<=max_retries; i++)); do
     output=$(iw dev "$1" link)
-    # Check if “tx bitrate:” data is included.
+    # Check if "tx bitrate:" data is included.
     if echo "$output" | grep -q "tx bitrate:"; then
       echo "$output"
-      exit 0
+      return 0
     fi
-    sleep $RETRY_INTERVAL
+    # Do not wait after the last attempt.
+    if [ "$i" -lt "$max_retries" ]; then
+      sleep "$retry_interval"
+    fi
   done
-  return $?
-} 
+  echo "$output"
+  return 1
+}
 
 # Get WLAN SSID of the interface.
 # require get_wlan_info() data from STDIN.
@@ -165,13 +175,14 @@ function get_wlan_ssid() {
   return $?
 }
 
-# Get WLAN BSSID of the interface.
+# Get WLAN BSSID (the access point) of the interface.
 # require get_wlan_info() data from STDIN.
 # get_wlan_bssid
 function get_wlan_bssid() {
-  grep "addr "								|
-  awk '{$1=""; print $0}'						|
-  sed 's/^ *//'								|
+  # "addr" of "iw dev <ifname> info" is the MAC address of the own interface.
+  # The BSSID of the access point is on the first line of "iw dev <ifname>
+  # link": "Connected to <bssid> (on <ifname>)".
+  sed -n 's/^Connected to \([0-9A-Fa-f:]\{17\}\).*$/\1/p'              |
   tr "[:upper:]" "[:lower:]"
   return $?
 }
