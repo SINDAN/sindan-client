@@ -1,7 +1,5 @@
 #!/bin/bash
 # sindan.sh
-# version 6
-VERSION="6.0.1"
 
 # directory of the files shared by all platforms
 COMMON_DIR=$(cd "$(dirname "$0")/../common" && pwd)

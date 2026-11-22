@@ -27,7 +27,7 @@ Other scripts (see the README of each platform):
 
 ## Directory layout
 - `linux/`, `macos/` - the scripts and `sindan.conf.example` of each platform. Run `sindan.sh` and `sendlog.sh` from here.
-- `common/` - the functions and the `sendlog.sh` implementation shared by Linux and macOS. They are read by the scripts in `linux/` and `macos/` through the relative path `../common`, so keep the directories of a checkout together.
+- `common/` - the functions, the `sendlog.sh` implementation and the `VERSION` file shared by Linux and macOS. They are read by the scripts in `linux/` and `macos/` through the relative path `../common`, so keep the directories of a checkout together.
 - `*_os.sh` in `linux/` and `macos/` - the parts of the function files that depend on the platform.
 - `tests/` - tests of the shell scripts. Run `tests/run_tests.sh` (needs bash and python3 or jq). `tests/check_bash32.sh` looks for bash 4+ constructs that do not work on macOS. Both run in CI (`.github/workflows/ci.yml`) together with ShellCheck.
 
@@ -66,6 +66,18 @@ Parameters:
 - `LOCAL_NETWORK_PRIVACY`=\<yes or no\> - If yes, hashes or masks privacy-related information (e.g., BSSID) in wireless LAN data.
 - `CLIENT_PRIVACY`=\<yes or no\> - If yes, hashes or masks client-side privacy data (e.g., MAC address).
 - `CMD_HASH`=\<command path\> - Specifies the path to the command used for hashing privacy-related data.
+
+## Releasing
+The release version is in `common/VERSION` (`MAJOR.MINOR.PATCH`, e.g. `6.1.0`). `sindan.sh` reads it and sends it to the server as `version` of the campaign log, and the server checks the MAJOR number to know the structure of the data. Do not put the version in `sindan.conf`: that file is not updated when the scripts are upgraded.
+
+- MAJOR: the structure of the JSON data changes in an incompatible way, so the server has to be updated.
+- MINOR: a compatible addition, such as a new measurement item.
+- PATCH: a bug fix.
+
+To release:
+1. Set the new version in `common/VERSION` (remove `-dev`), merge it, and create the release with the tag `v<version>` (e.g. `v6.1.0`) on GitHub.
+2. The Release workflow checks that the tag matches `common/VERSION` (`tests/check_release.sh <tag>`) and attaches an archive of the source to the release.
+3. After the release, you can set the next version with `-dev` (e.g. `6.1.1-dev`) so that logs of unreleased code can be told apart.
 
 ## Authors
 - **Yoshiaki KITAGUCHI** - *Maintain macOS/Linux version* [@kitaguch](https://github.com/kitaguch)

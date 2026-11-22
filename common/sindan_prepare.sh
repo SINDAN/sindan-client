@@ -8,6 +8,10 @@
 #   OS_REQUIRED_PARAMS  parameters of sindan.conf that are needed in addition
 #   OS_REQUIRED_CMDS    commands that are needed
 
+# Set the release version, which is sent to the server in the campaign log
+# (see read_version in sindan_funcb.sh).
+VERSION=$(read_version "$COMMON_DIR"/VERSION) || exit 1
+
 # Check parameters
 for param in PIDFILE MAX_RETRY IFTYPE PING4_SRVS PING6_SRVS FQDNS PDNS4_SRVS PDNS6_SRVS WEB4_SRVS WEB6_SRVS SSH4_SRVS SSH6_SRVS $OS_REQUIRED_PARAMS; do
   if [ -z "$(eval echo '$'"$param")" ]; then

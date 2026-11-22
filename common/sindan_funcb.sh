@@ -3,6 +3,30 @@
 
 ## Basic functions
 
+# Print the release version, which is the content of the VERSION file of the
+# release (common/VERSION). The format is MAJOR.MINOR.PATCH, with an optional
+# suffix such as -dev (e.g. 6.1.0 or 6.1.1-dev). The server checks the MAJOR
+# number to know the structure of the JSON data, so it has to be increased
+# when the structure changes in an incompatible way.
+# read_version <file>.
+function read_version() {
+  if [ $# -ne 1 ]; then
+    echo "ERROR: read_version <file>." 1>&2
+    return 1
+  fi
+  local version
+  if ! version=$(tr -d '[:space:]' < "$1"); then
+    echo "ERROR: cannot read the version file: $1" 1>&2
+    return 1
+  fi
+  if ! printf '%s\n' "$version" |
+       grep -Eq '^[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.]+)?$'; then
+    echo "ERROR: invalid version [$version] in $1" 1>&2
+    return 1
+  fi
+  echo "$version"
+}
+
 # Generate UUID.
 function generate_uuid() {
   uuidgen
