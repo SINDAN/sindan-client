@@ -1,0 +1,42 @@
+name: CI
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    name: Tests (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        # macos-latest runs /bin/bash 3.2, the same shell as a real Mac.
+        os: [ubuntu-latest, macos-latest]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Show shell versions
+        run: |
+          /bin/bash --version | head -1
+          python3 --version
+      - name: Check for bash 4+ constructs
+        run: /bin/bash tests/check_bash32.sh
+      - name: Run tests (linux and macos scripts)
+        run: /bin/bash tests/run_tests.sh
+
+  shellcheck:
+    name: ShellCheck
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Fail on errors
+        # The Windows scripts are not covered here.
+        run: |
+          git ls-files '*.sh' ':!windows' | xargs shellcheck -x -S error
+      - name: Report warnings (not blocking)
+        run: |
+          git ls-files '*.sh' ':!windows' | xargs shellcheck -x -S warning || true

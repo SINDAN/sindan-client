@@ -20,7 +20,7 @@ for platform in "$@"; do
   fi
   for t in "$here"/test_*.sh; do
     echo "== $platform: $(basename "$t")"
-    SINDAN_DIR="$(cd "$here/../$platform" && pwd)" bash "$t" || status=1
+    SINDAN_DIR="$(cd "$here/../$platform" && pwd)" "${BASH:-bash}" "$t" || status=1
   done
 done
 
