@@ -40,7 +40,7 @@ test_sindan_sh_works_when_started_with_a_relative_path() {
   out=$(bash "$plat/sindan.sh" 2>&1 < /dev/null)
   assert_not_contains "$out" "No such file"
   assert_not_contains "$out" "command not found"
-  assert_contains "$out" "is null in configration file" "the script did not reach the parameter check"
+  assert_contains "$out" "is null in configuration file" "the script did not reach the parameter check"
 }
 
 test_get_rtt_reads_the_linux_format() {

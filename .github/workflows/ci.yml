@@ -19,6 +19,9 @@ jobs:
         os: [ubuntu-latest, macos-latest]
     steps:
       - uses: actions/checkout@v4
+      - name: Install Lua (for the sindan-config tests)
+        if: runner.os == 'Linux'
+        run: sudo apt-get install -y --no-install-recommends lua5.4
       - name: Show shell versions
         run: |
           /bin/bash --version | head -1
