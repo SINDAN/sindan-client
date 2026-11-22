@@ -11,7 +11,7 @@ Please visit website [sindan-net.com](https://www.sindan-net.com) for more detai
 This script is available for Linux, macOS, and Windows. For Linux and macOS, run `install.sh` in the `linux` or `macos` directory. It installs the required packages and downloads `inonius_v3cli` (the command line tool of the iNonius speed test) to `bin/`.
 
 - Linux: `uuid-runtime`, `iw`, `ndisc6`, `dnsutils`, `curl`, `traceroute`, `jq` and `netcat-openbsd` (installed with apt). See [linux/README.md](linux/README.md) for scheduling.
-- macOS: the standard commands of macOS and `gtimeout` of `coreutils` (installed with Homebrew).
+- macOS: the standard commands of macOS and `gtimeout` of `coreutils` (installed with Homebrew). See [macos/README.md](macos/README.md) for running periodically.
 - Windows: see [windows/README.md](windows/README.md).
 
 ## Usage
@@ -19,6 +19,11 @@ Copy `sindan.conf.example` in the `linux` or `macos` directory to `sindan.conf`,
 
 - `sindan.sh` - Runs the measurement of all layers (hardware, datalink, interface, localnet, globalnet, dns and app) and writes the results as JSON files to `log/`.
 - `sendlog.sh` - Sends the JSON files in `log/` to `URL_CAMPAIGN` and `URL_SINDAN`, and removes the files that the server accepted (HTTP status 200).
+
+Other scripts (see the README of each platform):
+- `linux/sindan-config` - A menu tool to edit `sindan.conf` (Raspberry Pi). See [linux/README.md](linux/README.md).
+- `linux/setup_watchdog.sh` - Turns on the hardware watchdog of a Raspberry Pi. See [linux/README.md](linux/README.md).
+- `macos/keep_sindan.sh`, `macos/keep_sendlog.sh` - Run `sindan.sh` and `sendlog.sh` in an endless loop. See [macos/README.md](macos/README.md).
 
 ## Directory layout
 - `linux/`, `macos/` - the scripts and `sindan.conf.example` of each platform. Run `sindan.sh` and `sendlog.sh` from here.
