@@ -46,14 +46,18 @@ function do_pmtud() {
     * ) echo "ERROR: <version> must be 4 or 6." 1>&2; return 9 ;;
   esac
   # Set PMTUD_CMD (array), PMTUD_DFOPT and PMTUD_SRCOPT for the platform.
+  # PMTUD_DFOPT and PMTUD_SRCOPT are option strings (possibly empty or with
+  # two words), so they are intentionally left unquoted.
   pmtud_setup "$ver"
-  if ! "${PMTUD_CMD[@]}" $PMTUD_SRCOPT $src $target > /dev/null; then
+  # shellcheck disable=SC2086
+  if ! "${PMTUD_CMD[@]}" $PMTUD_SRCOPT "$src" "$target" > /dev/null; then
     echo 0
     return 1
   fi
   while [ $(( max - min )) -gt 1 ]; do
     mid=$(( ( min + max ) / 2 ))
-    if "${PMTUD_CMD[@]}" -s $mid $PMTUD_DFOPT $PMTUD_SRCOPT $src $target       \
+    # shellcheck disable=SC2086
+    if "${PMTUD_CMD[@]}" -s "$mid" $PMTUD_DFOPT $PMTUD_SRCOPT "$src" "$target"       \
          >/dev/null 2>/dev/null
     then
       min=$mid

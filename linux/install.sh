@@ -17,7 +17,7 @@ case $(uname -m) in
   armv7* ) v3cli="inonius_v3cli-linux-armv7" ;;
   * ) echo "ERROR: unknown CPU type." 1>&2 ;;
 esac
-curl -o bin/inonius_v3cli -fL ${URL_V3CLI}/${v3cli}
+curl -o bin/inonius_v3cli -fL "${URL_V3CLI}/${v3cli}"
 chmod +x bin/inonius_v3cli
 
 exit 0

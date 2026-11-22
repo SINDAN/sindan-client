@@ -47,6 +47,17 @@ test_logs_are_sent_to_their_urls_and_removed() {
   [ ! -e "$T/sendlog.lock" ] || fail "lock file was not removed"
 }
 
+# The lock file and the log directory may have a space in their path.
+test_lock_file_path_with_a_space_is_handled() {
+  setup_tree
+  mkdir -p "$T/lock dir"
+  sed -i.bak "s|^LOCKFILE_SENDLOG=.*|LOCKFILE_SENDLOG=\"$T/lock dir/sendlog.lock\"|" "$ROOT/$PLAT/sindan.conf"
+  run_sendlog
+  assert_eq 0 $? "return status"
+  assert_contains "$(cat "$T/calls.curl")" "json=@log/campaign_1.json" "the logs were not sent"
+  [ ! -e "$T/lock dir/sendlog.lock" ] || fail "lock file was not removed"
+}
+
 test_logs_are_kept_when_the_server_does_not_answer_200() {
   setup_tree
   export CURL_STATUS=500

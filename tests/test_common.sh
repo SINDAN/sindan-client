@@ -113,6 +113,14 @@ test_preparation_reports_a_missing_platform_parameter() {
   assert_contains "$out" "ERROR: ${params%% *} is null in configration file."
 }
 
+# A value with a space must not break the test of the parameter.
+test_preparation_accepts_a_parameter_value_with_spaces() {
+  # shellcheck disable=SC2086
+  out=$(run_sindan $BASE_CONF 'FQDNS="a b"')
+  assert_not_contains "$out" "[:"
+  assert_not_contains "$out" "ERROR: FQDNS"
+}
+
 test_preparation_reports_a_missing_command() {
   # shellcheck disable=SC2086
   SINDAN_EDIT='s/^OS_REQUIRED_PARAMS=.*/OS_REQUIRED_PARAMS=""/; s/^OS_REQUIRED_CMDS=.*/OS_REQUIRED_CMDS="sindan-no-such-command"/'
