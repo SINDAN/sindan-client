@@ -1,0 +1,39 @@
+name: Release
+
+on:
+  push:
+    tags: ['v*']
+  release:
+    types: [published]
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    name: Check the tag
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: The tag must match common/VERSION
+        env:
+          TAG: ${{ github.event.release.tag_name || github.ref_name }}
+        run: bash tests/check_release.sh "$TAG"
+
+  asset:
+    name: Attach the archive to the release
+    needs: verify
+    if: github.event_name == 'release'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - name: Make and upload the archive
+        env:
+          TAG: ${{ github.event.release.tag_name }}
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          name="sindan-client-${TAG#v}"
+          git archive --format=tar.gz --prefix="$name/" -o "$name.tar.gz" HEAD
+          gh release upload "$TAG" "$name.tar.gz" --clobber

@@ -1,6 +1,5 @@
 #!/bin/bash
 # sendlog.sh
-# version 1.6
 
 # check shell variables
 if [ -n "$URL_CAMPAIGN" ]; then
