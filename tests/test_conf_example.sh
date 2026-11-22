@@ -21,8 +21,12 @@ test_platform_examples_differ_only_in_devname() {
 
 test_every_required_parameter_is_in_the_example() {
   # The parameters that sindan.sh refuses to start without.
-  params=$(sed -n 's/^for param in \(.*\); do$/\1/p' "$SINDAN_DIR/sindan.sh")
-  [ -n "$params" ] || fail "parameter list not found in sindan.sh"
+  # The shared list of sindan_prepare.sh (without the platform part) and the
+  # platform part OS_REQUIRED_PARAMS of sindan.sh.
+  params=$(sed -n 's/^for param in \(.*\) \$OS_REQUIRED_PARAMS; do$/\1/p' \
+           "$SINDAN_DIR/../common/sindan_prepare.sh")
+  [ -n "$params" ] || fail "parameter list not found in sindan_prepare.sh"
+  params="$params $(sed -n 's/^OS_REQUIRED_PARAMS="\(.*\)"$/\1/p' "$SINDAN_DIR/sindan.sh")"
   local p
   for p in $params LOCKFILE_SENDLOG URL_CAMPAIGN URL_SINDAN PROXY_URL; do
     grep -q "^readonly $p=" "$SINDAN_DIR/sindan.conf.example" || 

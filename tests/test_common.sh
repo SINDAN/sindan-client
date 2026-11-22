@@ -54,4 +54,47 @@ test_phases_3_to_7_live_only_in_common() {
     fail "sindan.sh does not read sindan_phase3_7.sh"
 }
 
+# Copy the tree, write a configuration (the arguments, one assignment per
+# argument), run sindan.sh of the copy from another directory and print its
+# output. SINDAN_EDIT, if set, is a sed script applied to the copy of sindan.sh.
+run_sindan() {
+  local root="$T/repo" plat
+  plat=$(basename "$SINDAN_DIR")
+  mkdir -p "$root" "$T/elsewhere"
+  cp -R "$SINDAN_DIR" "$root/$plat"
+  cp -R "$SINDAN_DIR/../common" "$root/common"
+  printf '%s\n' "$@" > "$root/$plat/sindan.conf"
+  [ -z "${SINDAN_EDIT:-}" ] || sed -i.bak "$SINDAN_EDIT" "$root/$plat/sindan.sh"
+  cd "$T/elsewhere" || fail "cannot cd"
+  bash "$root/$plat/sindan.sh" 2>&1 < /dev/null
+}
+
+# The parameters that every platform needs.
+BASE_CONF="PIDFILE=/tmp/sindan-test.pid MAX_RETRY=1 IFTYPE=Ethernet PING4_SRVS=a
+PING6_SRVS=a FQDNS=a PDNS4_SRVS=a PDNS6_SRVS=a WEB4_SRVS=a WEB6_SRVS=a
+SSH4_SRVS=a SSH6_SRVS=a"
+
+test_preparation_reports_a_missing_shared_parameter() {
+  out=$(run_sindan PIDFILE=/tmp/x)
+  assert_contains "$out" "ERROR: MAX_RETRY is null in configration file."
+}
+
+test_preparation_reports_a_missing_platform_parameter() {
+  local params
+  params=$(sed -n 's/^OS_REQUIRED_PARAMS="\(.*\)"$/\1/p' "$SINDAN_DIR/sindan.sh")
+  [ -n "$params" ] || skip "no platform parameter on this platform"
+  # shellcheck disable=SC2086
+  out=$(run_sindan $BASE_CONF)
+  assert_contains "$out" "ERROR: ${params%% *} is null in configration file."
+}
+
+test_preparation_reports_a_missing_command() {
+  # shellcheck disable=SC2086
+  SINDAN_EDIT='s/^OS_REQUIRED_PARAMS=.*/OS_REQUIRED_PARAMS=""/; s/^OS_REQUIRED_CMDS=.*/OS_REQUIRED_CMDS="sindan-no-such-command"/'
+  export SINDAN_EDIT
+  # shellcheck disable=SC2086
+  out=$(run_sindan $BASE_CONF)
+  assert_contains "$out" "ERROR: sindan-no-such-command is not found."
+}
+
 run_tests

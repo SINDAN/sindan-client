@@ -31,44 +31,10 @@ cd $(dirname $0)
 ####################
 ## Preparation
 
-# Check parameters
-for param in PIDFILE MAX_RETRY IFTYPE PING4_SRVS PING6_SRVS FQDNS PDNS4_SRVS PDNS6_SRVS WEB4_SRVS WEB6_SRVS SSH4_SRVS SSH6_SRVS DEVNAME; do
-  if [ -z $(eval echo '$'$param) ]; then
-    echo "ERROR: $param is null in configration file." 1>&2
-    exit 1
-  fi
-done
-
-# Check commands
-for cmd in uuidgen iw; do
-  if ! which $cmd > /dev/null 2>&1; then
-    echo "ERROR: $cmd is not found." 1>&2
-    exit 1
-  fi
-done
-
-# Set PID file
-trap 'rm -f $PIDFILE; exit 0' INT EXIT
-
-if [ -e "$PIDFILE" ]; then
-  ppid=$(cat "$PIDFILE")
-  if kill -0 "$ppid" > /dev/null 2>&1; then
-    kill -9 -"$ppid"
-#    kill -9 `ps ho pid --ppid=$ppid`
-    rm -f "$PIDFILE"
-    echo "Warning: killed the previous job which was running."
-  else
-    echo "Warning: previous check appears to have not finished correctly."
-  fi
-fi
-echo $$ >"$PIDFILE"
-
-# Make log directory
-mkdir -p log
-
-# Generate UUID
-uuid=$(generate_uuid)
-UUID=$uuid
+# Requirements of this platform, checked by sindan_prepare.sh
+OS_REQUIRED_PARAMS="DEVNAME"
+OS_REQUIRED_CMDS="uuidgen iw"
+. "$COMMON_DIR"/sindan_prepare.sh
 
 ####################
 ## Phase 0

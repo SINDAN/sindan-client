@@ -8,21 +8,21 @@ COMMON_DIR=$(cd "$(dirname "$0")/../common" && pwd)
 
 # read configuration file
 cd $(dirname $0)
-source sindan.conf
+. ./sindan.conf
 
 # read function files
 # The files shared by all platforms are in ../common.
 cd $(dirname $0)
-source "$COMMON_DIR"/sindan_funcb.sh
-source ./sindan_func0.sh
-source ./sindan_func1.sh
-source ./sindan_func2_os.sh
-source "$COMMON_DIR"/sindan_func2.sh
-source "$COMMON_DIR"/sindan_func3.sh
-source ./sindan_func4_os.sh
-source "$COMMON_DIR"/sindan_func4.sh
-source "$COMMON_DIR"/sindan_func5.sh
-source "$COMMON_DIR"/sindan_func6.sh
+. "$COMMON_DIR"/sindan_funcb.sh
+. ./sindan_func0.sh
+. ./sindan_func1.sh
+. ./sindan_func2_os.sh
+. "$COMMON_DIR"/sindan_func2.sh
+. "$COMMON_DIR"/sindan_func3.sh
+. ./sindan_func4_os.sh
+. "$COMMON_DIR"/sindan_func4.sh
+. "$COMMON_DIR"/sindan_func5.sh
+. "$COMMON_DIR"/sindan_func6.sh
 
 #
 # main
@@ -31,43 +31,10 @@ source "$COMMON_DIR"/sindan_func6.sh
 ####################
 ## Preparation
 
-# Check parameters
-for param in PIDFILE MAX_RETRY IFTYPE PING4_SRVS PING6_SRVS FQDNS PDNS4_SRVS PDNS6_SRVS WEB4_SRVS WEB6_SRVS SSH4_SRVS SSH6_SRVS; do
-  if [ -z $(eval echo '$'$param) ]; then
-    echo "ERROR: $param is null in configration file." 1>&2
-    exit 1
-  fi
-done
-
-# Check commands
-for cmd in gtimeout; do
-  if ! which $cmd > /dev/null 2>&1; then
-    echo "ERROR: $cmd is not found." 1>&2
-    exit 1
-  fi
-done
-
-# Set PID file
-trap 'rm -f $PIDFILE; exit 0' INT EXIT
-
-if [ -e "$PIDFILE" ]; then
-  ppid=$(cat "$PIDFILE")
-  if kill -0 "$ppid" > /dev/null 2>&1; then
-    kill -9 -"$ppid"
-    rm -f "$PIDFILE"
-    echo "Warning: killed the previous job which was running."
-  else
-    echo "Warning: previous check appears to have not finished correctly."
-  fi
-fi
-echo $$ >"$PIDFILE"
-
-# Make log directory
-mkdir -p log
-
-# Generate UUID
-uuid=$(generate_uuid)
-UUID=$uuid
+# Requirements of this platform, checked by sindan_prepare.sh
+OS_REQUIRED_PARAMS=""
+OS_REQUIRED_CMDS="gtimeout"
+. "$COMMON_DIR"/sindan_prepare.sh
 
 ####################
 ## Phase 0
