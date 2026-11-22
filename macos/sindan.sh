@@ -7,12 +7,12 @@ VERSION="6.0.1"
 COMMON_DIR=$(cd "$(dirname "$0")/../common" && pwd)
 
 # read configuration file
-cd $(dirname $0)
+cd "$(dirname "$0")" || exit 1
 . ./sindan.conf
 
 # read function files
 # The files shared by all platforms are in ../common.
-cd $(dirname $0)
+# (The current directory is already the script directory.)
 . "$COMMON_DIR"/sindan_funcb.sh
 . ./sindan_func0.sh
 . ./sindan_func1.sh

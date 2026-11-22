@@ -236,7 +236,7 @@ if is_usable_v4addr_type "$v4addr_type"; then
   count=0
   for target in $(echo "$SSH4_SRVS" | sed 's/,/ /g'); do
     if [ "$MODE" = "probe" ]; then
-      target_fqdn=$(echo $target | awk -F_ '{print $1}')
+      target_fqdn=$(echo "$target" | awk -F_ '{print $1}')
 
       # Do ping to IPv4 ssh servers
       cmdset_ping "$layer" 4 sshsrv "$target_fqdn" "$count" &
@@ -287,7 +287,7 @@ if [ -n "$v6addrs" ]; then
   count=0
   for target in $(echo "$SSH6_SRVS" | sed 's/,/ /g'); do
     if [ "$MODE" = "probe" ]; then
-      target_fqdn=$(echo $target | awk -F_ '{print $1}')
+      target_fqdn=$(echo "$target" | awk -F_ '{print $1}')
 
       # Do ping to IPv6 ssh servers
       cmdset_ping "$layer" 6 sshsrv "$target_fqdn" "$count" &
@@ -340,7 +340,7 @@ if [ -n "$v6addrs" ]; then
     count=0
     for target in $(echo "$SSH4_SRVS" | sed 's/,/ /g'); do
       if [ "$MODE" = "probe" ]; then
-        target_fqdn=$(echo $target | awk -F_ '{print $1}')
+        target_fqdn=$(echo "$target" | awk -F_ '{print $1}')
 
         # Do ping to IPv4 ssh servers by IPv6
         cmdset_ping "$layer" 6 sshsrv "$target_fqdn" "$count" &
