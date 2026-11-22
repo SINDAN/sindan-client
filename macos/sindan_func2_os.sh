@@ -9,20 +9,20 @@
 # Get IPv4 configuration on the interface.
 # get_v4ifconf <ifname> <iftype>
 function get_v4ifconf() {
-  if [ $# -ne 1 ]; then
-    echo "ERROR: get_v4ifconf <iftype>." 1>&2
+  if [ $# -ne 2 ]; then
+    echo "ERROR: get_v4ifconf <ifname> <iftype>." 1>&2
     return 1
   fi
-  if networksetup -getinfo "$1"						|
+  if networksetup -getinfo "$2" |
    grep 'DHCP Configuration' > /dev/null; then
     echo 'dhcp'
-  elif networksetup -getinfo "$1"					|
+  elif networksetup -getinfo "$2" |
    grep 'Manually Using DHCP' > /dev/null; then
     echo 'manual and dhcp'
-  elif networksetup -getinfo "$1"					|
+  elif networksetup -getinfo "$2" |
    grep 'BOOTP Configuration' > /dev/null; then
     echo 'bootp'
-  elif networksetup -getinfo "$1"					|
+  elif networksetup -getinfo "$2" |
    grep 'Manual Configuration' > /dev/null; then
     echo 'manual'
   else
@@ -39,7 +39,7 @@ function get_v4addr() {
     echo "ERROR: get_v4addr <devicename>." 1>&2
     return 1
   fi
-  ifconfig "$1"								|
+  ifconfig "$1" |
   sed -n 's/^.*inet \([0-9.]*\).*$/\1/p'
   return $?
 }
@@ -52,7 +52,7 @@ function get_netmask() {
     return 1
   fi
   local mask o1 o2 o3 o4
-  mask=$(ifconfig "$1"							|
+  mask=$(ifconfig "$1" |
        sed -n 's/^.*netmask \([0-9a-fx]*\).*$/\1/p')
   o1=0x$(echo "$mask" | cut -c 3-4)
   o2=0x$(echo "$mask" | cut -c 5-6)
@@ -69,9 +69,9 @@ function get_v4routers() {
     echo "ERROR: get_v4routers <devicename>." 1>&2
     return 1
   fi
-  netstat -rnf inet							|
-  grep ^default								|
-  grep "$1"								|
+  netstat -rnf inet |
+  grep ^default |
+  grep "$1" |
   awk '{print $2}'
   return $?
 }
@@ -79,25 +79,26 @@ function get_v4routers() {
 # Get IPv4 name servers using on the system.
 # get_v4nameservers XXXX
 function get_v4nameservers() {
-  sed -n 's/^nameserver \([0-9.]*\)$/\1/p' /etc/resolv.conf		|
+  sed -n 's/^nameserver \([0-9.]*\)$/\1/p' /etc/resolv.conf |
   awk -v ORS=' ' '1; END{printf "\n"}'
   return $?
 }
 
 # Get IPv6 configuration on the interface.
-# get_v6ifconf <ifname>
+# The interface type is the name of the network service for networksetup.
+# get_v6ifconf <ifname> <iftype>
 function get_v6ifconf() {
-  if [ $# -ne 1 ]; then
-    echo "ERROR: get_v6ifconf <iftype>." 1>&2
+  if [ $# -ne 2 ]; then
+    echo "ERROR: get_v6ifconf <ifname> <iftype>." 1>&2
     return 1
   fi
-  if networksetup -getinfo "$1"						|
+  if networksetup -getinfo "$2" |
    grep 'IPv6: Automatic' > /dev/null; then
     echo 'automatic'
-  elif networksetup -getinfo "$1"					|
+  elif networksetup -getinfo "$2" |
    grep 'IPv6: Manual' > /dev/null; then
     echo 'manual'
-  elif networksetup -getinfo "$1"					|
+  elif networksetup -getinfo "$2" |
    grep 'IPv6 IP address: none' > /dev/null; then
     echo 'linklocal'
   else
@@ -113,7 +114,7 @@ function get_v6lladdr() {
     echo "ERROR: get_v6lladdr <devicename>." 1>&2
     return 1
   fi
-  ifconfig "$1"								|
+  ifconfig "$1" |
   sed -n 's/^.*inet6 \(fe80[0-9a-f:]*\)\%.*$/\1/p'
   return $?
 }
@@ -133,11 +134,11 @@ function get_ra_info() {
 # Get source IPv6 addresses of the RA.
 # require get_ra_info() data from STDIN.
 function get_ra_addrs() {
-  grep ' flags='							|
-  awk '{print $1}'							|
-  awk -F% '{print $1}'							|
-  uniq									|
-  awk -F\n -v ORS=',' '{print}'						|
+  grep ' flags=' |
+  awk '{print $1}' |
+  awk -F% '{print $1}' |
+  uniq |
+  awk -F\n -v ORS=',' '{print}' |
   sed 's/,$//'
   return $?
 }
@@ -150,7 +151,7 @@ function get_ra_flags() {
     echo "ERROR: get_ra_flags <ra_source>." 1>&2
     return 1
   fi
-  grep "$1"								|
+  grep "$1" |
   sed -n 's/^.*flags=\([A-Z]*\),.*$/\1/p'
   return $?
 }
@@ -163,7 +164,7 @@ function get_ra_pref() {
     echo "ERROR: get_ra_pref <ra_source>." 1>&2
     return 1
   fi
-  grep "$1"								|
+  grep "$1" |
   sed -n 's/^.*pref=\([a-z]*\),.*$/\1/p'
   return $?
 }

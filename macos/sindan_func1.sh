@@ -18,8 +18,8 @@ function get_ifname() {
 # Stop the interface.
 # do_ifdown <ifname> <iftype>
 function do_ifdown() {
-  if [ $# -ne 1 ]; then
-    echo "ERROR: do_ifdown <devicename>." 1>&2
+  if [ $# -ne 2 ]; then
+    echo "ERROR: do_ifdown <ifname> <iftype>." 1>&2
     return 1
   fi
   networksetup -setairportpower "$1" off
@@ -29,8 +29,8 @@ function do_ifdown() {
 # Activate the interface.
 # do_ifup <ifname> <iftype>
 function do_ifup() {
-  if [ $# -ne 1 ]; then
-    echo "ERROR: do_ifup <devicename>." 1>&2
+  if [ $# -ne 2 ]; then
+   echo "ERROR: do_ifup <ifname> <iftype>." 1>&2
     return 1
   fi
   networksetup -setairportpower "$1" on
@@ -40,8 +40,8 @@ function do_ifup() {
 # Get the interface status.
 # get_ifstatus <ifname> <iftype>
 function get_ifstatus() {
-  if [ $# -ne 1 ]; then
-    echo "ERROR: get_ifstatus <devicename>." 1>&2
+  if [ $# -ne 2 ]; then
+    echo "ERROR: get_ifstatus <ifname> <iftype>." 1>&2
     return 1
   fi
   local status
@@ -230,7 +230,7 @@ function get_wlan_mcs() {
 # require get_wlan_info() data from STDIN.
 # get_wlan_nss
 function get_wlan_nss() {
-  ::
+  :
   #TBD
 }
 

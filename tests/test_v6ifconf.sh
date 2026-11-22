@@ -11,13 +11,10 @@
 is_linux() { grep -q nmcli "$SINDAN_DIR/sindan_func2_os.sh"; }
 
 test_main_script_passes_the_interface_type() {
-  if is_linux; then
-    grep -q 'get_v6ifconf "\$ifname" "\$IFTYPE"' "$SINDAN_DIR/sindan.sh" ||
-      fail "sindan.sh does not pass IFTYPE to get_v6ifconf"
-  else
-    grep -q 'get_v6ifconf "\$IFTYPE"' "$SINDAN_DIR/sindan.sh" ||
-      fail "sindan.sh does not pass IFTYPE to get_v6ifconf"
-  fi
+  # Both platforms take <ifname> <iftype> (macOS needs the type as the name
+  # of the network service).
+  main_text | grep -q 'get_v6ifconf "\$ifname" "\$IFTYPE"' ||
+    fail "the shared phase does not pass ifname and IFTYPE to get_v6ifconf"
 }
 
 test_linux_wwan_uses_the_wwan_port() {
@@ -58,8 +55,18 @@ test_macos_linklocal_branch_does_not_use_a_typo_device() {
   is_linux && skip "macOS only"
   assert_eq 0 "$(grep -c '/dev/nul\b' "$SINDAN_DIR/sindan_func2_os.sh")" "typo count"
   load_funcs funcb func2
-  make_shim networksetup 'echo "IPv6: Off"; echo "IPv6 IP address: none"'
-  assert_eq linklocal "$(get_v6ifconf Wi-Fi)"
+  make_shim networksetup 'echo "$*" >> "$T/calls.networksetup"
+echo "IPv6: Off"; echo "IPv6 IP address: none"'
+  assert_eq linklocal "$(get_v6ifconf en0 Wi-Fi)"
+  # The network service is the interface type, not the interface name.
+  assert_contains "$(head -1 "$T/calls.networksetup")" "-getinfo Wi-Fi"
+}
+
+test_macos_v6ifconf_needs_both_arguments() {
+  is_linux && skip "macOS only"
+  load_funcs funcb func2
+  get_v6ifconf Wi-Fi 2> /dev/null
+  assert_eq 1 $? "return status"
 }
 
 run_tests

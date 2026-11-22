@@ -362,10 +362,11 @@ function get_ra_retrans() {
 
 # Get prefixes of the RA.
 # require get_ra_info() data from STDIN.
-# get_ra_prefs <ra_source>
+# The interface name is not used on Linux; the macOS functions need it.
+# get_ra_prefs <ra_source> <ifname>
 function get_ra_prefs() {
-  if [ $# -ne 1 ]; then
-    echo "ERROR: get_ra_prefs <ra_source>." 1>&2
+  if [ $# -ne 2 ]; then
+    echo "ERROR: get_ra_prefs <ra_source> <ifname>." 1>&2
     return 1
   fi
   awk -v src="$1" 'BEGIN {						#
@@ -392,10 +393,11 @@ function get_ra_prefs() {
 
 # Get flags of the prefix information in the RA.
 # require get_ra_info() data from STDIN.
-# get_ra_pref_flags <ra_source> <ra_pref>
+# The interface name is not used on Linux; the macOS functions need it.
+# get_ra_pref_flags <ra_source> <ra_pref> <ifname>
 function get_ra_pref_flags() {
-  if [ $# -ne 2 ]; then
-    echo "ERROR: get_ra_pref_flags <ra_source> <ra_pref>." 1>&2
+  if [ $# -ne 3 ]; then
+    echo "ERROR: get_ra_pref_flags <ra_source> <ra_pref> <ifname>." 1>&2
     return 1
   fi
   awk -v src="$1" -v pref="$2" 'BEGIN {					#
@@ -431,10 +433,11 @@ function get_ra_pref_flags() {
 
 # Get valid lifetime of the prefix information in the RA.
 # require get_ra_info() data from STDIN.
-# get_ra_pref_vltime <ra_source> <ra_pref>
+# The interface name is not used on Linux; the macOS functions need it.
+# get_ra_pref_vltime <ra_source> <ra_pref> <ifname>
 function get_ra_pref_vltime() {
-  if [ $# -ne 2 ]; then
-    echo "ERROR: get_ra_pref_vltime <ra_source> <ra_pref>." 1>&2
+  if [ $# -ne 3 ]; then
+    echo "ERROR: get_ra_pref_vltime <ra_source> <ra_pref> <ifname>." 1>&2
     return 1
   fi
   awk -v src="$1" -v pref="$2" 'BEGIN {					#
@@ -467,10 +470,11 @@ function get_ra_pref_vltime() {
 
 # Get preferred lifetime of the prefix information in the RA.
 # require get_ra_info() data from STDIN.
-# get_ra_pref_pltime <ra_source> <ra_pref>
+# The interface name is not used on Linux; the macOS functions need it.
+# get_ra_pref_pltime <ra_source> <ra_pref> <ifname>
 function get_ra_pref_pltime() {
-  if [ $# -ne 2 ]; then
-    echo "ERROR: get_ra_pref_pltime <ra_source> <ra_pref>." 1>&2
+  if [ $# -ne 3 ]; then
+    echo "ERROR: get_ra_pref_pltime <ra_source> <ra_pref> <ifname>." 1>&2
     return 1
   fi
   awk -v src="$1" -v pref="$2" 'BEGIN {					#
