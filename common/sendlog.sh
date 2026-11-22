@@ -19,7 +19,7 @@ cd "${SINDAN_BASE:-$(dirname "$0")}" || exit 1
 
 # Check LOCKFILE_SENDLOG parameter
 if [ -z "$LOCKFILE_SENDLOG" ]; then
-  echo "ERROR: LOCKFILE_SENDLOG is null at configration file." 1>&2
+  echo "ERROR: LOCKFILE_SENDLOG is null at configuration file." 1>&2
   exit 1
 fi
 trap 'rm -f "$LOCKFILE_SENDLOG"; exit 0' INT

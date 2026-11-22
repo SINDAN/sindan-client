@@ -63,14 +63,14 @@ if is_usable_v4addr_type "$v4addr_type"; then
       fi
     fi
 
-    # Do ping to extarnal IPv4 servers
+    # Do ping to external IPv4 servers
     cmdset_ping "$layer" 4 srv "$target" "$count" &
 
-    # Do traceroute to extarnal IPv4 servers
+    # Do traceroute to external IPv4 servers
     cmdset_trace "$layer" 4 srv "$target" "$count" &
 
     if [ "$MODE" = "client" ]; then
-      # Check path MTU to extarnal IPv4 servers
+      # Check path MTU to external IPv4 servers
       cmdset_pmtud "$layer" 4 srv "$target" "$ifmtu" "$count" "$v4addr" &
     fi
 
@@ -88,15 +88,15 @@ if [ -n "$v6addrs" ]; then
       fi
     fi
 
-    # Do ping to extarnal IPv6 servers
+    # Do ping to external IPv6 servers
     cmdset_ping "$layer" 6 srv "$target" "$count" &
 
-    # Do traceroute to extarnal IPv6 servers
+    # Do traceroute to external IPv6 servers
     cmdset_trace "$layer" 6 srv "$target" "$count" &
 
     for addr in $(echo "$v6addrs" | sed 's/,/ /g'); do
       if [ "$MODE" = "client" ]; then
-        # Check path MTU to extarnal IPv6 servers
+        # Check path MTU to external IPv6 servers
         cmdset_pmtud "$layer" 6 srv "$target" "$ifmtu" "$count" "$addr" &
       fi
     done

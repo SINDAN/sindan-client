@@ -1,10 +1,10 @@
 #!/bin/bash
 
 ## setup watchdog
-echo "seting up watchdog..."
+echo "setting up watchdog..."
 sudo tee -a /boot/config.txt << EOF >/dev/null
 
-# Watchdig Timer
+# Watchdog Timer
 dtparam=watchdog=on
 EOF
 

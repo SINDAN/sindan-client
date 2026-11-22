@@ -31,7 +31,7 @@ function cmdset_http() {
   local ipv result string http_ans
   ipv=IPv${ver}
   result=$FAIL
-  string=" curl to extarnal server: $target by $ipv"
+  string=" curl to external server: $target by $ipv"
   if http_ans=$(do_curl "$ver" "$target"); then
     result=$SUCCESS
   else
@@ -74,7 +74,7 @@ function cmdset_ssh() {
   target=$(echo "$str" | awk -F_ '{print $1}')
   key_type=$(echo "$str" | awk -F_ '{print $2}')
   result=$FAIL
-  string=" sshkeyscan to extarnal server: $target by $ipv"
+  string=" sshkeyscan to external server: $target by $ipv"
   if ssh_ans=$(do_sshkeyscan "$ver" "$target" "$key_type"); then
     result=$SUCCESS
   else
@@ -119,7 +119,7 @@ function cmdset_portscan() {
   local ipv result string ps_ans
   ipv="IPv${ver}"
   result=$FAIL
-  string=" portscan to extarnal server: $target:$port by $ipv"
+  string=" portscan to external server: $target:$port by $ipv"
   if ps_ans=$(do_portscan "$ver" "$target" "$port"); then
     result=$SUCCESS
   else
@@ -211,7 +211,7 @@ function cmdset_speedtest() {
   local layer=$1 pver=$2 type=$3 target=$4 count=$5
   local ver ipv result string speedtest_ans stat prefix
   result=$FAIL
-  string=" speedtest to extarnal server: $target by $pver"
+  string=" speedtest to external server: $target by $pver"
   if speedtest_ans=$(do_speedtest "$target"); then
     result=$SUCCESS
   else

@@ -333,7 +333,7 @@ function check_v4autoconf() {
     dhcp_data=$(get_dhcp4_data "$1")
     echo "$dhcp_data"
 
-    # simple comparision
+    # simple comparison
     dhcpv4addr=$(echo "$dhcp_data" | get_dhcp4_addr)
     echo "v4addr=$v4addr, dhcpv4addr=$dhcpv4addr"
     if [ -z "$dhcpv4addr" ] || [ -z "$v4addr" ]; then
@@ -379,7 +379,7 @@ function check_v6autoconf() {
     if [ -n "$m_flag" ]; then
       result=$(( result + 2 ))
       for addr in $(echo "$v6addrs" | sed 's/,/ /g'); do
-        # simple comparision
+        # simple comparison
         if echo "$dhcp_data" | has_dhcp6_addr "$addr"; then
           result=0
         fi

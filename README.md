@@ -24,7 +24,7 @@ Copy `sindan.conf.example` in the `linux` or `macos` directory to `sindan.conf`,
 - `linux/`, `macos/` - the scripts and `sindan.conf.example` of each platform. Run `sindan.sh` and `sendlog.sh` from here.
 - `common/` - the functions and the `sendlog.sh` implementation shared by Linux and macOS. They are read by the scripts in `linux/` and `macos/` through the relative path `../common`, so keep the directories of a checkout together.
 - `*_os.sh` in `linux/` and `macos/` - the parts of the function files that depend on the platform.
-- `tests/` - tests of the shell scripts. Run `tests/run_tests.sh` (needs bash and python3 or jq).
+- `tests/` - tests of the shell scripts. Run `tests/run_tests.sh` (needs bash and python3 or jq). `tests/check_bash32.sh` looks for bash 4+ constructs that do not work on macOS. Both run in CI (`.github/workflows/ci.yml`) together with ShellCheck.
 
 ## Configuration
 The sindan.conf file is assumed to be located in the same directory as sindan.sh.
@@ -63,8 +63,8 @@ Parameters:
 - `CMD_HASH`=\<command path\> - Specifies the path to the command used for hashing privacy-related data.
 
 ## Authors
-- **Yoshiaki KITAGUCHI** - *Maintein macOS/Linux version* [@kitaguch](https://github.com/kitaguch)
-- **Tomohiro ISHIHARA** - *Maintein Windows version* - [@shored](https://github.com/shored)
+- **Yoshiaki KITAGUCHI** - *Maintain macOS/Linux version* [@kitaguch](https://github.com/kitaguch)
+- **Tomohiro ISHIHARA** - *Maintain Windows version* - [@shored](https://github.com/shored)
 
 See also the list of [contributors](https://github.com/SINDAN/sindan-client/graphs/contributors) who participated in this project.
 
