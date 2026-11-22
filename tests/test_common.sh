@@ -26,6 +26,23 @@ test_sindan_sh_finds_the_function_files_from_any_directory() {
   assert_contains "$out" "is null in configration file" "the script did not reach the parameter check"
 }
 
+# The script changes to its own directory. It must also work when it is
+# started with a relative path, and it must not try to change the directory
+# a second time (that cd used to be relative to the new directory).
+test_sindan_sh_works_when_started_with_a_relative_path() {
+  local root="$T/repo" plat
+  plat=$(basename "$SINDAN_DIR")
+  mkdir -p "$root"
+  cp -R "$SINDAN_DIR" "$root/$plat"
+  cp -R "$SINDAN_DIR/../common" "$root/common"
+  : > "$root/$plat/sindan.conf"
+  cd "$root" || fail "cannot cd"
+  out=$(bash "$plat/sindan.sh" 2>&1 < /dev/null)
+  assert_not_contains "$out" "No such file"
+  assert_not_contains "$out" "command not found"
+  assert_contains "$out" "is null in configration file" "the script did not reach the parameter check"
+}
+
 test_get_rtt_reads_the_linux_format() {
   load_funcs funcb func3
   out=$(echo "rtt min/avg/max/mdev = 1.100/2.200/3.300/0.400 ms" | get_rtt)
