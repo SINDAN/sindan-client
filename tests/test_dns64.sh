@@ -51,9 +51,9 @@ test_wrong_argument_count_is_rejected() {
 
 test_main_script_checks_dns64_once_for_all_servers() {
   # The result must not be assigned inside the loop over the name servers.
-  assert_eq 0 "$(grep -c 'exist_dns64=\$(check_dns64 ' "$SINDAN_DIR/sindan.sh")" \
+  assert_eq 0 "$(main_text | grep -c 'exist_dns64=\$(check_dns64 ')" \
             "per-server assignment"
-  assert_eq 1 "$(grep -c 'exist_dns64=\$(check_dns64_any ' "$SINDAN_DIR/sindan.sh")" \
+  assert_eq 1 "$(main_text | grep -c 'exist_dns64=\$(check_dns64_any ')" \
             "check_dns64_any call"
 }
 

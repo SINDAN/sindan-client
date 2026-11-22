@@ -61,10 +61,10 @@ test_cmdset_ping_routers_rejects_a_wrong_argument_count() {
 
 test_main_script_checks_routers_once_per_layer_and_version() {
   # No loop over the routers may be left in sindan.sh.
-  assert_eq 0 "$(grep -c 'for target_r in' "$SINDAN_DIR/sindan.sh")" "inline router loops"
+  assert_eq 0 "$(main_text | grep -c 'for target_r in')" "inline router loops"
   # globalnet v4/v6, dns v4/v6, app v4/v6 (the DNS64 block reuses the last).
-  assert_eq 6 "$(grep -c 'cmdset_ping_routers' "$SINDAN_DIR/sindan.sh")" "call sites"
-  assert_eq 6 "$(grep -c 'if \[ "\$count" -eq 0 \]; then' "$SINDAN_DIR/sindan.sh")" "first-iteration guards"
+  assert_eq 6 "$(main_text | grep -c 'cmdset_ping_routers')" "call sites"
+  assert_eq 6 "$(main_text | grep -c 'if \[ "\$count" -eq 0 \]; then')" "first-iteration guards"
 }
 
 run_tests

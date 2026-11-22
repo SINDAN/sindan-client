@@ -146,6 +146,13 @@ make_shim() {
   chmod +x "$T/bin/$1"
 }
 
+# Print the text of sindan.sh and of the shared files it reads, for the
+# static checks of the main flow (grep on the output).
+# main_text
+main_text() {
+  cat "$SINDAN_DIR/sindan.sh" "$SINDAN_DIR/../common"/sindan_phase*.sh
+}
+
 # Source the given function files of the platform under test.
 # load_funcs <name>... (e.g. funcb func4)
 load_funcs() {

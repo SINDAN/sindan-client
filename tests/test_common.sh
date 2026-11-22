@@ -46,4 +46,12 @@ test_no_function_file_is_duplicated_between_platforms() {
   done
 }
 
+test_phases_3_to_7_live_only_in_common() {
+  assert_eq 0 "$(grep -c '^echo "Phase [3-7]:' "$SINDAN_DIR/sindan.sh")" "phases in sindan.sh"
+  assert_eq 5 "$(grep -c '^echo "Phase [3-7]:' "$SINDAN_DIR/../common/sindan_phase3_7.sh")" \
+            "phases in common/sindan_phase3_7.sh"
+  grep -q '^\. "\$COMMON_DIR"/sindan_phase3_7.sh$' "$SINDAN_DIR/sindan.sh" ||
+    fail "sindan.sh does not read sindan_phase3_7.sh"
+}
+
 run_tests
