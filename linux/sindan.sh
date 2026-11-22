@@ -19,7 +19,7 @@ cd $(dirname $0)
 . ./sindan_func2_os.sh
 . "$COMMON_DIR"/sindan_func2.sh
 . "$COMMON_DIR"/sindan_func3.sh
-+. ./sindan_func4_os.sh
+. ./sindan_func4_os.sh
 . "$COMMON_DIR"/sindan_func4.sh
 . "$COMMON_DIR"/sindan_func5.sh
 . "$COMMON_DIR"/sindan_func6.sh

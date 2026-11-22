@@ -20,6 +20,9 @@ test_sindan_sh_finds_the_function_files_from_any_directory() {
   out=$(bash "$root/$plat/sindan.sh" 2>&1 < /dev/null)
   assert_not_contains "$out" "No such file"
   assert_not_contains "$out" "cannot open"
+  # A mistyped line in the list of the sourced files shows up as an unknown
+  # command (a stray "+" from a patch once did).
+  assert_not_contains "$out" "command not found"
   assert_contains "$out" "is null in configration file" "the script did not reach the parameter check"
 }
 
