@@ -169,6 +169,7 @@ run_watchdog() {
 }
 
 setup_pi() {
+  linux_only
   printf 'Raspberry Pi 4 Model B Rev 1.4\0' > "$T/model"
   printf 'arm_64bit=1\n' > "$T/config.txt"
   printf '[Manager]\n#RuntimeWatchdogSec=0\n#ShutdownWatchdogSec=10min\n' > "$T/system.conf"

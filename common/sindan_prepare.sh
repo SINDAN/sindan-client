@@ -11,7 +11,7 @@
 # Check parameters
 for param in PIDFILE MAX_RETRY IFTYPE PING4_SRVS PING6_SRVS FQDNS PDNS4_SRVS PDNS6_SRVS WEB4_SRVS WEB6_SRVS SSH4_SRVS SSH6_SRVS $OS_REQUIRED_PARAMS; do
   if [ -z "$(eval echo '$'"$param")" ]; then
-    echo "ERROR: $param is null in configration file." 1>&2
+    echo "ERROR: $param is null in configuration file." 1>&2
     exit 1
   fi
 done
