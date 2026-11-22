@@ -149,7 +149,7 @@ if [ "$IFTYPE" = "Wi-Fi" ]; then
     fi
   fi
 elif [ "$IFTYPE" = "WWAN" ]; then
-  # Get WWAN infomation
+  # Get WWAN information
   wwan_info=$(get_wwan_info "$ifname")
   if [ -n "$wwan_info" ]; then
     write_json "$layer" "$IFTYPE" wwan_info "$INFO" self "$wwan_info" 0

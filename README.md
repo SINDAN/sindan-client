@@ -63,8 +63,8 @@ Parameters:
 - `CMD_HASH`=\<command path\> - Specifies the path to the command used for hashing privacy-related data.
 
 ## Authors
-- **Yoshiaki KITAGUCHI** - *Maintein macOS/Linux version* [@kitaguch](https://github.com/kitaguch)
-- **Tomohiro ISHIHARA** - *Maintein Windows version* - [@shored](https://github.com/shored)
+- **Yoshiaki KITAGUCHI** - *Maintain macOS/Linux version* [@kitaguch](https://github.com/kitaguch)
+- **Tomohiro ISHIHARA** - *Maintain Windows version* - [@shored](https://github.com/shored)
 
 See also the list of [contributors](https://github.com/SINDAN/sindan-client/graphs/contributors) who participated in this project.
 
