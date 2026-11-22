@@ -8,13 +8,17 @@ Please visit website [sindan-net.com](https://www.sindan-net.com) for more detai
 > In order to detect network failure, SINDAN project evaluates the network status based on user-side observations, and aims to establish a method that enables network operators to troubleshoot quickly.
 
 ## Installation
-This script is available for Linux, macOS, and Windows. The macOS version uses the standard commands of macOS, so no additional application is required. The Linux version requires the following packages.
-- `dnsutils`, `uuid-runtime`, `jq` and `ndisc6`
+This script is available for Linux, macOS, and Windows. For Linux and macOS, run `install.sh` in the `linux` or `macos` directory. It installs the required packages and downloads `inonius_v3cli` (the command line tool of the iNonius speed test) to `bin/`.
+
+- Linux: `uuid-runtime`, `iw`, `ndisc6`, `dnsutils`, `curl`, `traceroute`, `jq` and `netcat-openbsd` (installed with apt). See [linux/README.md](linux/README.md) for scheduling.
+- macOS: the standard commands of macOS and `gtimeout` of `coreutils` (installed with Homebrew).
+- Windows: see [windows/README.md](windows/README.md).
 
 ## Usage
+Copy `sindan.conf.example` in the `linux` or `macos` directory to `sindan.conf`, edit it (see Configuration), and run the following scripts in that directory.
 
-- `sindan.sh` - 
-- `sendlog.sh` - 
+- `sindan.sh` - Runs the measurement of all layers (hardware, datalink, interface, localnet, globalnet, dns and app) and writes the results as JSON files to `log/`.
+- `sendlog.sh` - Sends the JSON files in `log/` to `URL_CAMPAIGN` and `URL_SINDAN`, and removes the files that the server accepted (HTTP status 200).
 
 ## Directory layout
 - `linux/`, `macos/` - the scripts and `sindan.conf.example` of each platform. Run `sindan.sh` and `sendlog.sh` from here.

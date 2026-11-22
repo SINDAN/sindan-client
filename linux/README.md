@@ -2,27 +2,20 @@
 
 ## Required Packages
 
-### via apt
+Run `install.sh` in this directory. It installs the packages below with apt and downloads `inonius_v3cli` (the command line tool of the iNonius speed test) to `bin/`.
+
+```
+$ ./install.sh
+```
 
 - **uuid-runtime** (for uuidgen)
 - **iw** (for iw)
 - **ndisc6** (for rdisc6)
 - **dnsutils** (for dig)
 - **curl** (for curl)
-- **chromium-browser**, **npm** (for nodejs)
-
-```
-$ sudo apt install uuid-runtime wireless-tools ndisc6 dnsutils curl chromium-browser npm
-```
-
-### via npm
-
-- **puppeteer-core**
-- **speedline**
-
-```
-$ sudo npm install puppeteer-core speedline
-```
+- **traceroute** (for traceroute)
+- **jq** (for jq)
+- **netcat-openbsd** (for nc)
 
 ## Scheduling
 
