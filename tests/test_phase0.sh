@@ -18,13 +18,15 @@ test_is_available() {
 }
 
 test_phase0_records_use_is_available() {
-  local s="$SINDAN_DIR/sindan.sh" v
-  for v in hw_info clock_state clock_src; do
-    grep -q "^if is_available \"\\\$$v\"; then" "$s" || fail "$v is not checked with is_available"
+  local v
+  # The CPU values are checked on all platforms: the macOS functions print
+  # TBD, which is not recorded.
+  for v in hw_info cpu_freq cpu_volt cpu_temp clock_state clock_src; do
+    main_text | grep -q "^if is_available \"\\\$$v\"; then" || fail "$v is not checked with is_available"
   done
   # The probes of the active (not commented out) records must not be tested
   # with a bare -n any more.
-  if sed -n '/^layer="hardware"/,/^echo " done."/p' "$s" |
+  if main_text | sed -n '/^layer="hardware"/,/^echo " done."/p' |
      grep -E '^if \[ -n "\$(hw_info|clock_state|clock_src|cpu_freq|cpu_volt|cpu_temp)" \]'; then
     fail "a Phase 0 value is still tested with [ -n ]"
   fi
@@ -32,10 +34,10 @@ test_phase0_records_use_is_available() {
 
 test_clock_state_is_not_built_from_an_empty_value() {
   # "synchronized=" must be added only after the probe succeeded.
-  if grep -n 'clock_state="synchronized=\$(get_clock_state)"' "$SINDAN_DIR/sindan.sh"; then
+  if main_text | grep -n 'clock_state="synchronized=\$(get_clock_state)"'; then
     fail "clock_state is built before it is checked"
   fi
-  grep -q 'clock_state="synchronized=\$clock_state"' "$SINDAN_DIR/sindan.sh" ||
+  main_text | grep -q 'clock_state="synchronized=\$clock_state"' ||
     fail "synchronized= prefix not found"
 }
 
