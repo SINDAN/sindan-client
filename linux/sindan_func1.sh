@@ -67,8 +67,8 @@ function get_ifstatus() {
   local status path modem_info
   if [ "$2" = "WWAN" ]; then
     for path in $(mmcli -L | awk '{print $1}' | tr '\n' ' '); do
-      modem_info=$(mmcli -m $path)
-      if echo $modem_info | grep "$1" > /dev/null 2>&1; then
+      modem_info=$(mmcli -m "$path")
+      if echo "$modem_info" | grep "$1" > /dev/null 2>&1; then
         status=$(echo "$modem_info"					| 
                  awk 'BEGIN {						#
                    find=0						#
@@ -465,8 +465,8 @@ function get_wwan_port() {
     return 1
   fi
   for path in $(mmcli -L | awk '{print $1}' | tr '\n' ' '); do
-    modem_info=$(mmcli -m $path)
-    if echo $modem_info | grep "$1" > /dev/null 2>&1; then
+    modem_info=$(mmcli -m "$path")
+    if echo "$modem_info" | grep "$1" > /dev/null 2>&1; then
       echo "$modem_info"						|
       awk 'BEGIN {							#
         find=0								#
@@ -495,8 +495,8 @@ function get_wwan_info() {
   fi
   local modem_info bearer_info signal_info threegpp_info
   for path in $(mmcli -L | awk '{print $1}' | tr '\n' ' '); do
-    modem_info=$(mmcli -m $path)
-    if echo $modem_info | grep "$1" > /dev/null 2>&1; then
+    modem_info=$(mmcli -m "$path")
+    if echo "$modem_info" | grep "$1" > /dev/null 2>&1; then
       echo 'CELLULER INFO:'
       echo 'MODEM INFO:'
       echo "$modem_info"
@@ -504,23 +504,23 @@ function get_wwan_info() {
       for bearer in $(echo "$modem_info"				|
                       sed -n 's/^.*Bearer\/\([0-9]*\).*$/\1/p'		|
                       tr '\n' ' '); do
-        bearer_info=$(mmcli -b $bearer)
-        if echo $bearer_info | grep "$1" > /dev/null 2>&1; then
+        bearer_info=$(mmcli -b "$bearer")
+        if echo "$bearer_info" | grep "$1" > /dev/null 2>&1; then
           echo 'BEARER INFO:'
           echo "$bearer_info"
         fi
       done
 
-      signal_info=$(mmcli -m $path --signal-get)
+      signal_info=$(mmcli -m "$path" --signal-get)
       if echo "$signal_info"						|
               grep "refresh rate: 0 seconds" > /dev/null 2>&1; then
-        mmcli -m $path --signal-setup=10 > /dev/null 2>&1
-        signal_info=$(mmcli -m $path --signal-get)
+        mmcli -m "$path" --signal-setup=10 > /dev/null 2>&1
+        signal_info=$(mmcli -m "$path" --signal-get)
       fi
       echo 'SIGNAL INFO:'
       echo "$signal_info"
 
-      threegpp_info=$(mmcli -m $path --location-get)
+      threegpp_info=$(mmcli -m "$path" --location-get)
       echo '3GPP INFO:'
       echo "$threegpp_info"
 
@@ -691,7 +691,7 @@ function get_wwan_environment() {
   fi
   echo "MMC,MNC,Name,Tech,Status"
   for path in $(mmcli -L | awk '{print $1}' | tr '\n' ' '); do
-    mmcli -m $path --3gpp-scan --timeout=60				|
+    mmcli -m "$path" --3gpp-scan --timeout=60				|
     sed -n 's/.*\([0-9]\{3\}\)\([0-9]\{2\}\) - \(.*\) (\(.*\), \(.*\))/\1,\2,\3,\4,\5/p'
   done
   return $?
