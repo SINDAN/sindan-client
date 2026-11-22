@@ -97,7 +97,7 @@ if [ "$EXCL_IPv6" != "yes" ]; then
     echo "  IPv6 lladdr: $v6lladdr"
   fi
 
-  # Get IPv6 RA infomation
+  # Get IPv6 RA information
   ra_info=$(get_ra_info "$ifname")
 
   # Get IPv6 RA source addresses

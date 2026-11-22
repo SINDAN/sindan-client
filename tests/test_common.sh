@@ -23,7 +23,7 @@ test_sindan_sh_finds_the_function_files_from_any_directory() {
   # A mistyped line in the list of the sourced files shows up as an unknown
   # command (a stray "+" from a patch once did).
   assert_not_contains "$out" "command not found"
-  assert_contains "$out" "is null in configration file" "the script did not reach the parameter check"
+  assert_contains "$out" "is null in configuration file" "the script did not reach the parameter check"
 }
 
 test_get_rtt_reads_the_linux_format() {
@@ -84,7 +84,7 @@ SSH4_SRVS=a SSH6_SRVS=a"
 
 test_preparation_reports_a_missing_shared_parameter() {
   out=$(run_sindan PIDFILE=/tmp/x)
-  assert_contains "$out" "ERROR: MAX_RETRY is null in configration file."
+  assert_contains "$out" "ERROR: MAX_RETRY is null in configuration file."
 }
 
 test_preparation_reports_a_missing_platform_parameter() {
@@ -93,7 +93,7 @@ test_preparation_reports_a_missing_platform_parameter() {
   [ -n "$params" ] || skip "no platform parameter on this platform"
   # shellcheck disable=SC2086
   out=$(run_sindan $BASE_CONF)
-  assert_contains "$out" "ERROR: ${params%% *} is null in configration file."
+  assert_contains "$out" "ERROR: ${params%% *} is null in configuration file."
 }
 
 test_preparation_reports_a_missing_command() {
